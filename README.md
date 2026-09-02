@@ -30,6 +30,24 @@ Activate the resulting generation only on the staging VM or after explicit host 
 
 The current profile targets user `z` on `x86_64-linux`.
 
+## Secret safety gate
+
+Enable the repository's tracked pre-commit hook once after cloning:
+
+```bash
+git config --local core.hooksPath .githooks
+```
+
+The hook runs the same staged-change scan available manually:
+
+```bash
+./scripts/check-secrets --staged
+```
+
+The scanner uses the gitleaks version pinned by `flake.lock`. It rejects common hardcoded secrets plus private age identities and plaintext WireGuard private keys. SOPS ciphertext and public age recipients are allowed.
+
+Before committing, also inspect high-risk changes deliberately: files under `secrets/`, `.env`-style files, private keys, authentication tokens, decrypted output, and secret values embedded in Nix expressions. The scanner supplements this review; it does not prove that content is safe to publish.
+
 ## Project guidance
 
 - [CONTEXT.md](CONTEXT.md) defines canonical vocabulary.

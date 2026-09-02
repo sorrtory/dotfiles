@@ -16,6 +16,10 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in
     {
+      devShells.${system}.default = pkgs.mkShellNoCC {
+        packages = [ pkgs.gitleaks ];
+      };
+
       homeConfigurations.z = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         modules = [ ./home.nix ];
