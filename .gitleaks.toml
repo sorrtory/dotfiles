@@ -7,10 +7,8 @@ useDefault = true
 id = "age-secret-identity"
 description = "age private identity"
 regex = '''AGE-SECRET-KEY-1[0-9A-Z]{20,}'''
-keywords = ["AGE-SECRET-KEY-1"]
 
 [[rules]]
 id = "wireguard-private-key"
 description = "WireGuard private key"
 regex = '''(?i)PrivateKey[[:space:]]*=[[:space:]]*[A-Za-z0-9+/]{43}='''
-keywords = ["PrivateKey"]
