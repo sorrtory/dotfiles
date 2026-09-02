@@ -33,7 +33,7 @@ printf '%s\n' \
   '#!/usr/bin/env bash' \
   'case "${1:-}" in' \
   '  status) printf "installed alpha 1.0\\n" ;;' \
-  '  apply) printf "applied alpha\\n" ;;' \
+  '  install) printf "installed alpha\\n" ;;' \
   '  *) exit 64 ;;' \
   'esac' >"$test_dir/bootstrap/alpha.sh"
 
@@ -43,20 +43,12 @@ printf '%s\n' \
   '#!/usr/bin/env bash' \
   'case "${1:-}" in' \
   '  status) printf "not installed\\n"; exit 1 ;;' \
-  '  apply) printf "applied beta\\n" ;;' \
+  '  install) [[ "${FAIL_BETA:-0}" != 1 ]] || exit 1; printf "installed beta\\n" ;;' \
   '  *) exit 64 ;;' \
   'esac' >"$test_dir/bootstrap/beta.sh"
 
 printf '#!/usr/bin/env bash\n' >"$test_dir/bootstrap/ignored.sh"
 chmod +x "$test_dir/bootstrap/alpha.sh" "$test_dir/bootstrap/beta.sh"
-
-assert_equal $'alpha\nbeta' \
-  "$("$test_dir/bootstrap.sh" list)" \
-  'list should discover executable components'
-
-assert_equal 'alpha: installed alpha 1.0' \
-  "$("$test_dir/bootstrap.sh" status alpha)" \
-  'status should delegate to one component'
 
 if all_status="$("$test_dir/bootstrap.sh" status)"; then
   fail 'aggregate status should fail when one component is unsatisfied'
@@ -65,11 +57,30 @@ assert_equal $'alpha: installed alpha 1.0\nbeta: not installed' \
   "$all_status" \
   'aggregate status should report every component'
 
-assert_equal 'applied alpha' \
-  "$("$test_dir/bootstrap.sh" alpha)" \
-  'component command should invoke apply'
+assert_equal $'installed alpha\ninstalled beta' \
+  "$("$test_dir/bootstrap.sh" install)" \
+  'install should delegate to every component'
 
-if "$test_dir/bootstrap.sh" unknown >/dev/null 2>&1; then
+assert_equal 'installed beta' \
+  "$("$test_dir/bootstrap.sh" install beta)" \
+  'install should accept selected components'
+
+if selected_status="$("$test_dir/bootstrap.sh" status beta alpha)"; then
+  fail 'selected status should fail when one component is unsatisfied'
+fi
+assert_equal $'beta: not installed\nalpha: installed alpha 1.0' \
+  "$selected_status" \
+  'status should preserve component selection order'
+
+if FAIL_BETA=1 "$test_dir/bootstrap.sh" install >/dev/null 2>&1; then
+  fail 'install should propagate component failures'
+fi
+
+if "$test_dir/bootstrap.sh" list >/dev/null 2>&1; then
+  fail 'list should not be a public command'
+fi
+
+if "$test_dir/bootstrap.sh" status unknown >/dev/null 2>&1; then
   fail 'unknown components should be rejected'
 fi
 
