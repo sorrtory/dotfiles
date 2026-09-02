@@ -49,9 +49,9 @@ GNOME and Hyprland concerns remain separate. GNOME should use `dconf.settings` w
 `scripts/bootstrap.sh` is a small dispatcher, not a universal installer. A component under `scripts/bootstrap/` supports two commands:
 
 - `status`: read-only and network-free; reports whether the required state is satisfied and includes a version when meaningful.
-- `apply`: asks no configuration questions and is safe to repeat; it performs only that component's setup and may prompt for authentication when privilege is required.
+- `install`: first runs `status` and refuses to continue when the required state is already satisfied; otherwise it asks no configuration questions, performs only that component's setup, and may prompt for authentication when privilege is required.
 
-The dispatcher exposes `list`, aggregate or component `status`, and component application. Introduce shared Bash helpers only after real duplication appears.
+The dispatcher exposes `status` and `install` commands for one, several, or—when no names are given—all executable components discovered under `scripts/bootstrap/`. It does not maintain a separate component list. Non-executable `scripts/bootstrap/common.sh` owns the shared component command contract and small generic helpers.
 
 The initial checkpoint contains only the Nix bootstrap component. Add `yt-dlp` during package migration and migrate the LXD proxy as its own ticketed Bash task.
 

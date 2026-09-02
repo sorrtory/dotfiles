@@ -7,12 +7,11 @@ Cross-distribution Linux user environment built with Nix flakes and Home Manager
 The bootstrap dispatcher exposes explicit, repeatable components:
 
 ```bash
-./scripts/bootstrap.sh list
 ./scripts/bootstrap.sh status
-./scripts/bootstrap.sh nix
+./scripts/bootstrap.sh install nix
 ```
 
-The `nix` component installs official multi-user Nix and enables `nix-command` and flakes. Open a new login shell after its first successful run.
+With no component names, the dispatcher runs every executable component under `scripts/bootstrap/`; one or more names select specific components. The `nix` component installs official multi-user Nix and enables `nix-command` and flakes; it refuses to run when its status is already satisfied. Open a new login shell after its first successful run.
 
 ## Build Home Manager
 

@@ -98,7 +98,7 @@ Mine the legacy manager, link script, installer, package list, secrets-fetch log
 The intended flow is:
 
 1. clone the public dotfiles repository
-2. run `scripts/bootstrap.sh nix`
+2. run `scripts/bootstrap.sh install nix`
 3. open a new login shell
 4. restore the private age identity from KeePassXC when secrets are needed
 5. build and activate the Home Manager configuration
