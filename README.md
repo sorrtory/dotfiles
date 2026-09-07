@@ -41,7 +41,7 @@ git config --local core.hooksPath .githooks
 The hook runs the same staged-change scan available manually:
 
 ```bash
-./scripts/check-secrets --staged
+./scripts/repo/check-secrets.sh --staged
 ```
 
 The scanner uses the gitleaks version pinned by `flake.lock`. It rejects common hardcoded secrets plus private age identities and plaintext WireGuard private keys. SOPS ciphertext and public age recipients are allowed.

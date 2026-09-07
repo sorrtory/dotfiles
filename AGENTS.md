@@ -58,7 +58,8 @@ use ~/Documents/dotfiles/ as a guest repo
 ├── scripts/
 │   ├── bootstrap.sh         # dispatcher for explicit setup components
 │   ├── bootstrap/           # idempotent setup outside normal HM activation
-│   └── bin/                 # personal script source; may keep .sh suffix here
+│   ├── bin/                 # personal script source; may keep .sh suffix here
+│   └── repo/                # repository-maintenance shell commands
 ├── tests/                   # public-interface tests for repository tooling
 └── secrets/
     ├── files/               # whole-file SOPS ciphertext

@@ -5,4 +5,4 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 readonly REPO_ROOT
 
-exec "$REPO_ROOT/scripts/check-secrets" --staged
+exec "$REPO_ROOT/scripts/repo/check-secrets.sh" --staged

@@ -23,10 +23,10 @@ new_repo() {
   local test_repo
 
   test_repo="$(mktemp -d "$SECRET_SCAN_TEST_ROOT/repo.XXXXXX")"
-  mkdir -p "$test_repo/.githooks" "$test_repo/scripts"
+  mkdir -p "$test_repo/.githooks" "$test_repo/scripts/repo"
   cp "$REPO_ROOT/.githooks/pre-commit" "$test_repo/.githooks/pre-commit"
   cp "$REPO_ROOT/flake.lock" "$REPO_ROOT/flake.nix" "$REPO_ROOT/home.nix" "$test_repo/"
-  cp "$REPO_ROOT/scripts/check-secrets" "$test_repo/scripts/check-secrets"
+  cp "$REPO_ROOT/scripts/repo/check-secrets.sh" "$test_repo/scripts/repo/check-secrets.sh"
   cp "$REPO_ROOT/.gitleaks.toml" "$test_repo/.gitleaks.toml"
   git -C "$test_repo" init --quiet
   git -C "$test_repo" config user.email test@example.invalid
@@ -49,7 +49,7 @@ assert_scan_result() {
   printf '%s\n' "$content" >"$test_repo/candidate"
   git -C "$test_repo" add candidate
 
-  if "$test_repo/scripts/check-secrets" --staged >"$scan_output" 2>&1; then
+  if "$test_repo/scripts/repo/check-secrets.sh" --staged >"$scan_output" 2>&1; then
     scan_status=0
   else
     scan_status=$?

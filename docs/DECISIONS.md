@@ -18,6 +18,7 @@ Consolidate active configs, selected personal scripts, and public-safe SOPS mate
 - `configs/` holds readable native configs that should remain live-editable.
 - `packages/` is reserved for software missing or inconvenient in Nixpkgs.
 - `scripts/bin/` holds selected user-facing script sources.
+- `scripts/repo/` holds repository-maintenance shell commands that are not installed into the user environment.
 - `secrets/` may contain only public-safe secret material.
 
 Create files only when their responsibility is migrated. Do not pre-create the project map.
