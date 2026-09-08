@@ -5,4 +5,5 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 readonly REPO_ROOT
 
+"$REPO_ROOT/scripts/repo/check-bootstrap-components.sh" --staged
 exec "$REPO_ROOT/scripts/repo/check-secrets.sh" --staged

@@ -25,6 +25,9 @@ test_dir="$(mktemp -d)"
 trap 'rm -rf -- "$test_dir"' EXIT
 mkdir -p "$test_dir/bootstrap"
 cp "$SUBJECT" "$test_dir/bootstrap.sh"
+mkdir -p "$test_dir/bootstrap/common"
+cp "$REPO_ROOT/scripts/bootstrap/common/common.sh" \
+  "$test_dir/bootstrap/common/common.sh"
 chmod +x "$test_dir/bootstrap.sh"
 
 # The quoted fixture must preserve its own positional parameter expression.
@@ -32,8 +35,9 @@ chmod +x "$test_dir/bootstrap.sh"
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'case "${1:-}" in' \
-  '  status) printf "installed alpha 1.0\\n" ;;' \
-  '  install) printf "installed alpha\\n" ;;' \
+  '  status) printf "[alpha] installed alpha 1.0\\n" ;;' \
+  '  install) printf "[alpha] installed alpha\\n" ;;' \
+  '  uninstall) printf "[alpha] uninstalled alpha\\n" ;;' \
   '  *) exit 64 ;;' \
   'esac' >"$test_dir/bootstrap/alpha.sh"
 
@@ -42,8 +46,9 @@ printf '%s\n' \
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'case "${1:-}" in' \
-  '  status) printf "not installed\\n"; exit 1 ;;' \
-  '  install) [[ "${FAIL_BETA:-0}" != 1 ]] || exit 1; printf "installed beta\\n" ;;' \
+  '  status) printf "[beta] not installed\\n"; exit 1 ;;' \
+  '  install) [[ "${FAIL_BETA:-0}" != 1 ]] || exit 1; printf "[beta] installed beta\\n" ;;' \
+  '  uninstall) printf "[beta] uninstalled beta\\n" ;;' \
   '  *) exit 64 ;;' \
   'esac' >"$test_dir/bootstrap/beta.sh"
 
@@ -53,22 +58,32 @@ chmod +x "$test_dir/bootstrap/alpha.sh" "$test_dir/bootstrap/beta.sh"
 if all_status="$("$test_dir/bootstrap.sh" status)"; then
   fail 'aggregate status should fail when one component is unsatisfied'
 fi
-assert_equal $'alpha: installed alpha 1.0\nbeta: not installed' \
+assert_equal $'[alpha] installed alpha 1.0\n[beta] not installed' \
   "$all_status" \
   'aggregate status should report every component'
 
-assert_equal $'installed alpha\ninstalled beta' \
+assert_equal $'[alpha] installed alpha\n[beta] installed beta' \
   "$("$test_dir/bootstrap.sh" install)" \
   'install should delegate to every component'
 
-assert_equal 'installed beta' \
+assert_equal '[beta] installed beta' \
   "$("$test_dir/bootstrap.sh" install beta)" \
   'install should accept selected components'
+
+assert_equal '[alpha] uninstalled alpha' \
+  "$("$test_dir/bootstrap.sh" uninstall alpha)" \
+  'uninstall should accept selected components'
+
+if error="$("$test_dir/bootstrap.sh" uninstall 2>&1)"; then
+  fail 'uninstall should require an explicit component'
+fi
+[[ "$error" == $'[bootstrap] uninstall requires at least one component\n'* ]] ||
+  fail 'uninstall without a component should explain the requirement'
 
 if selected_status="$("$test_dir/bootstrap.sh" status beta alpha)"; then
   fail 'selected status should fail when one component is unsatisfied'
 fi
-assert_equal $'beta: not installed\nalpha: installed alpha 1.0' \
+assert_equal $'[beta] not installed\n[alpha] installed alpha 1.0' \
   "$selected_status" \
   'status should preserve component selection order'
 
@@ -80,8 +95,11 @@ if "$test_dir/bootstrap.sh" list >/dev/null 2>&1; then
   fail 'list should not be a public command'
 fi
 
-if "$test_dir/bootstrap.sh" status unknown >/dev/null 2>&1; then
+if error="$("$test_dir/bootstrap.sh" status unknown 2>&1)"; then
   fail 'unknown components should be rejected'
 fi
+assert_equal '[bootstrap] unknown component: unknown' \
+  "$error" \
+  'dispatcher errors should identify the dispatcher'
 
 printf 'bootstrap interface tests passed\n'

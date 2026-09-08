@@ -47,12 +47,23 @@ GNOME and Hyprland concerns remain separate. GNOME should use `dconf.settings` w
 
 ## Bootstrap policy
 
-`scripts/bootstrap.sh` is a small dispatcher, not a universal installer. A component under `scripts/bootstrap/` supports two commands:
+This section is the single source of truth for the bootstrap component
+contract. The
+[`check-bootstrap-components.sh`](../scripts/repo/check-bootstrap-components.sh)
+validator is its executable enforcement; other documentation links here rather
+than restating the contract.
+
+`scripts/bootstrap.sh` is a small dispatcher, not a universal installer. A component under `scripts/bootstrap/` supports three commands:
 
 - `status`: read-only and network-free; reports whether the required state is satisfied and includes a version when meaningful.
 - `install`: first runs `status` and refuses to continue when the required state is already satisfied; otherwise it asks no configuration questions, performs only that component's setup, and may prompt for authentication when privilege is required.
+- `uninstall`: refuses to continue when the component is already fully absent; otherwise it removes all recognized complete or partial component state while preserving unrelated configuration.
 
-The dispatcher exposes `status` and `install` commands for one, several, or—when no names are given—all executable components discovered under `scripts/bootstrap/`. It does not maintain a separate component list. Non-executable `scripts/bootstrap/common.sh` owns the shared component command contract and small generic helpers.
+The dispatcher exposes `status`, `install`, and `uninstall` commands. `status` and `install` operate on one, several, or—when no names are given—all executable components discovered directly under `scripts/bootstrap/`. `uninstall` always requires one or more explicit component names and never defaults to all components. The dispatcher does not maintain a separate component list. Non-executable `scripts/bootstrap/common/common.sh` owns the shared component command contract and small generic helpers.
+
+Each executable component sources `scripts/bootstrap/common/common.sh`, defines exactly one `check()`, `install()`, `is_uninstalled()`, and `uninstall()`, and ends with exactly one `component_main "$@"` entrypoint. The public `status` command delegates to `check()`. `check()` succeeds only when the component is fully installed and usable; `is_uninstalled()` succeeds only when no recognized complete or partial component state remains. When both fail, the component is partially installed or broken. The first operation in `install()` must call `check()` with normal output suppressed, call `already_installed`, and return 1 without making changes when the check succeeds. The first operation in `uninstall()` must call `is_uninstalled()`, call `already_uninstalled`, and return 1 without making changes when it succeeds. The staged pre-commit check enforces this interface and both guards.
+
+The dispatcher and all components use output helpers from `common.sh`, which prefix messages with the calling script's filename (for example, `[bootstrap]` or `[nix]`). Normal status and progress go to standard output; errors and repeated-operation refusals go to standard error. Components do not call `printf` directly. Data written to a pipe or file is not component output and does not use these helpers.
 
 The initial checkpoint contains only the Nix bootstrap component. Add `yt-dlp` during package migration and migrate the LXD proxy as its own ticketed Bash task.
 

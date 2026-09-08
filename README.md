@@ -9,9 +9,14 @@ The bootstrap dispatcher exposes explicit, repeatable components:
 ```bash
 ./scripts/bootstrap.sh status
 ./scripts/bootstrap.sh install nix
+./scripts/bootstrap.sh uninstall nix
 ```
 
-With no component names, the dispatcher runs every executable component under `scripts/bootstrap/`; one or more names select specific components. The `nix` component installs official multi-user Nix and enables `nix-command` and flakes; it refuses to run when its status is already satisfied. Open a new login shell after its first successful run.
+The dispatcher and every component follow the canonical
+[bootstrap policy](docs/DECISIONS.md#bootstrap-policy). The `nix` component
+installs official multi-user Nix and enables `nix-command` and flakes. Its
+uninstall command follows the official Linux multi-user removal procedure.
+Open a new login shell after installation.
 
 ## Build Home Manager
 
@@ -38,9 +43,11 @@ Enable the repository's tracked pre-commit hook once after cloning:
 git config --local core.hooksPath .githooks
 ```
 
-The hook runs the same staged-change scan available manually:
+The hook validates bootstrap component idempotency and then runs the staged
+secret scan. Both checks are also available manually:
 
 ```bash
+./scripts/repo/check-bootstrap-components.sh --staged
 ./scripts/repo/check-secrets.sh --staged
 ```
 
