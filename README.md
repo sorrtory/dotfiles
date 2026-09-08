@@ -66,6 +66,7 @@ Before committing, also inspect high-risk changes deliberately: files under `sec
 - [CONTEXT.md](CONTEXT.md) defines canonical vocabulary.
 - [docs/DECISIONS.md](docs/DECISIONS.md) records ownership and policy.
 - [docs/MIGRATION.md](docs/MIGRATION.md) defines migration order and verification.
+- [docs/SOFTWARE.md](docs/SOFTWARE.md) maps software to its installation mechanism.
 - [AGENTS.md](AGENTS.md) contains agent operating rules and the staging target.
 
 This repository is intended to become public. Never add plaintext secrets or a private age identity.

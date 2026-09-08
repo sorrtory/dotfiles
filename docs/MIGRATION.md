@@ -50,6 +50,8 @@ Create a repeatable local scan for staged changes and document deliberate inspec
 ### 2. Initial packages and development tools
 
 Translate the package baseline into user-owned packages and explicit host prerequisites.
+Use the [software installation catalog](SOFTWARE.md) to find each candidate's
+selected installation mechanism and its implementation when one exists.
 
 The first reviewed batch includes:
 
