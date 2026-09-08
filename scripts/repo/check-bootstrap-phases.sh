@@ -84,29 +84,33 @@ validate_phase_path() {
   fi
 }
 
-check_worktree() {
-  local common_file logical_name name path phase_number
+validate_tree() {
+  local tree_root="$1"
+  local absolute_path common_file logical_name name path phase_number
   local expected_number=1
   local result=0
   declare -A names=()
 
   for common_file in "${COMMON_FILES[@]}"; do
-    if [[ ! -f "$REPO_ROOT/$common_file" ]]; then
+    if [[ ! -f "$tree_root/$common_file" ]]; then
       printf '%s: required common module is missing\n' "$common_file" >&2
       result=1
-      continue
     fi
-    validate_shell "$common_file" <"$REPO_ROOT/$common_file" || result=1
   done
 
   shopt -s nullglob
-  for path in "$REPO_ROOT/$PHASE_DIR"/*.sh; do
-    path="${path#"$REPO_ROOT/"}"
+  for absolute_path in "$tree_root/$PHASE_DIR/common/"*.sh; do
+    path="${absolute_path#"$tree_root/"}"
+    validate_shell "$path" <"$absolute_path" || result=1
+  done
+
+  for absolute_path in "$tree_root/$PHASE_DIR/"*.sh; do
+    path="${absolute_path#"$tree_root/"}"
     validate_phase_path "$path" || {
       result=1
       continue
     }
-    if [[ ! -x "$REPO_ROOT/$path" ]]; then
+    if [[ ! -x "$absolute_path" ]]; then
       printf '%s: bootstrap phases must be executable\n' "$path" >&2
       result=1
       continue
@@ -124,67 +128,27 @@ check_worktree() {
       result=1
     fi
     names[$logical_name]=1
-    validate_phase "$path" <"$REPO_ROOT/$path" || result=1
+    validate_phase "$path" <"$absolute_path" || result=1
   done
   shopt -u nullglob
 
   return "$result"
 }
 
-check_staged() {
-  local common_file content logical_name metadata mode name path phase_number record
-  local expected_number=1
-  local result=0
-  declare -A names=()
-  declare -A seen_common=()
-
-  while IFS= read -r -d '' record; do
-    metadata="${record%%$'\t'*}"
-    path="${record#*$'\t'}"
-    mode="${metadata%% *}"
-    [[ "$path" == *.sh ]] || continue
-    content="$(git -C "$REPO_ROOT" show ":$path")"
-
-    if [[ "$path" == "$PHASE_DIR/common/"* ]]; then
-      seen_common[$path]=1
-      validate_shell "$path" <<<"$content" || result=1
-      continue
-    fi
-
-    validate_phase_path "$path" || {
-      result=1
-      continue
-    }
-    if [[ "$mode" != 100755 ]]; then
-      printf '%s: bootstrap phases must be executable\n' "$path" >&2
-      result=1
-      continue
-    fi
-    name="${path##*/}"
-    phase_number="${name%%-*}"
-    if ((10#$phase_number != expected_number)); then
-      printf '%s: expected phase number %02d\n' "$path" "$expected_number" >&2
-      result=1
-    fi
-    ((expected_number += 1))
-    logical_name="${name:3:-3}"
-    if [[ -n "${names[$logical_name]:-}" ]]; then
-      printf '%s: duplicate logical phase name: %s\n' "$path" "$logical_name" >&2
-      result=1
-    fi
-    names[$logical_name]=1
-    validate_phase "$path" <<<"$content" || result=1
-  done < <(git -C "$REPO_ROOT" ls-files --cached --stage -z -- "$PHASE_DIR")
-
-  for common_file in "${COMMON_FILES[@]}"; do
-    if [[ -z "${seen_common[$common_file]:-}" ]]; then
-      printf '%s: required common module is missing\n' "$common_file" >&2
-      result=1
-    fi
-  done
-
-  return "$result"
+check_worktree() {
+  validate_tree "$REPO_ROOT"
 }
+
+check_staged() (
+  local snapshot
+
+  snapshot="$(mktemp -d)"
+  trap 'rm -rf -- "$snapshot"' EXIT
+
+  git -C "$REPO_ROOT" ls-files --cached -z -- "$PHASE_DIR" |
+    git -C "$REPO_ROOT" checkout-index --stdin -z --prefix="$snapshot/"
+  validate_tree "$snapshot"
+)
 
 case "${1:-}" in
 '')

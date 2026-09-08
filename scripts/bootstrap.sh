@@ -52,17 +52,20 @@ phases() {
 }
 
 resolve_phases() {
+  local -n destination="$1"
   local name path
-  RESOLVED_PHASES=()
+  shift
+
+  destination=()
 
   if [[ $# -eq 0 ]]; then
-    mapfile -t RESOLVED_PHASES < <(phases)
+    mapfile -t destination < <(phases)
     return
   fi
 
   for name in "$@"; do
     path="$(phase_path "$name")" || return
-    RESOLVED_PHASES+=("$path")
+    destination+=("$path")
   done
 }
 
@@ -109,7 +112,7 @@ main() {
   case "$command" in
   status | install)
     shift
-    resolve_phases "$@" || return
+    resolve_phases RESOLVED_PHASES "$@" || return
     if [[ "$command" == status ]]; then
       run_status "${RESOLVED_PHASES[@]}"
     else
@@ -123,7 +126,7 @@ main() {
       usage >&2
       return 64
     fi
-    resolve_phases "$@" || return
+    resolve_phases RESOLVED_PHASES "$@" || return
     run_ordered uninstall "${RESOLVED_PHASES[@]}"
     ;;
   help | --help | -h)

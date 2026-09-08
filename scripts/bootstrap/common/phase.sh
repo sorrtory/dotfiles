@@ -7,27 +7,19 @@ readonly BOOTSTRAP_COMMON_DIR
 # shellcheck disable=SC1091
 . "$BOOTSTRAP_COMMON_DIR/packages.sh"
 
-already_installed() {
-  phase_info 'already satisfied; skipping'
-}
-
-already_uninstalled() {
-  phase_error 'not installed; refusing to uninstall again.'
-}
-
 run_install() {
-  local result
+  local probe_status
 
   if check >/dev/null; then
-    already_installed
+    phase_info 'already satisfied; skipping'
     return
   else
-    result=$?
+    probe_status=$?
   fi
 
-  if [[ $result -ne 1 ]]; then
-    phase_error "status check failed with exit code $result"
-    return "$result"
+  if [[ $probe_status -ne 1 ]]; then
+    phase_error "status check failed with exit code $probe_status"
+    return "$probe_status"
   fi
 
   install
@@ -35,25 +27,30 @@ run_install() {
   if check; then
     return
   else
-    result=$?
+    probe_status=$?
+  fi
+
+  if [[ $probe_status -ne 1 ]]; then
+    phase_error "post-install status check failed with exit code $probe_status"
+    return "$probe_status"
   fi
   phase_error 'installation did not satisfy its status check'
-  return "$result"
+  return 1
 }
 
 run_uninstall() {
-  local result
+  local probe_status
 
   if is_uninstalled >/dev/null; then
-    already_uninstalled
+    phase_error 'not installed; refusing to uninstall again.'
     return 1
   else
-    result=$?
+    probe_status=$?
   fi
 
-  if [[ $result -ne 1 ]]; then
-    phase_error "uninstall status check failed with exit code $result"
-    return "$result"
+  if [[ $probe_status -ne 1 ]]; then
+    phase_error "uninstall status check failed with exit code $probe_status"
+    return "$probe_status"
   fi
 
   uninstall
@@ -61,10 +58,15 @@ run_uninstall() {
   if is_uninstalled; then
     return
   else
-    result=$?
+    probe_status=$?
+  fi
+
+  if [[ $probe_status -ne 1 ]]; then
+    phase_error "post-uninstall status check failed with exit code $probe_status"
+    return "$probe_status"
   fi
   phase_error 'uninstallation did not satisfy its status check'
-  return "$result"
+  return 1
 }
 
 phase_main() {
