@@ -78,7 +78,7 @@ run_status() {
     fi
 
     if [[ $phase_result -ge 2 ]]; then
-      result=$phase_result
+      result=2
     elif [[ $phase_result -eq 1 && $result -eq 0 ]]; then
       result=1
     fi

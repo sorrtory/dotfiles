@@ -33,7 +33,10 @@ readonly -a NIX_OWNED_PATHS=(
 load_nix_profile() {
   if [[ -e "$NIX_DAEMON_PROFILE" ]]; then
     # shellcheck disable=SC1090
-    . "$NIX_DAEMON_PROFILE"
+    if ! . "$NIX_DAEMON_PROFILE"; then
+      phase_error "cannot load the Nix daemon profile: $NIX_DAEMON_PROFILE"
+      return 2
+    fi
   fi
 }
 
@@ -51,6 +54,10 @@ shell_file_has_nix_state() {
 
   path_present "$path.backup-before-nix" && return
   [[ -f "$path" ]] || return 1
+  if [[ ! -r "$path" ]]; then
+    phase_error "cannot inspect Nix shell state: $path is not readable"
+    return 2
+  fi
 
   while IFS= read -r line; do
     case "$line" in
@@ -63,53 +70,108 @@ shell_file_has_nix_state() {
   return 1
 }
 
+nss_entry_absent() {
+  local result
+  local database="$1"
+  local key="$2"
+
+  if getent "$database" "$key" >/dev/null; then
+    return 1
+  else
+    result=$?
+  fi
+
+  [[ $result -eq 2 ]] && return
+
+  phase_error "cannot inspect $database entry $key: getent exited $result"
+  return 2
+}
+
 is_uninstalled() {
-  local id path
+  local id path result
 
   for path in "${NIX_OWNED_PATHS[@]}"; do
     path_present "$path" && return 1
   done
 
   for path in "${NIX_SHELL_FILES[@]}"; do
-    shell_file_has_nix_state "$path" && return 1
+    if shell_file_has_nix_state "$path"; then
+      return 1
+    else
+      result=$?
+    fi
+    [[ $result -eq 1 ]] || return "$result"
   done
 
-  command -v getent >/dev/null 2>&1 || return 1
-  getent group nixbld >/dev/null && return 1
+  if ! command -v getent >/dev/null 2>&1; then
+    phase_error 'cannot inspect Nix build accounts: getent is missing'
+    return 2
+  fi
+  nss_entry_absent group nixbld || return $?
   for id in {1..32}; do
-    getent passwd "nixbld$id" >/dev/null && return 1
+    nss_entry_absent passwd "nixbld$id" || return $?
   done
 
   return 0
 }
 
 flakes_enabled() {
-  local features
+  local features result
 
-  features="$(nix config show experimental-features 2>/dev/null)"
+  if features="$(nix config show experimental-features 2>/dev/null)"; then
+    :
+  else
+    result=$?
+    phase_error "cannot inspect Nix experimental features: nix exited $result"
+    return 2
+  fi
   [[ " $features " == *' nix-command '* && " $features " == *' flakes '* ]]
 }
 
 check() {
-  load_nix_profile
+  local result version
 
-  if command -v nix >/dev/null 2>&1 &&
-    multi_user_nix_installed &&
-    flakes_enabled; then
-    phase_info "installed correctly: $(nix --version)"
-    return
-  fi
+  load_nix_profile || return $?
 
-  if command -v nix >/dev/null 2>&1; then
-    phase_info "not installed correctly: $(nix --version)"
-  else
+  if ! command -v nix >/dev/null 2>&1; then
     phase_info 'not installed'
+    return 1
   fi
+
+  if version="$(nix --version 2>/dev/null)"; then
+    :
+  else
+    result=$?
+    phase_error "cannot inspect the Nix version: nix exited $result"
+    return 2
+  fi
+
+  if ! multi_user_nix_installed; then
+    phase_info "not installed correctly: $version"
+    return 1
+  fi
+
+  if flakes_enabled; then
+    phase_info "installed correctly: $version"
+    return
+  else
+    result=$?
+  fi
+
+  [[ $result -eq 1 ]] || return "$result"
+  phase_info "not installed correctly: $version"
   return 1
 }
 
 enable_flakes() {
-  flakes_enabled && return
+  local result
+
+  if flakes_enabled; then
+    return
+  else
+    result=$?
+  fi
+  [[ $result -eq 1 ]] || return "$result"
 
   phase_info 'enabling nix-command and flakes...'
   sudo tee --append "$NIX_CONFIG_FILE" >/dev/null <<'EOF'
@@ -139,11 +201,21 @@ install_nix() (
 )
 
 install() {
+  local result version
+
   require_commands curl git
   load_nix_profile
-  if ! command -v nix >/dev/null 2>&1 && ! is_uninstalled; then
-    phase_error 'partial Nix state exists; uninstall it explicitly before installing.'
-    return 1
+  if ! command -v nix >/dev/null 2>&1; then
+    if is_uninstalled; then
+      :
+    else
+      result=$?
+      if [[ $result -eq 1 ]]; then
+        phase_error 'partial Nix state exists; uninstall it explicitly before installing.'
+        return 1
+      fi
+      return "$result"
+    fi
   fi
 
   if command -v nix >/dev/null 2>&1; then
@@ -160,7 +232,13 @@ install() {
   fi
 
   enable_flakes
-  phase_info "installed $(nix --version)"
+  if version="$(nix --version 2>/dev/null)"; then
+    phase_info "installed $version"
+  else
+    result=$?
+    phase_error "cannot inspect the installed Nix version: nix exited $result"
+    return 2
+  fi
   phase_info 'open a new login shell before using Nix interactively.'
 }
 
@@ -203,7 +281,7 @@ remove_build_users() {
 }
 
 uninstall() {
-  local unit
+  local result unit
   local -a units=()
 
   require_commands awk getent groupdel sed sudo systemctl userdel
@@ -234,11 +312,17 @@ uninstall() {
   phase_info 'removing Nix build users and group...'
   remove_build_users
 
-  if ! is_uninstalled; then
+  if is_uninstalled; then
+    phase_info 'uninstalled successfully.'
+    return
+  else
+    result=$?
+  fi
+  if [[ $result -eq 1 ]]; then
     phase_error 'uninstall finished with unrecognized or incomplete Nix state remaining.'
     return 1
   fi
-  phase_info 'uninstalled successfully.'
+  return "$result"
 }
 
 phase_main "$@"

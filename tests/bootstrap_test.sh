@@ -31,7 +31,14 @@ chmod +x "$BOOTSTRAP_TEST_ROOT/bootstrap.sh"
 cat >"$BOOTSTRAP_TEST_ROOT/bootstrap/01-beta.sh" <<'EOF'
 #!/usr/bin/env bash
 case "${1:-}" in
-status) printf '[beta] not installed\n'; exit 1 ;;
+status)
+  if [[ "${BETA_STATUS_ERROR:-0}" == 1 ]]; then
+    printf '[beta] status failed\n'
+    exit 42
+  fi
+  printf '[beta] not installed\n'
+  exit 1
+  ;;
 install)
   printf 'beta\n' >>"$INSTALL_LOG"
   [[ "${FAIL_BETA:-0}" != 1 ]] || exit 1
@@ -89,6 +96,19 @@ fi
 assert_equal $'[alpha] installed alpha 1.0\n[beta] not installed' \
   "$selected_status" \
   'status should preserve explicit selection order'
+
+if operational_status="$(
+  BETA_STATUS_ERROR=1 "$BOOTSTRAP_TEST_ROOT/bootstrap.sh" status beta alpha
+)"; then
+  fail 'aggregate status should fail when a phase cannot be inspected'
+else
+  result=$?
+fi
+[[ "$result" == 2 ]] ||
+  fail 'aggregate status should normalize operational failures to exit 2'
+assert_equal $'[beta] status failed\n[alpha] installed alpha 1.0' \
+  "$operational_status" \
+  'aggregate status should continue after an operational failure'
 
 : >"$install_log"
 if INSTALL_LOG="$install_log" FAIL_BETA=1 \
