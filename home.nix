@@ -1,6 +1,10 @@
 { ... }:
 
 {
+  imports = [
+    ./modules/packages.nix
+  ];
+
   home.username = "z";
   home.homeDirectory = "/home/z";
   home.stateVersion = "26.05";

@@ -53,7 +53,7 @@ Create one age identity outside Git and store its recovery copy as an attachment
 
 The public dotfiles flake exposes a small app invoked by `03-secret-recovery`, immediately after `02-nix`. It supplies `gh`, `keepassxc-cli`, and age; performs GitHub browser authentication when needed; clones the recovery repository; prompts for the vault password through KeePassXC; and restores `~/.config/sops/age/keys.txt` without exposing the identity through the clipboard, command arguments, environment variables, or logged output. It refuses overwrites, uses mode `0600`, verifies the derived public recipient, and installs the file atomically.
 
-Configure sops-nix with only the public recipient and establish the public-safe `secrets/` invariant before migrating ciphertext. Add `04-home-manager` only after the recovery phase is verified on the staging VM, then let the default `bootstrap.sh install` chain perform the normal secret-bearing activation.
+Configure sops-nix with only the public recipient and establish the public-safe `secrets/` invariant before migrating ciphertext. The following `04-home-manager` phase lets the default `bootstrap.sh install` chain perform the normal secret-bearing activation after recovery.
 
 ### 3. Initial packages and development tools
 

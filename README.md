@@ -11,6 +11,7 @@ The bootstrap dispatcher checks or installs the ordered fresh-machine phases:
 ./scripts/bootstrap.sh install
 ./scripts/bootstrap.sh install nix
 ./scripts/bootstrap.sh install secret-recovery
+./scripts/bootstrap.sh install home-manager
 ./scripts/bootstrap.sh uninstall nix
 ```
 
@@ -24,7 +25,9 @@ Linux multi-user removal procedure, while `host-deps` does not support unsafe
 package removal. The following `secret-recovery` phase uses the public flake to
 supply GitHub CLI, KeePassXC CLI, and age; it then authenticates GitHub when
 needed, obtains the private recovery vault, and restores the verified dotfiles
-age identity. See the canonical
+age identity. The final `home-manager` phase builds and activates the repository
+configuration without privilege, recording which source state it activated so
+later bootstrap runs can detect changes. See the canonical
 [bootstrap policy](docs/DECISIONS.md#bootstrap-policy) for the phase contract.
 Open a new login shell after bootstrap completes.
 
@@ -40,16 +43,19 @@ installs the identity at `~/.config/sops/age/keys.txt`, refuses to replace an
 existing mismatched identity, and never accepts the vault password through an
 argument or environment variable.
 
-## Build Home Manager
+## Home Manager
 
-Build without activation:
+Normal fresh-machine activation is handled by `04-home-manager` through the
+bootstrap dispatcher. For local evaluation or focused diagnosis, build without
+activation:
 
 ```bash
 nix flake check
 nix build .#homeConfigurations.z.activationPackage
 ```
 
-Activate the resulting generation only on the staging VM or after explicit host approval:
+Activate the resulting generation directly only on the staging VM or after
+explicit host approval:
 
 ```bash
 ./result/activate
