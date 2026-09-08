@@ -10,6 +10,7 @@ The bootstrap dispatcher checks or installs the ordered fresh-machine phases:
 ./scripts/bootstrap.sh status
 ./scripts/bootstrap.sh install
 ./scripts/bootstrap.sh install nix
+./scripts/bootstrap.sh install secret-recovery
 ./scripts/bootstrap.sh uninstall nix
 ```
 
@@ -20,9 +21,24 @@ installs the host commands required by later phases; its script is the
 The following `nix` phase installs official multi-user Nix and enables
 `nix-command` and flakes. Its explicit uninstall command follows the official
 Linux multi-user removal procedure, while `host-deps` does not support unsafe
-package removal. See the canonical
+package removal. The following `secret-recovery` phase uses the public flake to
+supply GitHub CLI, KeePassXC CLI, and age; it then authenticates GitHub when
+needed, obtains the private recovery vault, and restores the verified dotfiles
+age identity. See the canonical
 [bootstrap policy](docs/DECISIONS.md#bootstrap-policy) for the phase contract.
-Open a new login shell after installing Nix.
+Open a new login shell after bootstrap completes.
+
+The recovery app is also directly available for focused recovery or diagnosis:
+
+```bash
+nix run .#recover-age-identity
+```
+
+It reads the `keys.txt` attachment from the `Encryption Keys/sops` entry in
+`Passwords.kdbx`, obtained from the private `sorrtory/keepass` repository. It
+installs the identity at `~/.config/sops/age/keys.txt`, refuses to replace an
+existing mismatched identity, and never accepts the vault password through an
+argument or environment variable.
 
 ## Build Home Manager
 

@@ -35,11 +35,21 @@
         # expected by nixpkgs' versionCheckHook.
         doInstallCheck = false;
       });
+      recoverAgeIdentity =
+        pkgs.callPackage ./packages/recover-age-identity.nix { };
     in
     {
+      apps.${system}.recover-age-identity = {
+        type = "app";
+        program = "${recoverAgeIdentity}/bin/recover-age-identity";
+        meta.description = "Recover the dotfiles age identity from KeePassXC";
+      };
+
       devShells.${system}.default = pkgs.mkShellNoCC {
         packages = [ gitleaks ];
       };
+
+      packages.${system}.recover-age-identity = recoverAgeIdentity;
 
       homeConfigurations.z = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;

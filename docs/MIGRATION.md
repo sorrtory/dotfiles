@@ -47,7 +47,15 @@ It contains no imported legacy configuration, personal script, package migration
 
 Create a repeatable local scan for staged changes and document deliberate inspection of high-risk files. The gate must reject plaintext secrets and private age identities without treating ciphertext as an error.
 
-### 2. Initial packages and development tools
+### 2. Secret recovery and SOPS/age foundation
+
+Create one age identity outside Git and store its recovery copy as an attachment in the operator's main KeePassXC vault. Create a fresh private recovery repository containing only that encrypted vault and non-sensitive documentation; do not reuse the legacy secrets repository or its history.
+
+The public dotfiles flake exposes a small app invoked by `03-secret-recovery`, immediately after `02-nix`. It supplies `gh`, `keepassxc-cli`, and age; performs GitHub browser authentication when needed; clones the recovery repository; prompts for the vault password through KeePassXC; and restores `~/.config/sops/age/keys.txt` without exposing the identity through the clipboard, command arguments, environment variables, or logged output. It refuses overwrites, uses mode `0600`, verifies the derived public recipient, and installs the file atomically.
+
+Configure sops-nix with only the public recipient and establish the public-safe `secrets/` invariant before migrating ciphertext. Add `04-home-manager` only after the recovery phase is verified on the staging VM, then let the default `bootstrap.sh install` chain perform the normal secret-bearing activation.
+
+### 3. Initial packages and development tools
 
 Translate the package baseline into user-owned packages and explicit host prerequisites.
 Use the [software installation catalog](SOFTWARE.md) to find each candidate's
@@ -62,13 +70,9 @@ The first reviewed batch includes:
 
 Review the desktop application inventory separately. Docker, LXD, Snap/Flatpak infrastructure, distro repositories, system groups, and comparable host integration do not belong in normal Home Manager activation.
 
-### 3. Zsh
+### 4. Zsh
 
 Let Home Manager own `.zshrc`. Preserve selected aliases, history, environment variables, options, and plugins, but remove redundant legacy setup. Changing the login shell remains an explicit host/bootstrap operation.
-
-### 4. SOPS and age foundation
-
-Create one age identity outside Git, back it up, and configure sops-nix with only the public recipient. Establish the public-safe `secrets/` invariant before migrating any ciphertext.
 
 ### 5. WireGuard
 
@@ -102,10 +106,12 @@ The intended flow is:
 
 1. clone the public dotfiles repository
 2. run `scripts/bootstrap.sh install`
-3. open a new login shell
-4. restore the private age identity from KeePassXC when secrets are needed
-5. build and activate the Home Manager configuration
-6. run explicit privileged host setup where required
-7. authenticate mutable sessions once on that machine
+3. let `01-host-deps` establish bootstrap prerequisites and `02-nix` install Nix
+4. authenticate GitHub when `03-secret-recovery` invokes the flake recovery app and clones the private recovery repository
+5. enter the main KeePassXC vault password so the phase can restore and verify the private age identity
+6. let `04-home-manager` build and activate the normal profile with sops-nix secrets available
+7. open a new login shell
+8. run explicit privileged host setup where required
+9. authenticate any remaining mutable sessions once on that machine
 
 The repository currently targets the `z` user on `x86_64-linux`; broader host/user parameterization is a later migration decision.

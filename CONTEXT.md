@@ -52,6 +52,18 @@ _Avoid_: Nixified config
 Sensitive machine configuration that must be provisioned again from encrypted repository material.
 _Avoid_: Password, session state
 
+**Secret recovery phase**:
+The required interactive bootstrap phase that restores access to reproducible secrets before a secret-bearing user environment can be activated.
+_Avoid_: Optional warning, Home Manager activation
+
+**Recovery repository**:
+A private transport for the encrypted recovery vault that is independently accessible during fresh-machine recovery.
+_Avoid_: Legacy secrets repository, declarative secrets directory
+
+**Recovery vault**:
+The operator's main KeePassXC database, independently obtainable during fresh-machine recovery and containing the backup private age identity.
+_Avoid_: Declarative secret store, repository-managed config
+
 **Mutable session**:
 Machine-local authentication or application state created interactively and intentionally excluded from declarative provisioning.
 _Avoid_: Reproducible secret
