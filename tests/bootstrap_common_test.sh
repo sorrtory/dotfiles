@@ -59,6 +59,23 @@ phase_main "$@"
 EOF
 chmod +x "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh"
 
+cat >"$BOOTSTRAP_COMMON_TEST_ROOT/02-ensure-only.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname -- "${BASH_SOURCE[0]}")/common/phase.sh"
+
+check() {
+  phase_info 'satisfied'
+}
+
+install() {
+  phase_info 'installed'
+}
+
+phase_main "$@"
+EOF
+chmod +x "$BOOTSTRAP_COMMON_TEST_ROOT/02-ensure-only.sh"
+
 state_file="$BOOTSTRAP_COMMON_TEST_ROOT/state"
 
 if output="$(STATE_FILE="$state_file" "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" status)"; then
@@ -113,6 +130,14 @@ if STATE_FILE="$state_file" \
   "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" uninstall >/dev/null 2>&1; then
   fail 'uninstall should refuse when no owned state remains'
 fi
+
+if unsupported_output="$(
+  "$BOOTSTRAP_COMMON_TEST_ROOT/02-ensure-only.sh" uninstall 2>&1
+)"; then
+  fail 'an ensure-only phase should reject uninstall'
+fi
+[[ "$unsupported_output" == '[ensure-only] phase does not support uninstall' ]] ||
+  fail 'an ensure-only phase should explain that uninstall is unsupported'
 
 touch "$state_file"
 if STATE_FILE="$state_file" UNINSTALL_ERROR=72 \

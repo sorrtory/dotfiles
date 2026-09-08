@@ -139,7 +139,7 @@ install_nix() (
 )
 
 install() {
-  ensure_commands curl git
+  require_commands curl git
   load_nix_profile
   if ! command -v nix >/dev/null 2>&1 && ! is_uninstalled; then
     phase_error 'partial Nix state exists; uninstall it explicitly before installing.'

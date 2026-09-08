@@ -14,10 +14,13 @@ The bootstrap dispatcher checks or installs the ordered fresh-machine phases:
 ```
 
 With no phase names, `status` inspects the complete flow and `install` skips
-satisfied phases before continuing in order. The current `nix` phase installs
-official multi-user Nix, ensures Git and curl through the host package manager,
-and enables `nix-command` and flakes. Its explicit uninstall command follows
-the official Linux multi-user removal procedure. See the canonical
+satisfied phases before continuing in order. The ensure-only `host-deps` phase
+installs the host commands required by later phases; its script is the
+[authoritative dependency inventory](scripts/bootstrap/01-host-deps.sh).
+The following `nix` phase installs official multi-user Nix and enables
+`nix-command` and flakes. Its explicit uninstall command follows the official
+Linux multi-user removal procedure, while `host-deps` does not support unsafe
+package removal. See the canonical
 [bootstrap policy](docs/DECISIONS.md#bootstrap-policy) for the phase contract.
 Open a new login shell after installing Nix.
 

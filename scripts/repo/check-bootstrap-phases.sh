@@ -58,8 +58,11 @@ validate_phase() {
     END {
       if (check_count != 1) fail("must define exactly one check()")
       if (install_count != 1) fail("must define exactly one install()")
-      if (absent_count != 1) fail("must define exactly one is_uninstalled()")
-      if (uninstall_count != 1) fail("must define exactly one uninstall()")
+      if (absent_count > 1) fail("must not define is_uninstalled() more than once")
+      if (uninstall_count > 1) fail("must not define uninstall() more than once")
+      if (absent_count != uninstall_count) {
+        fail("must define both is_uninstalled() and uninstall(), or neither")
+      }
       if (strict_count != 1) fail("must enable: set -euo pipefail")
       if (source_count != 1) fail("must source common/phase.sh exactly once")
       if (entry_count != 1) fail("must end through phase_main \"$@\"")

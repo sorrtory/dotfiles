@@ -30,6 +30,20 @@ EOF
   chmod +x "$path"
 }
 
+write_ensure_only_phase() {
+  local path="$1"
+
+  cat >"$path" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname -- "${BASH_SOURCE[0]}")/common/phase.sh"
+check() { return 1; }
+install() { phase_info 'installed'; }
+phase_main "$@"
+EOF
+  chmod +x "$path"
+}
+
 assert_rejected() {
   local test_repo="$1"
   local description="$2"
@@ -49,6 +63,11 @@ write_phase "$test_repo/scripts/bootstrap/01-valid.sh"
 "$test_repo/scripts/repo/check-bootstrap-phases.sh" ||
   fail 'a valid numbered phase should be accepted'
 
+write_ensure_only_phase "$test_repo/scripts/bootstrap/01-valid.sh"
+"$test_repo/scripts/repo/check-bootstrap-phases.sh" ||
+  fail 'a valid ensure-only phase should be accepted'
+write_phase "$test_repo/scripts/bootstrap/01-valid.sh"
+
 write_phase "$test_repo/scripts/bootstrap/invalid.sh"
 assert_rejected "$test_repo" 'an unnumbered phase'
 rm "$test_repo/scripts/bootstrap/invalid.sh"
@@ -64,6 +83,11 @@ rm "$test_repo/scripts/bootstrap/03-gap.sh"
 write_phase "$test_repo/scripts/bootstrap/02-broken.sh"
 sed -i 's/^check()/probe()/' "$test_repo/scripts/bootstrap/02-broken.sh"
 assert_rejected "$test_repo" 'a phase without check()'
+rm "$test_repo/scripts/bootstrap/02-broken.sh"
+
+write_phase "$test_repo/scripts/bootstrap/02-broken.sh"
+sed -i '/^uninstall()/d' "$test_repo/scripts/bootstrap/02-broken.sh"
+assert_rejected "$test_repo" 'an incomplete uninstall contract'
 rm "$test_repo/scripts/bootstrap/02-broken.sh"
 
 write_phase "$test_repo/scripts/bootstrap/02-broken.sh"

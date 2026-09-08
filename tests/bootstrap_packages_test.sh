@@ -31,6 +31,7 @@ chmod +x "$PACKAGES_TEST_ROOT/bin/sudo"
 
 ln -s /bin/bash "$PACKAGES_TEST_ROOT/bin/bash"
 ln -s /usr/bin/basename "$PACKAGES_TEST_ROOT/bin/basename"
+ln -s /usr/bin/dirname "$PACKAGES_TEST_ROOT/bin/dirname"
 
 for command_name in apt-get dnf pacman; do
   cat >"$PACKAGES_TEST_ROOT/bin/$command_name" <<EOF
@@ -89,5 +90,36 @@ if PATH="$PACKAGES_TEST_ROOT/bin" \
 fi
 [[ ! -s "$PACKAGES_TEST_ROOT/packages.log" ]] ||
   fail 'an unsupported distribution should not invoke a package manager'
+
+mkdir -p "$PACKAGES_TEST_ROOT/bootstrap/common"
+cp "$REPO_ROOT/scripts/bootstrap/01-host-deps.sh" \
+  "$PACKAGES_TEST_ROOT/bootstrap/01-host-deps.sh"
+cp "$REPO_ROOT/scripts/bootstrap/common/"*.sh \
+  "$PACKAGES_TEST_ROOT/bootstrap/common/"
+
+printf 'ID=ubuntu\nID_LIKE="debian"\n' >"$PACKAGES_TEST_ROOT/os-release"
+: >"$PACKAGES_TEST_ROOT/packages.log"
+rm -f "$PACKAGES_TEST_ROOT/bin/git" "$PACKAGES_TEST_ROOT/bin/curl"
+
+output="$(
+  PATH="$PACKAGES_TEST_ROOT/bin" \
+    PACKAGE_LOG="$PACKAGES_TEST_ROOT/packages.log" \
+    FAKE_BIN="$PACKAGES_TEST_ROOT/bin" \
+    BOOTSTRAP_OS_RELEASE_FILE="$PACKAGES_TEST_ROOT/os-release" \
+    "$PACKAGES_TEST_ROOT/bootstrap/01-host-deps.sh" install
+)"
+[[ "$output" == $'[host-deps] installing required host commands: curl git\n[host-deps] required commands available: curl git' ]] ||
+  fail 'the host-deps phase should install and verify its authoritative command list'
+[[ "$(<"$PACKAGES_TEST_ROOT/packages.log")" == $'apt-get update\napt-get install -y curl git' ]] ||
+  fail 'the host-deps phase should use the detected host package manager'
+
+if output="$(
+  PATH="$PACKAGES_TEST_ROOT/bin" \
+    "$PACKAGES_TEST_ROOT/bootstrap/01-host-deps.sh" uninstall 2>&1
+)"; then
+  fail 'the host-deps phase should not support uninstall'
+fi
+[[ "$output" == '[host-deps] phase does not support uninstall' ]] ||
+  fail 'the host-deps phase should explain that uninstall is unsupported'
 
 printf 'bootstrap package adapter tests passed\n'

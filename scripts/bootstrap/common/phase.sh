@@ -88,6 +88,16 @@ phase_main() {
     run_install
     ;;
   uninstall)
+    if ! declare -F is_uninstalled >/dev/null &&
+      ! declare -F uninstall >/dev/null; then
+      phase_error 'phase does not support uninstall'
+      return 1
+    fi
+    if ! declare -F is_uninstalled >/dev/null ||
+      ! declare -F uninstall >/dev/null; then
+      phase_error 'phase defines an incomplete uninstall contract'
+      return 70
+    fi
     run_uninstall
     ;;
   *)

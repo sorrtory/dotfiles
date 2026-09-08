@@ -35,7 +35,8 @@ The first local commit contains:
 - aligned canonical documentation
 - the minimal verified flake and Home Manager profile
 - `scripts/bootstrap.sh`
-- `scripts/bootstrap/01-nix.sh`
+- `scripts/bootstrap/01-host-deps.sh`
+- `scripts/bootstrap/02-nix.sh`
 - bootstrap interface tests
 
 It contains no imported legacy configuration, personal script, package migration, or secret material. Scan it mechanically before review and commit; do not publish it before the next safety slice passes.
