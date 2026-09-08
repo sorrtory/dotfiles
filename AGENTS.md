@@ -56,8 +56,8 @@ use ~/Documents/dotfiles/ as a guest repo
 ├── configs/                 # mutable native configs kept in the repo
 ├── packages/                # local Nix packages only when nixpkgs is insufficient
 ├── scripts/
-│   ├── bootstrap.sh         # dispatcher for explicit setup components
-│   ├── bootstrap/           # idempotent setup outside normal HM activation
+│   ├── bootstrap.sh         # dispatcher for ordered setup phases
+│   ├── bootstrap/           # idempotent fresh-machine phases
 │   ├── bin/                 # personal script source; may keep .sh suffix here
 │   └── repo/                # repository-maintenance shell commands
 ├── tests/                   # public-interface tests for repository tooling
@@ -66,7 +66,7 @@ use ~/Documents/dotfiles/ as a guest repo
     └── wireguard/           # encrypted WireGuard configs
 ```
 
-The `.nix` names shown in the map are destinations, not files that must already exist. During migration, create them only when the corresponding component is actually moved.
+The `.nix` names shown in the map are destinations, not files that must already exist. During migration, create them only when the corresponding responsibility is actually moved.
 
 ## Working rules
 

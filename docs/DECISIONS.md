@@ -33,7 +33,7 @@ The initial global development baseline is Go through `pkgs.go`, Rust and Cargo,
 
 Do not design around `cargo install` or `go install`. Prefer a Nix package or a project development environment.
 
-The official stable `yt-dlp` binary is an intentional exception: a later bootstrap component installs it under `~/.local/bin`, and `yt-dlp -U` performs explicit updates. Home Manager owns its stable dependencies and PATH, but does not install a competing `yt-dlp` package.
+The official stable `yt-dlp` binary is an intentional exception: a later bootstrap phase installs it under `~/.local/bin`, and `yt-dlp -U` performs explicit updates. Home Manager owns its stable dependencies and PATH, but does not install a competing `yt-dlp` package.
 
 Anime4K is expected to become a pinned local package rather than vendored shader files. Existing tmux and MPV ecosystem packages should not be repackaged locally.
 
@@ -47,25 +47,27 @@ GNOME and Hyprland concerns remain separate. GNOME should use `dconf.settings` w
 
 ## Bootstrap policy
 
-This section is the single source of truth for the bootstrap component
+This section is the single source of truth for the bootstrap phase
 contract. The
-[`check-bootstrap-components.sh`](../scripts/repo/check-bootstrap-components.sh)
+[`check-bootstrap-phases.sh`](../scripts/repo/check-bootstrap-phases.sh)
 validator is its executable enforcement; other documentation links here rather
 than restating the contract.
 
-`scripts/bootstrap.sh` is a small dispatcher, not a universal installer. A component under `scripts/bootstrap/` supports three commands:
+`scripts/bootstrap.sh` dispatches the ordered phases of the fresh-machine flow. Executable phase files live directly under `scripts/bootstrap/`, use contiguous two-digit `NN-name.sh` prefixes beginning at `01`, and run in lexical order. Renumber phases when inserting or reordering them. The numeric prefix controls order but is omitted from the logical name accepted by the dispatcher. Every executable phase belongs to the default flow; optional operations live outside that set.
+
+A phase supports three commands:
 
 - `status`: read-only and network-free; reports whether the required state is satisfied and includes a version when meaningful.
-- `install`: first runs `status` and refuses to continue when the required state is already satisfied; otherwise it asks no configuration questions, performs only that component's setup, and may prompt for authentication when privilege is required.
-- `uninstall`: refuses to continue when the component is already fully absent; otherwise it removes all recognized complete or partial component state while preserving unrelated configuration.
+- `install`: skips successfully when the phase is already satisfied; otherwise it asks no configuration questions, performs only that phase's setup, and may prompt for authentication when privilege is required.
+- `uninstall`: refuses to continue when the phase is already fully absent; otherwise it removes all recognized complete or partial phase state while preserving unrelated configuration.
 
-The dispatcher exposes `status`, `install`, and `uninstall` commands. `status` and `install` operate on one, several, or—when no names are given—all executable components discovered directly under `scripts/bootstrap/`. `uninstall` always requires one or more explicit component names and never defaults to all components. The dispatcher does not maintain a separate component list. Non-executable `scripts/bootstrap/common/common.sh` owns the shared component command contract and small generic helpers.
+The dispatcher exposes `status`, `install`, and `uninstall`. With no names, `status` inspects every phase and `install` ensures every phase in order. Installation stops at the first failure; rerunning checks earlier phases, skips those already satisfied, and resumes from the first unsatisfied phase. Explicit names preserve caller order. `uninstall` always requires one or more explicit phase names and never defaults to the complete flow.
 
-Each executable component sources `scripts/bootstrap/common/common.sh`, defines exactly one `check()`, `install()`, `is_uninstalled()`, and `uninstall()`, and ends with exactly one `component_main "$@"` entrypoint. The public `status` command delegates to `check()`. `check()` succeeds only when the component is fully installed and usable; `is_uninstalled()` succeeds only when no recognized complete or partial component state remains. When both fail, the component is partially installed or broken. The first operation in `install()` must call `check()` with normal output suppressed, call `already_installed`, and return 1 without making changes when the check succeeds. The first operation in `uninstall()` must call `is_uninstalled()`, call `already_uninstalled`, and return 1 without making changes when it succeeds. The staged pre-commit check enforces this interface and both guards.
+Each phase enables `set -euo pipefail`, sources `scripts/bootstrap/common/phase.sh`, defines exactly one `check()`, `install()`, `is_uninstalled()`, and `uninstall()`, and ends with exactly one `phase_main "$@"` entrypoint. Strict mode makes a failed mutation stop immediately; the common entrypoint verifies this prerequisite at runtime. `check()` returns 0 when satisfied, 1 when unsatisfied, and a value greater than 1 when checking itself fails. The common command contract applies that result before installation and verifies the postcondition afterward. `is_uninstalled()` succeeds only when no recognized complete or partial phase state remains; the common contract similarly guards and verifies uninstallation.
 
-The dispatcher and all components use output helpers from `common.sh`, which prefix messages with the calling script's filename (for example, `[bootstrap]` or `[nix]`). Normal status and progress go to standard output; errors and repeated-operation refusals go to standard error. Components do not call `printf` directly. Data written to a pipe or file is not component output and does not use these helpers.
+Shared implementation lives under `scripts/bootstrap/common/` and is excluded from phase discovery. `phase.sh` owns the phase command contract, `output.sh` prefixes human-facing output with the logical phase name, and `packages.sh` owns host package-manager adapters. `require_commands` only validates; the explicitly mutating `ensure_commands` installs missing same-named packages through APT, DNF, or Pacman and fails clearly on unsupported hosts. Phase files use the common output helpers rather than calling `printf` directly.
 
-The initial checkpoint contains only the Nix bootstrap component. Add `yt-dlp` during package migration and migrate the LXD proxy as its own ticketed Bash task.
+The initial numbered flow contains only the Nix phase. Add the Home Manager phase when its package configuration is migrated, add `yt-dlp` during package migration, and migrate the LXD proxy as its own ticketed Bash task.
 
 ## Secrets and authentication
 

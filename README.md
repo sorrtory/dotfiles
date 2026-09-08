@@ -2,21 +2,24 @@
 
 Cross-distribution Linux user environment built with Nix flakes and Home Manager. The repository is at its initial migration checkpoint; legacy configuration and secrets have not been imported.
 
-## Bootstrap Nix
+## Bootstrap
 
-The bootstrap dispatcher exposes explicit, repeatable components:
+The bootstrap dispatcher checks or installs the ordered fresh-machine phases:
 
 ```bash
 ./scripts/bootstrap.sh status
+./scripts/bootstrap.sh install
 ./scripts/bootstrap.sh install nix
 ./scripts/bootstrap.sh uninstall nix
 ```
 
-The dispatcher and every component follow the canonical
-[bootstrap policy](docs/DECISIONS.md#bootstrap-policy). The `nix` component
-installs official multi-user Nix and enables `nix-command` and flakes. Its
-uninstall command follows the official Linux multi-user removal procedure.
-Open a new login shell after installation.
+With no phase names, `status` inspects the complete flow and `install` skips
+satisfied phases before continuing in order. The current `nix` phase installs
+official multi-user Nix, ensures Git and curl through the host package manager,
+and enables `nix-command` and flakes. Its explicit uninstall command follows
+the official Linux multi-user removal procedure. See the canonical
+[bootstrap policy](docs/DECISIONS.md#bootstrap-policy) for the phase contract.
+Open a new login shell after installing Nix.
 
 ## Build Home Manager
 
@@ -43,11 +46,11 @@ Enable the repository's tracked pre-commit hook once after cloning:
 git config --local core.hooksPath .githooks
 ```
 
-The hook validates bootstrap component idempotency and then runs the staged
+The hook validates bootstrap phase structure and then runs the staged
 secret scan. Both checks are also available manually:
 
 ```bash
-./scripts/repo/check-bootstrap-components.sh --staged
+./scripts/repo/check-bootstrap-phases.sh --staged
 ./scripts/repo/check-secrets.sh --staged
 ```
 

@@ -20,9 +20,9 @@ _Avoid_: System package, root-level tool
 A tool available inside a project development environment, normally to select a project-specific version or dependency set.
 _Avoid_: Global user tool, system package
 
-**Bootstrap component**:
-An explicit, idempotent setup operation for state that normal Home Manager activation does not own.
-_Avoid_: Home Manager module, monolithic installer
+**Bootstrap phase**:
+An ordered, idempotent step that checks and establishes one part of the fresh-machine flow.
+_Avoid_: Home Manager module, unordered installer
 
 **Legacy source**:
 Existing configuration, script, or secret material being evaluated for migration. It is evidence of current behavior, not a requirement to retain it.

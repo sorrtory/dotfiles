@@ -4,76 +4,134 @@ set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly REPO_ROOT
+BOOTSTRAP_COMMON_TEST_ROOT="$(mktemp -d)"
+readonly BOOTSTRAP_COMMON_TEST_ROOT
+trap 'rm -rf -- "$BOOTSTRAP_COMMON_TEST_ROOT"' EXIT
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
   exit 1
 }
 
-test_dir="$(mktemp -d)"
-trap 'rm -rf -- "$test_dir"' EXIT
-cp "$REPO_ROOT/scripts/bootstrap/common/common.sh" "$test_dir/common.sh"
+mkdir -p "$BOOTSTRAP_COMMON_TEST_ROOT/common"
+cp "$REPO_ROOT/scripts/bootstrap/common/"*.sh \
+  "$BOOTSTRAP_COMMON_TEST_ROOT/common/"
 
-# The fixture must preserve expressions for its own runtime.
-# shellcheck disable=SC2016
-printf '%s\n' \
-  '#!/usr/bin/env bash' \
-  'set -euo pipefail' \
-  'source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"' \
-  'check() {' \
-  '  if [[ "${INSTALLED:-0}" == 1 ]]; then component_info "installed correctly"; else component_info "not installed"; return 1; fi' \
-  '}' \
-  'install() {' \
-  '  if check >/dev/null; then' \
-  '    already_installed' \
-  '    return 1' \
-  '  fi' \
-  '  component_info "installation ran"' \
-  '}' \
-  'is_uninstalled() {' \
-  '  [[ "${INSTALLED:-0}" != 1 && "${PARTIAL:-0}" != 1 ]]' \
-  '}' \
-  'uninstall() {' \
-  '  if is_uninstalled; then' \
-  '    already_uninstalled' \
-  '    return 1' \
-  '  fi' \
-  '  component_info "uninstallation ran"' \
-  '}' \
-  'component_main "$@"' >"$test_dir/component.sh"
-chmod +x "$test_dir/component.sh"
+cat >"$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname -- "${BASH_SOURCE[0]}")/common/phase.sh"
 
-output="$(INSTALLED=1 "$test_dir/component.sh" status)"
-[[ "$output" == '[component] installed correctly' ]] ||
-  fail 'status should identify the component'
+check() {
+  if [[ "${CHECK_ERROR:-0}" != 0 ]]; then
+    phase_error 'status check failed'
+    return "$CHECK_ERROR"
+  fi
+  if [[ -e "$STATE_FILE" ]]; then
+    phase_info 'installed correctly'
+  else
+    phase_info 'not installed'
+    return 1
+  fi
+}
 
-if output="$(INSTALLED=1 "$test_dir/component.sh" install 2>"$test_dir/error")"; then
-  fail 'install should fail when check is satisfied'
+install() {
+  phase_info 'installation ran'
+  if [[ "${INSTALL_ERROR:-0}" != 0 ]]; then
+    return "$INSTALL_ERROR"
+  fi
+  [[ "${NO_STATE:-0}" == 1 ]] || touch "$STATE_FILE"
+}
+
+is_uninstalled() {
+  [[ ! -e "$STATE_FILE" ]]
+}
+
+uninstall() {
+  phase_info 'uninstallation ran'
+  if [[ "${UNINSTALL_ERROR:-0}" != 0 ]]; then
+    return "$UNINSTALL_ERROR"
+  fi
+  rm -f "$STATE_FILE"
+}
+
+phase_main "$@"
+EOF
+chmod +x "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh"
+
+state_file="$BOOTSTRAP_COMMON_TEST_ROOT/state"
+
+if output="$(STATE_FILE="$state_file" "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" status)"; then
+  fail 'status should fail when the state is unsatisfied'
 fi
-[[ -z "$output" ]] || fail 'install should suppress satisfied check output'
-[[ "$(<"$test_dir/error")" == '[component] already installed; refusing to install again.' ]] ||
-  fail 'install should identify the component when refusing a repeated install'
+[[ "$output" == '[test] not installed' ]] ||
+  fail 'status should identify an unsatisfied phase'
 
-output="$(INSTALLED=0 "$test_dir/component.sh" install)"
-[[ "$output" == '[component] installation ran' ]] || fail 'install should run when check is unsatisfied'
+output="$(STATE_FILE="$state_file" "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" install)"
+[[ "$output" == $'[test] installation ran\n[test] installed correctly' ]] ||
+  fail 'install should verify the resulting state'
 
-if output="$(INSTALLED=0 "$test_dir/component.sh" uninstall 2>"$test_dir/error")"; then
-  fail 'uninstall should fail when check is unsatisfied'
+output="$(STATE_FILE="$state_file" "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" install)"
+[[ "$output" == '[test] already satisfied; skipping' ]] ||
+  fail 'install should successfully skip satisfied state'
+
+rm "$state_file"
+if STATE_FILE="$state_file" CHECK_ERROR=70 \
+  "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" install >/dev/null 2>&1; then
+  fail 'install should stop when the status check errors'
+else
+  result=$?
 fi
-[[ -z "$output" ]] || fail 'uninstall should suppress unsatisfied check output'
-[[ "$(<"$test_dir/error")" == '[component] not installed; refusing to uninstall again.' ]] ||
-  fail 'uninstall should identify the component when refusing a repeated uninstall'
+[[ "$result" == 70 ]] || fail 'install should preserve status error codes'
+[[ ! -e "$state_file" ]] || fail 'install should not run after a status error'
 
-output="$(INSTALLED=1 "$test_dir/component.sh" uninstall)"
-[[ "$output" == '[component] uninstallation ran' ]] ||
-  fail 'uninstall should run when check is satisfied'
-
-output="$(INSTALLED=0 PARTIAL=1 "$test_dir/component.sh" uninstall)"
-[[ "$output" == '[component] uninstallation ran' ]] ||
-  fail 'uninstall should run when partial component state exists'
-
-if "$test_dir/component.sh" install extra >/dev/null 2>&1; then
-  fail 'component should reject extra arguments'
+if STATE_FILE="$state_file" INSTALL_ERROR=71 \
+  "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" install >/dev/null 2>&1; then
+  fail 'install should propagate mutation failures'
+else
+  result=$?
 fi
+[[ "$result" == 71 ]] || fail 'install should preserve mutation error codes'
+[[ ! -e "$state_file" ]] || fail 'install should stop after a mutation failure'
+
+if STATE_FILE="$state_file" NO_STATE=1 \
+  "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" install >/dev/null 2>&1; then
+  fail 'install should fail when its postcondition remains unsatisfied'
+fi
+
+if STATE_FILE="$state_file" \
+  "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" install extra >/dev/null 2>&1; then
+  fail 'a phase should reject extra arguments'
+fi
+
+touch "$state_file"
+output="$(STATE_FILE="$state_file" "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" uninstall)"
+[[ "$output" == '[test] uninstallation ran' ]] ||
+  fail 'uninstall should verify that owned state was removed'
+
+if STATE_FILE="$state_file" \
+  "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" uninstall >/dev/null 2>&1; then
+  fail 'uninstall should refuse when no owned state remains'
+fi
+
+touch "$state_file"
+if STATE_FILE="$state_file" UNINSTALL_ERROR=72 \
+  "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" uninstall >/dev/null 2>&1; then
+  fail 'uninstall should propagate mutation failures'
+else
+  result=$?
+fi
+[[ "$result" == 72 ]] || fail 'uninstall should preserve mutation error codes'
+[[ -e "$state_file" ]] || fail 'uninstall should stop after a mutation failure'
+
+cp "$BOOTSTRAP_COMMON_TEST_ROOT/01-test.sh" "$BOOTSTRAP_COMMON_TEST_ROOT/02-loose.sh"
+sed -i '/^set -euo pipefail$/d' "$BOOTSTRAP_COMMON_TEST_ROOT/02-loose.sh"
+if STATE_FILE="$state_file" \
+  "$BOOTSTRAP_COMMON_TEST_ROOT/02-loose.sh" status >/dev/null 2>&1; then
+  fail 'a phase without strict mode should be rejected at runtime'
+else
+  result=$?
+fi
+[[ "$result" == 70 ]] || fail 'a strict-mode contract error should exit 70'
 
 printf 'bootstrap common tests passed\n'

@@ -35,7 +35,7 @@ The first local commit contains:
 - aligned canonical documentation
 - the minimal verified flake and Home Manager profile
 - `scripts/bootstrap.sh`
-- `scripts/bootstrap/nix.sh`
+- `scripts/bootstrap/01-nix.sh`
 - bootstrap interface tests
 
 It contains no imported legacy configuration, personal script, package migration, or secret material. Scan it mechanically before review and commit; do not publish it before the next safety slice passes.
@@ -55,7 +55,7 @@ The first reviewed batch includes:
 - standalone CLI tools selected from `curl`, `wget`, GnuPG, `tree`, `fzf`, `htop`, `bat`, `httpie`, `ripgrep`, `fd`, `wl-clipboard`, ImageMagick, ExifTool, and `tealdeer`
 - global development tools: Go, Rust/Cargo, JDK 21, GCC/G++, Make, and `pkg-config`
 - program-owned packages as their modules are introduced: Zsh, Git, tmux, Neovim, MPV, and Yazi
-- a small `yt-dlp` bootstrap component installing the official stable binary for explicit self-updates
+- a small `yt-dlp` bootstrap phase installing the official stable binary for explicit self-updates
 
 Review the desktop application inventory separately. Docker, LXD, Snap/Flatpak infrastructure, distro repositories, system groups, and comparable host integration do not belong in normal Home Manager activation.
 
@@ -98,7 +98,7 @@ Mine the legacy manager, link script, installer, package list, secrets-fetch log
 The intended flow is:
 
 1. clone the public dotfiles repository
-2. run `scripts/bootstrap.sh install nix`
+2. run `scripts/bootstrap.sh install`
 3. open a new login shell
 4. restore the private age identity from KeePassXC when secrets are needed
 5. build and activate the Home Manager configuration

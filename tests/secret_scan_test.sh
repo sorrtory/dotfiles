@@ -30,9 +30,9 @@ new_repo() {
   cp "$REPO_ROOT/.githooks/pre-commit" "$test_repo/.githooks/pre-commit"
   cp "$REPO_ROOT/flake.lock" "$REPO_ROOT/flake.nix" "$REPO_ROOT/home.nix" "$test_repo/"
   cp "$REPO_ROOT/scripts/repo/check-secrets.sh" "$test_repo/scripts/repo/check-secrets.sh"
-  cp "$REPO_ROOT/scripts/repo/check-bootstrap-components.sh" "$test_repo/scripts/repo/check-bootstrap-components.sh"
-  cp "$REPO_ROOT/scripts/bootstrap/common/common.sh" \
-    "$test_repo/scripts/bootstrap/common/common.sh"
+  cp "$REPO_ROOT/scripts/repo/check-bootstrap-phases.sh" "$test_repo/scripts/repo/check-bootstrap-phases.sh"
+  cp "$REPO_ROOT/scripts/bootstrap/common/"*.sh \
+    "$test_repo/scripts/bootstrap/common/"
   cp "$REPO_ROOT/.gitleaks.toml" "$test_repo/.gitleaks.toml"
   git -C "$test_repo" init --quiet
   git -C "$test_repo" config user.email test@example.invalid

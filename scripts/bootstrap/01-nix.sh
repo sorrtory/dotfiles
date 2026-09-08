@@ -5,7 +5,7 @@ set -euo pipefail
 BOOTSTRAP_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly BOOTSTRAP_DIR
 # shellcheck disable=SC1091
-. "$BOOTSTRAP_DIR/common/common.sh"
+. "$BOOTSTRAP_DIR/common/phase.sh"
 
 readonly NIX_INSTALL_URL="https://nixos.org/nix/install"
 readonly NIX_CONFIG_FILE="/etc/nix/nix.conf"
@@ -96,14 +96,14 @@ check() {
   if command -v nix >/dev/null 2>&1 &&
     multi_user_nix_installed &&
     flakes_enabled; then
-    component_info "installed correctly: $(nix --version)"
+    phase_info "installed correctly: $(nix --version)"
     return
   fi
 
   if command -v nix >/dev/null 2>&1; then
-    component_info "not installed correctly: $(nix --version)"
+    phase_info "not installed correctly: $(nix --version)"
   else
-    component_info 'not installed'
+    phase_info 'not installed'
   fi
   return 1
 }
@@ -111,7 +111,7 @@ check() {
 enable_flakes() {
   flakes_enabled && return
 
-  component_info 'enabling nix-command and flakes...'
+  phase_info 'enabling nix-command and flakes...'
   sudo tee --append "$NIX_CONFIG_FILE" >/dev/null <<'EOF'
 
 extra-experimental-features = nix-command flakes
@@ -123,40 +123,36 @@ install_nix() (
   local installer installer_dir
 
   require_commands curl sudo
-  component_info 'validating sudo access...'
+  phase_info 'validating sudo access...'
   sudo -v
 
   installer_dir="$(mktemp -d)"
   trap 'rm -rf -- "$installer_dir"' EXIT
   installer="$installer_dir/install-nix"
 
-  component_info 'downloading the official Nix installer...'
+  phase_info 'downloading the official Nix installer...'
   curl --fail --location --proto '=https' --tlsv1.2 \
     --output "$installer" "$NIX_INSTALL_URL"
 
-  component_info 'starting the multi-user Nix installation...'
+  phase_info 'starting the multi-user Nix installation...'
   sh "$installer" --daemon --yes
 )
 
 install() {
-  if check >/dev/null; then
-    already_installed
-    return 1
-  fi
-
+  ensure_commands curl git
   load_nix_profile
   if ! command -v nix >/dev/null 2>&1 && ! is_uninstalled; then
-    component_error 'partial Nix state exists; uninstall it explicitly before installing.'
+    phase_error 'partial Nix state exists; uninstall it explicitly before installing.'
     return 1
   fi
 
   if command -v nix >/dev/null 2>&1; then
     if ! multi_user_nix_installed; then
-      component_error 'existing Nix installation is not a supported multi-user installation.'
+      phase_error 'existing Nix installation is not a supported multi-user installation.'
       return 1
     fi
     require_commands sudo
-    component_info 'validating sudo access...'
+    phase_info 'validating sudo access...'
     sudo -v
   else
     install_nix
@@ -164,8 +160,8 @@ install() {
   fi
 
   enable_flakes
-  component_info "installed $(nix --version)"
-  component_info 'open a new login shell before using Nix interactively.'
+  phase_info "installed $(nix --version)"
+  phase_info 'open a new login shell before using Nix interactively.'
 }
 
 remove_shell_references() {
@@ -179,7 +175,7 @@ remove_shell_references() {
         /^# End Nix$/ { if (!inside) invalid = 1; inside = 0 }
         END { exit invalid || inside }
       ' "$path"; then
-        component_error "cannot safely remove an incomplete Nix block from $path"
+        phase_error "cannot safely remove an incomplete Nix block from $path"
         return 1
       fi
       sudo sed --in-place '/^# Nix$/,/^# End Nix$/d' "$path"
@@ -207,19 +203,14 @@ remove_build_users() {
 }
 
 uninstall() {
-  if is_uninstalled; then
-    already_uninstalled
-    return 1
-  fi
-
   local unit
   local -a units=()
 
   require_commands awk getent groupdel sed sudo systemctl userdel
-  component_info 'validating sudo access...'
+  phase_info 'validating sudo access...'
   sudo -v
 
-  component_info 'stopping and disabling the Nix daemon...'
+  phase_info 'stopping and disabling the Nix daemon...'
   if systemctl cat nix-daemon.service >/dev/null 2>&1; then
     sudo systemctl stop nix-daemon.service
   fi
@@ -233,21 +224,21 @@ uninstall() {
   fi
   sudo systemctl daemon-reload
 
-  component_info 'removing Nix shell startup references...'
+  phase_info 'removing Nix shell startup references...'
   remove_shell_references
 
-  component_info 'removing Nix-owned files...'
+  phase_info 'removing Nix-owned files...'
   # https://nix.dev/manual/nix/2.21/installation/uninstall#linux
   sudo rm -rf -- "${NIX_OWNED_PATHS[@]}"
 
-  component_info 'removing Nix build users and group...'
+  phase_info 'removing Nix build users and group...'
   remove_build_users
 
   if ! is_uninstalled; then
-    component_error 'uninstall finished with unrecognized or incomplete Nix state remaining.'
+    phase_error 'uninstall finished with unrecognized or incomplete Nix state remaining.'
     return 1
   fi
-  component_info 'uninstalled successfully.'
+  phase_info 'uninstalled successfully.'
 }
 
-component_main "$@"
+phase_main "$@"
