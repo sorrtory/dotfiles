@@ -12,6 +12,10 @@ The bootstrap dispatcher checks or installs the ordered fresh-machine phases:
 ./scripts/bootstrap.sh install nix
 ./scripts/bootstrap.sh install secret-recovery
 ./scripts/bootstrap.sh install home-manager
+./scripts/bootstrap.sh install yt-dlp
+./scripts/bootstrap.sh install docker
+./scripts/bootstrap.sh uninstall yt-dlp
+./scripts/bootstrap.sh uninstall docker
 ./scripts/bootstrap.sh uninstall nix
 ```
 
@@ -27,9 +31,15 @@ supply GitHub CLI, KeePassXC CLI, and age; it then authenticates GitHub when
 needed, obtains the private recovery vault, and restores the verified dotfiles
 age identity. The final `home-manager` phase builds and activates the repository
 configuration without privilege, recording which source state it activated so
-later bootstrap runs can detect changes. See the canonical
+later bootstrap runs can detect changes. The `yt-dlp` phase installs a verified
+official release binary under `~/.local/bin`. The `docker` phase is the
+deliberately privileged exception: it installs Docker's host components and
+adds the invoking user to the `docker` group. Its explicit uninstall removes
+the packages, repository configuration, group membership, and all local Docker
+data, including images, containers, and volumes. See the canonical
 [bootstrap policy](docs/DECISIONS.md#bootstrap-policy) for the phase contract.
-Open a new login shell after bootstrap completes.
+Open a new login session after bootstrap completes so PATH and Docker group
+membership are both current.
 
 The recovery app is also directly available for focused recovery or diagnosis:
 

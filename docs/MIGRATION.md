@@ -67,8 +67,9 @@ The first reviewed batch includes:
 - global development tools: Go, Rust/Cargo, JDK 21, GCC/G++, Make, and `pkg-config`
 - program-owned packages as their modules are introduced: Zsh, Git, tmux, Neovim, MPV, and Yazi
 - a small `yt-dlp` bootstrap phase installing the official stable binary for explicit self-updates
+- an explicit privileged Docker bootstrap phase using the official stable convenience installer, establishing target-user group membership, and providing an explicitly destructive full-reset uninstall
 
-Review the desktop application inventory separately. Docker, LXD, Snap/Flatpak infrastructure, distro repositories, system groups, and comparable host integration do not belong in normal Home Manager activation.
+Review the desktop application inventory separately. Docker remains host-owned even though its explicit bootstrap phase is part of this package slice. LXD, Snap/Flatpak infrastructure, distro repositories, system groups, and comparable host integration do not belong in normal Home Manager activation.
 
 ### 4. Zsh
 

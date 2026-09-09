@@ -7,6 +7,7 @@
     curl
     exiftool
     fd
+    ffmpeg
     fzf
     gcc
     gnumake
@@ -24,4 +25,6 @@
     wget
     wl-clipboard
   ];
+
+  home.sessionPath = [ "$HOME/.local/bin" ];
 }
