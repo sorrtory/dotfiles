@@ -1,0 +1,16 @@
+[
+  {
+    "keys": ["alt+up"],
+    "command": "select_lines",
+    "args": { "forward": false }
+  },
+  {
+    "keys": ["alt+down"],
+    "command": "select_lines",
+    "args": { "forward": true }
+  },
+  {
+    "keys": ["ctrl+j"],
+    "command": "toggle_terminus_panel"
+  }
+]

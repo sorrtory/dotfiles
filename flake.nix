@@ -19,8 +19,10 @@
           builtins.elem (nixpkgs.lib.getName package) [
             "obsidian"
             "spotify"
+            "sublimetext4"
             "vscode"
           ];
+        config.permittedInsecurePackages = [ "openssl-1.1.1w" ];
       };
       # nixpkgs currently carries gitleaks 8.30.1, whose default rules do not
       # detect canonical tokens (upstream issue #2170). Keep the regression

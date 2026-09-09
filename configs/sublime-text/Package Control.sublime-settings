@@ -1,0 +1,10 @@
+{
+  "bootstrapped": true,
+  "installed_packages": [
+    "Compare Side-By-Side",
+    "MarkdownEditing",
+    "Package Control",
+    "SideBarEnhancements",
+    "Terminus"
+  ]
+}
