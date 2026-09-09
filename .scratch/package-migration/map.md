@@ -12,7 +12,7 @@ ownership moves into an implementation.
 - [04: Migrate FFmpeg and yt-dlp](issues/04-migrate-ffmpeg-and-yt-dlp.md) — resolved; delivered global FFmpeg and the verified release-binary phase.
 - [05: Install Docker as explicit host setup](issues/05-install-docker-host-setup.md) — resolved; delivered and lifecycle-tested the privileged Docker phase.
 - [06: Add the basic desktop applications](issues/06-add-basic-desktop-applications.md) — resolved; delivered and staging-verified the selected desktop application baseline.
-- [07: Migrate VS Code native configuration](issues/07-migrate-vscode-native-configuration.md) — ready-for-agent; blocked by 06.
+- [07: Migrate VS Code native configuration](issues/07-migrate-vscode-native-configuration.md) — resolved; delivered reviewed live-editable settings, keybindings, and an extension inventory.
 - [08: Migrate Sublime Text installation, configuration, and plugins](issues/08-migrate-sublime-configuration-and-plugins.md) — ready-for-agent; blocked by 06.
 - [09: Verify the package migration](issues/09-verify-package-migration.md) — ready-for-agent; blocked by 06, 07, and 08.
 

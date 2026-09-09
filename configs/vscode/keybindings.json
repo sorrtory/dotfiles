@@ -1,0 +1,98 @@
+[
+  {
+    "key": "ctrl+m",
+    "command": "editor.action.toggleMinimap"
+  },
+  {
+    "key": "ctrl+[Quote]",
+    "command": "workbench.action.toggleMaximizedPanel",
+    "when": "panelAlignment == 'center' || panelPosition != 'bottom' && panelPosition != 'top'"
+  },
+  {
+    "key": "alt+down",
+    "command": "editor.action.insertCursorBelow",
+    "when": "editorTextFocus"
+  },
+  {
+    "key": "alt+up",
+    "command": "editor.action.insertCursorAbove",
+    "when": "editorTextFocus"
+  },
+  {
+    "key": "ctrl+shift+down",
+    "command": "editor.action.moveLinesDownAction",
+    "when": "editorTextFocus && !editorReadonly"
+  },
+  {
+    "key": "ctrl+shift+up",
+    "command": "editor.action.moveLinesUpAction",
+    "when": "editorTextFocus && !editorReadonly"
+  },
+  {
+    "key": "ctrl+shift+c",
+    "command": "-workbench.action.terminal.openNativeConsole",
+    "when": "!terminalFocus"
+  },
+  {
+    "key": "ctrl+shift+w",
+    "command": "-workbench.action.closeWindow"
+  },
+  {
+    "key": "ctrl+shift+w e",
+    "command": "workbench.action.focusActiveEditorGroup"
+  },
+  {
+    "key": "ctrl+shift+w t",
+    "command": "workbench.action.terminal.focus"
+  },
+  {
+    "key": "ctrl+shift+w f",
+    "command": "workbench.view.explorer"
+  },
+  {
+    "key": "ctrl+shift+w f",
+    "command": "workbench.files.action.focusFilesExplorer",
+    "when": "explorerViewletVisible"
+  },
+  {
+    "key": "ctrl+shift+w c",
+    "command": "workbench.action.chat.open"
+  },
+  {
+    "key": "alt+right",
+    "command": "editor.action.moveCarretRightAction",
+    "when": "editorFocus && (editorHasSelection || editorHasMultipleSelections)"
+  },
+  {
+    "key": "alt+left",
+    "command": "editor.action.moveCarretLeftAction",
+    "when": "editorFocus && (editorHasSelection || editorHasMultipleSelections)"
+  },
+  {
+    "key": "ctrl+enter",
+    "command": "sqltools.executeCurrentQuery",
+    "when": "editorTextFocus && editorLangId == 'sql'"
+  },
+  {
+    "key": "ctrl+n",
+    "command": "explorer.newFile"
+  },
+  {
+    "key": "alt+n",
+    "command": "workbench.files.action.createFolderFromExplorer"
+  },
+  {
+    "key": "ctrl+k ctrl+v",
+    "command": "markdown.togglePreview",
+    "when": "!notebookEditorFocused && resourceLangId =~ /^(markdown|prompt|instructions|chatagent|skill)$/"
+  },
+  {
+    "key": "ctrl+shift+v",
+    "command": "-markdown.togglePreview",
+    "when": "!notebookEditorFocused && resourceLangId =~ /^(markdown|prompt|instructions|chatagent|skill)$/"
+  },
+  {
+    "key": "alt+f",
+    "command": "workbench.files.action.showActiveFileInExplorer"
+  }
+]
