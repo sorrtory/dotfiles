@@ -3,6 +3,7 @@
 {
   imports = [
     ./modules/packages.nix
+    ./modules/programs/vscode.nix
   ];
 
   home.username = "z";

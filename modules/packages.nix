@@ -17,9 +17,12 @@
     httpie
     imagemagick
     jdk21
+    obs-studio
+    obsidian
     pkg-config
     ripgrep
     rustc
+    spotify
     tealdeer
     tree
     wget

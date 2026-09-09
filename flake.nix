@@ -13,7 +13,15 @@
   outputs = { nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
+      pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfreePredicate = package:
+          builtins.elem (nixpkgs.lib.getName package) [
+            "obsidian"
+            "spotify"
+            "vscode"
+          ];
+      };
       # nixpkgs currently carries gitleaks 8.30.1, whose default rules do not
       # detect canonical tokens (upstream issue #2170). Keep the regression
       # fixture in tests/secret_scan_test.sh before updating this pin.

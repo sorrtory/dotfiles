@@ -1,8 +1,8 @@
-# 06: Verify the current package migration
+# 09: Verify the current package migration
 
 **What to build:** Demonstrate that the combined global CLI, development, media, `yt-dlp`, and explicit Docker package baseline works through its documented installation mechanisms on the disposable staging VM and is ready for normal-use operator review.
 
-**Blocked by:** 04/Migrate FFmpeg and the stable yt-dlp exception; 05/Install Docker as explicit host setup.
+**Blocked by:** 06/Add the basic desktop applications; 07/Migrate VS Code native configuration; 08/Migrate Sublime Text installation, configuration, and plugins.
 
 **Status:** ready-for-agent
 

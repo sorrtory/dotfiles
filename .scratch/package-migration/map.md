@@ -11,7 +11,10 @@ ownership moves into an implementation.
 - [03: Migrate the development baseline](issues/03-migrate-development-baseline.md) — resolved; delivered and verified the global compiler baseline.
 - [04: Migrate FFmpeg and yt-dlp](issues/04-migrate-ffmpeg-and-yt-dlp.md) — resolved; delivered global FFmpeg and the verified release-binary phase.
 - [05: Install Docker as explicit host setup](issues/05-install-docker-host-setup.md) — resolved; delivered and lifecycle-tested the privileged Docker phase.
-- [06: Verify the package migration](issues/06-verify-package-migration.md) — ready-for-agent; blocked by 04 and 05.
+- [06: Add the basic desktop applications](issues/06-add-basic-desktop-applications.md) — resolved; delivered and staging-verified the selected desktop application baseline.
+- [07: Migrate VS Code native configuration](issues/07-migrate-vscode-native-configuration.md) — ready-for-agent; blocked by 06.
+- [08: Migrate Sublime Text installation, configuration, and plugins](issues/08-migrate-sublime-configuration-and-plugins.md) — ready-for-agent; blocked by 06.
+- [09: Verify the package migration](issues/09-verify-package-migration.md) — ready-for-agent; blocked by 06, 07, and 08.
 
 ## Context
 
