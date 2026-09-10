@@ -127,9 +127,12 @@ single `show-text ${filename}` binding, which `input.conf` now does directly.
 `thumbfast` is the one place the Nixpkgs pin was not good enough. It trails
 upstream by the commit that stops the thumbnailer subprocess being spawned
 with a stripped environment on Linux, so the module overrides its source to
-upstream head. `mpv.conf` is otherwise migrated verbatim, apart from `hwdec`,
-which becomes `auto-safe` so an unknown machine uses hardware decoding when
-its driver is known-good and falls back to software when it is not.
+upstream head. `mpv.conf` is otherwise migrated verbatim apart from three settings that all
+concern reaching an unknown machine's GPU: `hwdec` becomes `auto-safe`, video
+output becomes a list ending in software `x11` so a machine MPV cannot
+accelerate still shows a picture, and `gpu-api` becomes `auto`. The drivers
+themselves come from Nixpkgs through the MPV wrapper, because a Nix program
+cannot use the distro's; see `docs/DECISIONS.md`.
 
 ### 9. GNOME
 

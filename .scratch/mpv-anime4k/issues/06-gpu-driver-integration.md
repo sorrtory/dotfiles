@@ -1,6 +1,6 @@
 # 06 — GPU driver integration for a non-NixOS host
 
-Status: claimed
+Status: resolved
 Blocked by: 01, 04
 
 ## Goal
@@ -108,3 +108,44 @@ decoding, hit `Device does not support the VK_KHR_video_decode_queue
 extension` on the software device, and fell back to software decoding without
 interrupting playback. That is the fallback behaving as intended, and it is
 worth re-checking on the host, where RADV may accept the hardware path.
+
+## Answer
+
+Resolved without any privileged step, which also removes the question in work
+item 4 about making one a bootstrap phase.
+
+The drivers are `packages/gpu-drivers.nix`, a `buildEnv` of the same packages
+Home Manager's module collects — mesa, libglvnd, libvdpau-va-gl, and
+intel-media-driver on x86_64. MPV reaches them through
+`programs.mpv.extraMakeWrapperArgs`, which sets `VK_DRIVER_FILES`,
+`LIBGL_DRIVERS_PATH`, `LIBVA_DRIVERS_PATH`, `VDPAU_DRIVER_PATH`, and
+`__EGL_VENDOR_LIBRARY_FILENAMES`. Each of those was reduced to the minimum
+that actually works: `LD_LIBRARY_PATH` is not needed, because the manifests
+carry absolute store paths, and leaving it out keeps it from leaking into the
+subprocess thumbfast spawns.
+
+Proof on the host, from the built wrapper and with nothing set by hand:
+
+```
+GPU 0: AMD Radeon 760M Graphics (RADV PHOENIX) v1.4.354 (integrated)
+VO: [gpu-next]
+```
+
+No `/run/opengl-driver`, no root, no nixGL. `modules/gpu.nix` and its
+activation nag are gone. The system-wide module remains the better trade if a
+second program here ever needs a GPU, and is one line away.
+
+## The bug this turned up
+
+The operator found MPV playing sound with no picture on the VM, while
+`--no-config` played normally. That is not the driver problem, it is
+`vo=gpu-next` named alone: mpv falls back through video outputs only when it
+is given a list, so a machine whose GPU it cannot reach loses the picture
+entirely instead of degrading. `mpv.conf` now says `vo=gpu-next,gpu,x11` and
+`gpu-api=auto`.
+
+The severity is worth recording. On any machine without a reachable GPU the
+migrated configuration was strictly worse than no configuration at all, and it
+failed silently — audio kept playing, so nothing announced that the video
+output had been refused. Verified fixed on the VM: plain `mpv` with the
+migrated config reaches `VO: [x11]` and shows the video.

@@ -2,7 +2,6 @@
 
 {
   imports = [
-    ./modules/gpu.nix
     ./modules/packages.nix
     ./modules/programs/mpv.nix
     ./modules/programs/neovim.nix

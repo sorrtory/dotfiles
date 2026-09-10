@@ -7,6 +7,16 @@ let
   # optional; see the package for why.
   localScripts = [ (pkgs.callPackage ../../packages/mpv-fuzzydir.nix { }) ];
 
+  # Drivers for the GPU path. mpv is the only program here that needs one, so
+  # it carries them in its own wrapper rather than the machine carrying them
+  # globally: the alternative, Home Manager's `targets.genericLinux.gpu`, wants
+  # a root-owned /run/opengl-driver symlink and nags at every activation until
+  # it exists. These variables are the whole mechanism, and they cost nothing
+  # when a machine's own drivers already work. LD_LIBRARY_PATH is deliberately
+  # not among them: the manifests carry absolute store paths, so it is not
+  # needed, and it would leak into every subprocess mpv spawns.
+  gpuDrivers = pkgs.callPackage ../../packages/gpu-drivers.nix { };
+
   # Nixpkgs pins thumbfast one commit behind upstream, and that commit is the
   # one that matters on Linux: before it, thumbfast spawned its thumbnailer
   # with `env = "PATH=..."`, discarding every other variable, which is exactly
@@ -33,6 +43,15 @@ in
     # uosc replaces both mpv's builtin OSC and the vanilla-OSC fork the legacy
     # setup carried; it disables the builtin itself and draws thumbfast's
     # previews natively, so neither mpv.conf nor a local package is involved.
+    extraMakeWrapperArgs = [
+      "--set" "VK_DRIVER_FILES" "${gpuDrivers}/share/vulkan/icd.d"
+      "--set" "LIBGL_DRIVERS_PATH" "${gpuDrivers}/lib/dri"
+      "--set" "LIBVA_DRIVERS_PATH" "${gpuDrivers}/lib/dri"
+      "--set" "VDPAU_DRIVER_PATH" "${gpuDrivers}/lib/vdpau"
+      "--set" "__EGL_VENDOR_LIBRARY_FILENAMES"
+      "${gpuDrivers}/share/glvnd/egl_vendor.d/50_mesa.json"
+    ];
+
     scripts = (with pkgs.mpvScripts; [
       autoload
       reload

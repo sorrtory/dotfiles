@@ -35,18 +35,11 @@ membership only take effect there.
 
 ### GPU-accelerated programs
 
-Nix-built graphical programs cannot use a non-NixOS distro's GPU drivers, so
-until this runs, MPV falls back to software output and its Anime4K shaders do
-not load at all. Home Manager builds matching drivers from Nixpkgs; pointing
-the system at them needs root once per machine:
-
-```bash
-sudo "$(readlink -f ~/.nix-profile/bin/non-nixos-gpu-setup)"
-```
-
-Activation never runs this itself — it only checks `/run/opengl-driver` and
-prints the command when it is missing or stale. Re-run it after a `flake.lock`
-update that moves the driver packages; the activation warning says when.
+Nothing to do. Nix-built programs cannot use a non-NixOS distro's GPU drivers,
+so MPV carries drivers from Nixpkgs in its own wrapper and finds the GPU
+without any system change or privileged step. On a machine whose GPU it still
+cannot reach, video output falls back through software rendering rather than
+disappearing — the picture stays, the Anime4K shaders do not.
 
 ### Running phases individually
 

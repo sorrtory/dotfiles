@@ -12,10 +12,11 @@ behavior baseline the legacy symlinks currently provide.
 - [03: Local packages for the scripts Nixpkgs lacks](issues/03-local-script-packages.md) — resolved; one local package, `fuzzydir`.
 - [04: Anime4K shaders and the input.conf bindings](issues/04-anime4k-shaders.md) — resolved; all six modes compile on the GPU path.
 - [05: Documentation corrections](issues/05-documentation.md) — resolved.
-- [06: GPU driver integration for a non-NixOS host](issues/06-gpu-driver-integration.md) — claimed; drivers verified, the privileged symlink step still unrun.
+- [06: GPU driver integration for a non-NixOS host](issues/06-gpu-driver-integration.md) — resolved; drivers ride in the MPV wrapper, no privileged step.
 
-Tickets 01 to 05 are resolved against the staging VM. Ticket 06 came out of
-that verification and is the only thing between this slice and completion.
+All six tickets are resolved against the staging VM. What remains before this
+directory can be removed is working rule 10: normal use on the host, and only
+then retirement of the legacy `~/Documents/configs/mpv/` tree.
 
 ## Context
 
@@ -70,6 +71,14 @@ and with `VO: [gpu-next]` running:
 The renderer was llvmpipe rather than the host's RADV. Compilation is
 driver-side, so this proves correctness, not performance. Ticket 06 carries
 the remaining privileged step.
+
+## The one real bug found by verification
+
+`vo=gpu-next` named alone gave mpv nothing to fall back to, so on a machine
+whose GPU it could not reach the migrated config played audio with no picture,
+silently — strictly worse than shipping no config at all. It is now a list
+ending in software `x11`, with `gpu-api=auto`. Worth remembering as a shape:
+the setting looked like a preference and was actually a hard requirement.
 
 ## Deviations from the tickets
 
