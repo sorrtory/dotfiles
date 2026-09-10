@@ -1,6 +1,6 @@
 # 03 — Enforce the public-safe `secrets/` invariant
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 ## Goal
@@ -51,3 +51,23 @@ unless it is positively recognized as SOPS ciphertext.
 - `tests/secret_scan_test.sh` passes with the new cases.
 - Staging a plaintext file under `secrets/` fails the pre-commit hook with a
   message that names the offending path and says what was expected.
+
+## Answer
+
+Implemented in the commit that follows ticket 01's. Recognition is delegated to
+`sops filestatus` rather than to marker matching.
+
+The first implementation matched two marker substrings and was spoofable: a
+plaintext WireGuard config carrying `ENC[AES256_GCM` and an age armor header in
+two comment lines passed the gate with exit 0, which is precisely the material
+this ticket exists to reject. Review caught it before commit. Any substring
+approach shares the flaw, because a plaintext file can contain arbitrary lines;
+only requiring the file to genuinely parse as a SOPS document closes it. That
+spoof is now a regression test.
+
+Note the residual limit: SOPS permits partially encrypted documents, so this
+proves a file is a SOPS document, not that every value in it is encrypted. It
+stops accidental plaintext, which is the stated goal.
+
+`sops` was added to the development shell for this, and is resolved once per
+run. The gate consequently requires Nix, which it already did for gitleaks.
