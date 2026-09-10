@@ -41,6 +41,10 @@ cat >"$mock_bin/keepassxc-cli" <<'EOF'
 #!/usr/bin/env bash
 printf 'keepassxc-cli %s\n' "$*" >>"$RECOVERY_CALL_LOG"
 [[ "$1" == 'attachment-export' ]] || exit 2
+if [[ "${MOCK_EXPORT_FAILS:-0}" != '0' ]]; then
+  printf 'Entry %s not found.\n' "$3" >&2
+  exit 1
+fi
 printf 'TEST-AGE-IDENTITY\n' >"${@: -1}"
 EOF
 
@@ -116,6 +120,27 @@ fi
 if find "$(dirname -- "$bad_key_file")" -maxdepth 1 \
   -name '.recover-age-identity.*' -print -quit | grep -q .; then
   fail 'temporary identity material should be removed after failure'
+fi
+
+unresolved_key_file="$RECOVERY_TEST_ROOT/unresolved/config/sops/age/keys.txt"
+export_output="$RECOVERY_TEST_ROOT/export-output"
+if printf '\n' | env \
+  PATH="$mock_bin:$PATH" \
+  RECOVERY_CALL_LOG="$call_log" \
+  RECOVERY_REPOSITORY_DIR="$recovery_repo" \
+  AGE_KEY_FILE="$unresolved_key_file" \
+  RECOVERY_ENTRY='Root/Encryption Keys/sops' \
+  MOCK_EXPORT_FAILS=1 \
+  "$SUBJECT" install >"$export_output" 2>&1; then
+  fail 'a failing attachment export should fail the wizard'
+fi
+grep -q 'keepassxc-cli ls -R -f' "$export_output" ||
+  fail 'a failing export should explain how to list the real entry paths'
+[[ ! -e "$unresolved_key_file" ]] ||
+  fail 'a failing export must not install an age identity'
+if find "$(dirname -- "$unresolved_key_file")" -maxdepth 1 \
+  -name '.recover-age-identity.*' -print -quit | grep -q .; then
+  fail 'a failing export should leave no temporary identity material'
 fi
 
 printf 'recover age identity tests passed\n'
