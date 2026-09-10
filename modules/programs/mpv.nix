@@ -3,12 +3,9 @@
 let
   configRoot = "${config.home.homeDirectory}/Documents/dotfiles/configs/mpv";
 
-  # Scripts Nixpkgs does not carry. Both are load-bearing for the retained
-  # native configuration; see each package for why it is local.
-  localScripts = map (name: pkgs.callPackage ../../packages/${name} { }) [
-    "mpv-fuzzydir.nix"
-    "mpv-thumbfast-osc.nix"
-  ];
+  # The one script Nixpkgs does not carry. It is load-bearing rather than
+  # optional; see the package for why.
+  localScripts = [ (pkgs.callPackage ../../packages/mpv-fuzzydir.nix { }) ];
 
   # Nixpkgs pins thumbfast one commit behind upstream, and that commit is the
   # one that matters on Linux: before it, thumbfast spawned its thumbnailer
@@ -33,10 +30,14 @@ in
   programs.mpv = {
     enable = true;
 
+    # uosc replaces both mpv's builtin OSC and the vanilla-OSC fork the legacy
+    # setup carried; it disables the builtin itself and draws thumbfast's
+    # previews natively, so neither mpv.conf nor a local package is involved.
     scripts = (with pkgs.mpvScripts; [
       autoload
       reload
       cut
+      uosc
       eisa01.smart-copy-paste-2
     ]) ++ [ thumbfast ] ++ localScripts;
   };

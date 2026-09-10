@@ -112,16 +112,24 @@ flat shader layout is why every `input.conf` shader binding changed. The native
 `mpv.conf` and `input.conf` stay readable and live-editable through
 `mkOutOfStoreSymlink`.
 
-Two scripts are local because Nixpkgs does not carry them, and both are
-load-bearing rather than cosmetic: `fuzzydir` supplies the `**` syntax
-`mpv.conf` depends on, and `thumbfast-osc` is what draws thumbfast's previews.
+One script is local, because Nixpkgs does not carry it and `mpv.conf` cannot
+work without it: `fuzzydir` supplies the `**` syntax the subtitle and audio
+search paths use.
 
-Two legacy scripts did not survive the slice. `reload` is now the
-better-maintained Nixpkgs script rather than the legacy one of that name — it
-reloads automatically on a stalled cache instead of only on a key press, and
-`input.conf` restores the `Shift+R` the legacy script bound. `show_filename`
-is gone entirely: it was a pinned dependency for a single
-`show-text ${filename}` binding, which `input.conf` now does directly.
+Three legacy scripts did not survive the slice, all replaced by better-kept
+equivalents rather than reproduced. `reload` is Nixpkgs' script, which reloads
+automatically on a stalled cache instead of only on a key press; `input.conf`
+restores the `Shift+R` the legacy one bound. The vanilla-OSC fork gives way to
+`uosc`, which draws thumbfast's previews natively and disables mpv's builtin
+OSC itself. `show_filename` is gone entirely: it was a pinned dependency for a
+single `show-text ${filename}` binding, which `input.conf` now does directly.
+
+`thumbfast` is the one place the Nixpkgs pin was not good enough. It trails
+upstream by the commit that stops the thumbnailer subprocess being spawned
+with a stripped environment on Linux, so the module overrides its source to
+upstream head. `mpv.conf` is otherwise migrated verbatim, apart from `hwdec`,
+which becomes `auto-safe` so an unknown machine uses hardware decoding when
+its driver is known-good and falls back to software when it is not.
 
 ### 9. GNOME
 

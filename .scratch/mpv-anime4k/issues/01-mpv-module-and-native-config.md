@@ -1,6 +1,6 @@
 # 01 — MPV module and native configuration
 
-Status: claimed
+Status: resolved
 
 ## Goal
 
@@ -61,3 +61,12 @@ Outstanding: the VM half of the acceptance. The `rsync` to the staging VM was
 denied by the sandbox in the session that did this work, so activation there,
 and with it the `~/.config/mpv/mpv.conf` resolution check on a real
 activation, has not run.
+
+## Answer
+
+Resolved. On a normal `bootstrap.sh install home-manager` on the staging VM,
+`~/.config/mpv/mpv.conf` and `input.conf` resolve to
+`~/Documents/dotfiles/configs/mpv/`, and mpv starts and plays with no
+configuration parse error. Nothing under the MPV config tree references
+`~/.local/share/configs-manager`, which is the fresh-machine failure this
+ticket existed to remove.

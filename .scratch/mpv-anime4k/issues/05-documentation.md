@@ -1,6 +1,6 @@
 # 05 — Documentation corrections
 
-Status: claimed
+Status: resolved
 Blocked by: 02, 03, 04
 
 ## Goal
@@ -58,3 +58,10 @@ local packages and which two are load-bearing.
 
 All `tests/*.sh` pass, `nix flake check` passes, and both staged gates
 (`check-bootstrap-phases.sh`, `check-secrets.sh`) pass.
+
+## Answer
+
+Resolved. `docs/DECISIONS.md`, `docs/SOFTWARE.md`, and `docs/MIGRATION.md` §8
+describe what shipped, including the script substitutions made after the
+version review and the single remaining local package. `README.md` gained the
+privileged GPU step, and `docs/DECISIONS.md` gained the reasoning behind it.

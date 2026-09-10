@@ -1,6 +1,6 @@
 # 02 — Scripts available from Nixpkgs
 
-Status: claimed
+Status: resolved
 Blocked by: 01
 
 ## Goal
@@ -75,3 +75,35 @@ eight script paths in the wrapper resolve into `/nix/store`, verified on the
 host — but a VM check should read the wrapper, not that directory.
 
 Outstanding: the `autoload` playlist check on the VM.
+
+### Follow-up: the operator lifted the version-conservatism
+
+Asked directly whether keeping the legacy script versions was worth it, the
+operator said newer is fine. That reverses the `reload` decision above:
+`mpvScripts.reload` (4e6) is now used, and the local sibwaf package is gone.
+It is the better script — it reloads automatically when the cache stalls for
+10s or the demuxer makes no progress for 20s, which is the situation the
+script exists for, rather than only on a key press. `input.conf` binds `R` to
+`script-binding reload/reload_resume` so the legacy `Shift+R` still works
+alongside the script's own `Ctrl+r`.
+
+Note for anyone writing such a binding: mpv spells Shift+letter as a bare
+uppercase letter. Written as `Shift+r` it parses without complaint and never
+binds — confirmed by querying `input-bindings` at runtime, which is the check
+worth repeating for any hand-written binding.
+
+`thumbfast` went the other way. Nixpkgs pins it one commit behind upstream,
+and that commit stops the thumbnailer subprocess being spawned with
+`env = "PATH=..."` — which discards `WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR`, and
+everything else — on non-darwin platforms. The legacy checkout was already on
+the newer commit, so accepting the Nixpkgs pin would have been a silent
+regression. The module overrides `src` rather than repackaging.
+
+## Answer
+
+Resolved, with the `reload` substitution recorded above. The final set is
+`autoload`, `reload`, `cut`, `uosc`, `eisa01.smart-copy-paste-2` from Nixpkgs
+and `thumbfast` from Nixpkgs with its source overridden one commit forward.
+All resolve into `/nix/store` on the activated VM. `autoload` was observed
+doing its job incidentally: with a clip in a populated directory it appended
+the directory's other entries to the playlist and advanced to them.

@@ -1,6 +1,6 @@
 # 04 — Anime4K shaders and the input.conf bindings
 
-Status: claimed
+Status: resolved
 Blocked by: 01
 
 ## Goal
@@ -68,3 +68,35 @@ one — the check has no discriminating power without a real render context.
 Only playback on the VM, or on the host after approval, can confirm `CTRL+1`
 through `CTRL+6`. That the files exist at the rewritten paths in the built
 generation is necessary but not sufficient.
+
+### On the VM: paths confirmed, compilation still not
+
+Driving the real binding over mpv's IPC socket on the activated VM, `CTRL+1`
+sets exactly the six expected shader paths, every one of those files exists at
+the activated path under `~/.config/mpv/shaders/Anime4K/`, and `CTRL+0` clears
+the list. The rewritten flat paths are therefore correct and the binding
+fires.
+
+What still has no evidence is that the shaders *compile*. Nothing Nix-built can
+open a GPU context on this VM — or on the host — until `/run/opengl-driver`
+exists, so mpv ran under `--vo=x11` and never reached shader compilation. See
+ticket 06, which this verification produced. Ticket 04 cannot be resolved on
+the strength of path checks alone.
+
+## Answer
+
+Resolved, and this time on the GPU path rather than by path inspection.
+
+With the Nixpkgs-built drivers made visible to the process, mpv initialized
+`VO: [gpu-next]` on the VM's software Vulkan device, and each of `CTRL+1`
+through `CTRL+6` was driven through the real `input.conf` binding over mpv's
+IPC socket. Every mode set exactly the shader list its binding names — six,
+six, five, seven, seven, six — the frame counter kept advancing, and
+libplacebo reported `shaderc compile status 'success' (0 errors, 0 warnings)`
+throughout, with no shader load or compile error anywhere in the session log.
+`CTRL+0` cleared the list.
+
+The renderer was llvmpipe rather than the host's RADV, because the VM has no
+hardware GPU. Shader compilation is driver-side, so this proves the shader
+files, the flattened paths, and the bindings are all correct; it does not
+measure performance.
