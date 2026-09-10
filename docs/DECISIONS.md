@@ -118,6 +118,8 @@ The risk this accepts is that one reproduced key reaches every host it is author
 
 SSH private keys are whole-file SOPS ciphertext under `secrets/ssh/`, materialized on tmpfs and reached by absolute `IdentityFile` paths, so no plaintext key is written into `~/.ssh`. OpenSSH accepts a key from that location at mode `0600`; this was verified rather than assumed.
 
+The SSH agent stays host-owned. The desktop session already provides one and sets `SSH_AUTH_SOCK`; adding a Home Manager agent would contend with it over which one a login session actually points at. The agent holds unlocked keys, which is the mutable session state `CONTEXT.md` keeps machine-local, so this is the same boundary rather than an exception to it. Because the keys no longer live in `~/.ssh`, where a keyring agent would find them by convention, `AddKeysToAgent yes` is what loads them, at the cost of one passphrase prompt per session.
+
 A migrated key that carries its own passphrase still needs that passphrase on a new machine, and it is not in this repository — SOPS reproduces the key file, not the ability to use it. The passphrase belongs in the recovery vault alongside the age identity. `AddKeysToAgent yes` keeps this to one prompt per session.
 
 The host-identifying half of `~/.ssh/config` is ciphertext for a different reason than the keys are: it is not a credential, but this repository is public, and host names, login names and ports together are a target list that published history would make permanent. The operator-independent half stays readable in `configs/ssh/config` and pulls the rest in through `Include`.
