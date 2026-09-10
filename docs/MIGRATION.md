@@ -79,15 +79,29 @@ Let Home Manager own `.zshrc`. Preserve selected aliases, history, environment v
 
 Recreate selected WireGuard configurations as whole-file SOPS ciphertext. Keep decryption user-owned and deployment to `/etc/wireguard/` explicit and privileged.
 
-### 6. VPN command
+### 6. SSH keys and configuration
+
+Recreate selected SSH private keys as whole-file SOPS ciphertext, and migrate
+`~/.ssh/config`, `known_hosts`, and public keys as ordinary repository material
+rather than as secrets. This reverses the earlier position that SSH keys stay
+machine-local; `docs/DECISIONS.md` records the reversal and the risk it accepts.
+
+Reuse the conventions established by the WireGuard slice rather than inventing
+new ones. Prefer pointing `IdentityFile` at the decrypted path over writing
+private keys into `~/.ssh/`, so plaintext stays on tmpfs; verify that OpenSSH
+accepts a key reached that way and at the mode sops-nix assigns. Select keys
+deliberately: one that identifies a machine rather than the operator is a
+candidate for removal instead of migration.
+
+### 7. VPN command
 
 Specify, ticket, and rewrite the VPN command. It must create and clean privileged network state while running the requested payload as the invoking user. Package the separate Bash source through `writeShellApplication` and expose `vpn` in the user environment.
 
-### 7. MPV and Anime4K
+### 8. MPV and Anime4K
 
 Replace absolute links and manually cloned plugins with Nixpkgs MPV scripts where available. Package or pin missing dependencies, including Anime4K, and retain readable native MPV configuration when it remains clearer.
 
-### 8. GNOME
+### 9. GNOME
 
 Specify and ticket intentional GNOME migration. Capture the current dconf state as evidence, retain deliberate preferences, and omit incidental runtime keys.
 
