@@ -110,7 +110,7 @@ staging VM, or on the host after explicit operator approval.
 │   ├── programs/            # eventually: per-program Home Manager modules
 │   ├── packages.nix         # eventually: general user packages
 │   ├── scripts.nix          # eventually: expose scripts/bin commands
-│   └── secrets.nix          # eventually: sops-nix declarations
+│   └── secrets.nix          # sops-nix declarations
 ├── configs/                 # mutable native configs kept in the repo
 ├── packages/                # local Nix packages only when nixpkgs is insufficient
 ├── scripts/

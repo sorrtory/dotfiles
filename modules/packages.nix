@@ -22,6 +22,7 @@
     pkg-config
     ripgrep
     rustc
+    sops
     spotify
     tealdeer
     tree
