@@ -7,6 +7,7 @@
     ./modules/programs/sublime-text.nix
     ./modules/programs/vscode.nix
     ./modules/programs/zsh.nix
+    ./modules/secrets.nix
   ];
 
   home.username = "z";

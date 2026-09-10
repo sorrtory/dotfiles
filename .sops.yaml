@@ -1,0 +1,20 @@
+# Single source of truth for the public age recipient.
+#
+# sops reads this file when encrypting, so the recipient named here is the one
+# ciphertext under secrets/ is actually written to. That is what makes it the
+# intended single source of truth for the recipient; see docs/DECISIONS.md,
+# "Secrets and authentication". The secret-recovery scripts still carry their
+# own copies of the literal and are being consolidated onto this file.
+#
+# Only the public recipient belongs here. The matching private identity lives
+# outside Git at ~/.config/sops/age/keys.txt and is restored by the
+# secret-recovery bootstrap phase.
+
+keys:
+  - &z age1rmcmjswz8e7fanjzegmug24euprves7p240kkedun2sn4qvqkekqqvkgew
+
+creation_rules:
+  - path_regex: ^secrets/.*$
+    key_groups:
+      - age:
+          - *z

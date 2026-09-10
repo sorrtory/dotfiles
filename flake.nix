@@ -8,9 +8,16 @@
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # sops-nix publishes no release branches, only master, so this input
+    # cannot be pinned alongside the nixos-26.05 / release-26.05 pins above.
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, home-manager, ... }:
+  outputs = { nixpkgs, home-manager, sops-nix, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -63,6 +70,7 @@
 
       homeConfigurations.z = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
+        extraSpecialArgs = { inherit sops-nix; };
         modules = [ ./home.nix ];
       };
     };
