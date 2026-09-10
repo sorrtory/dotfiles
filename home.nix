@@ -4,6 +4,7 @@
   imports = [
     ./modules/packages.nix
     ./modules/programs/neovim.nix
+    ./modules/programs/ssh.nix
     ./modules/programs/sublime-text.nix
     ./modules/programs/vscode.nix
     ./modules/programs/zsh.nix

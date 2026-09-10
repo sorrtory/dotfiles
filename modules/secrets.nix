@@ -13,6 +13,26 @@
   # would decrypt nothing, and silently generating one would hide a failed
   # recovery instead of surfacing it.
 
-  # sops.secrets is intentionally empty. This slice establishes the mechanism;
-  # the first real ciphertext arrives with the WireGuard migration.
+  # SSH material. Private keys stay on tmpfs at the mode OpenSSH demands, and
+  # configs/ssh/config points IdentityFile at them rather than having plaintext
+  # written back into ~/.ssh. The host-identifying half of that config is a
+  # secret for a different reason: it names real infrastructure, and this
+  # repository is public.
+  sops.secrets = {
+    id_ed25519_github = {
+      sopsFile = ../secrets/ssh/id_ed25519_github;
+      format = "binary";
+      mode = "0600";
+    };
+    id_ed25519_servers = {
+      sopsFile = ../secrets/ssh/id_ed25519_servers;
+      format = "binary";
+      mode = "0600";
+    };
+    ssh_config_servers = {
+      sopsFile = ../secrets/ssh/ssh_config_servers;
+      format = "binary";
+      mode = "0600";
+    };
+  };
 }

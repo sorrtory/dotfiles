@@ -1,0 +1,21 @@
+# Managed by Home Manager from configs/ssh/config in the dotfiles repository.
+#
+# This file is published. Nothing here may name real infrastructure: host
+# names, login names and ports are not credentials, but together they are a
+# target list, and published history is permanent. Host-identifying blocks are
+# encrypted under secrets/ssh/ and arrive through the Include below.
+#
+# ssh takes the first value it finds for each keyword, so the Include comes
+# first and lets a specific host override anything general set later.
+
+Include ~/.config/sops-nix/secrets/ssh_config_*
+
+AddKeysToAgent yes
+
+Host github.com gh
+    Hostname      github.com
+    User          git
+    IdentityFile  ~/.config/sops-nix/secrets/id_ed25519_github
+
+Host *
+    ServerAliveInterval 20
