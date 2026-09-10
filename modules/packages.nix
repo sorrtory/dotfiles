@@ -27,6 +27,7 @@
     tealdeer
     tree
     wget
+    wireguard-tools
     wl-clipboard
   ];
 
