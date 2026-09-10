@@ -72,6 +72,26 @@
       "proxy-off" = ''
         unset http_proxy https_proxy all_proxy no_proxy NO_PROXY
       '';
+
+      # Thin wrappers over wg-quick until the VPN command replaces them. sudo
+      # cannot resolve a bare name from the Nix profile, and wg-quick wants the
+      # config path rather than an interface name, since the configuration does
+      # not live in /etc/wireguard. Both are easy to get wrong by hand.
+      "wg-up" = ''
+        local device="''${1:-laptop}"
+        local config="$HOME/.config/sops-nix/secrets/wireguard/$device.conf"
+        if [[ ! -r "$config" ]]; then
+          print -u2 "wg-up: no decrypted configuration at $config"
+          return 1
+        fi
+        sudo "$(command -v wg-quick)" up "$config"
+      '';
+
+      "wg-down" = ''
+        local device="''${1:-laptop}"
+        sudo "$(command -v wg-quick)" down \
+          "$HOME/.config/sops-nix/secrets/wireguard/$device.conf"
+      '';
     };
   };
 
