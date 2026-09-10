@@ -63,6 +63,7 @@ fi
 rm "$key_file" "$metadata_file"
 nix_call_log="$RECOVERY_PHASE_TEST_ROOT/nix-call"
 HOME="$test_home" PATH="$mock_bin:$PATH" NIX_CALL_LOG="$nix_call_log" \
+  NIX_DAEMON_PROFILE=/dev/null \
   "$SUBJECT" install >/dev/null
 grep -Eq '^run path:.+#recover-age-identity$' "$nix_call_log" ||
   fail 'the phase should invoke the packaged recovery app'

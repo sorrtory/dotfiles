@@ -8,7 +8,9 @@ readonly BOOTSTRAP_DIR
 . "$BOOTSTRAP_DIR/common/phase.sh"
 
 readonly REPO_ROOT="$(cd -- "$BOOTSTRAP_DIR/../.." && pwd)"
-readonly NIX_DAEMON_PROFILE="/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
+# Overridable so tests can neutralize it: the profile prepends the real Nix
+# to PATH, which would otherwise shadow a mocked nix and run for real.
+readonly NIX_DAEMON_PROFILE="${NIX_DAEMON_PROFILE:-/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh}"
 readonly AGE_KEY_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/sops/age/keys.txt"
 readonly AGE_KEY_METADATA_FILE="${AGE_KEY_FILE}.recovery"
 readonly EXPECTED_AGE_RECIPIENT="age1rmcmjswz8e7fanjzegmug24euprves7p240kkedun2sn4qvqkekqqvkgew"

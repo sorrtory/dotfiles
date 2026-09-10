@@ -46,18 +46,18 @@ chmod +x "$out_link/activate"
 EOF
 chmod +x "$mock_bin/nix"
 
-if HOME="$test_home" PATH="$mock_bin:$PATH" "$SUBJECT" status >/dev/null 2>&1; then
+if HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null 2>&1; then
   fail 'a missing Home Manager profile should leave the phase unsatisfied'
 fi
 
-HOME="$test_home" PATH="$mock_bin:$PATH" "$SUBJECT" install >/dev/null
+HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" install >/dev/null
 [[ "$(<"$test_home/activation.log")" == activated ]] ||
   fail 'install should activate the built Home Manager generation'
-HOME="$test_home" PATH="$mock_bin:$PATH" "$SUBJECT" status >/dev/null ||
+HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null ||
   fail 'the activated repository configuration should satisfy the phase'
 
 printf 'stale\n' >"$test_home/.local/state/dotfiles/home-manager-source.sha256"
-if HOME="$test_home" PATH="$mock_bin:$PATH" "$SUBJECT" status >/dev/null 2>&1; then
+if HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null 2>&1; then
   fail 'a stale repository fingerprint should leave the phase unsatisfied'
 fi
 

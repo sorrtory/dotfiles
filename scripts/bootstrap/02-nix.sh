@@ -9,7 +9,9 @@ readonly BOOTSTRAP_DIR
 
 readonly NIX_INSTALL_URL="https://nixos.org/nix/install"
 readonly NIX_CONFIG_FILE="/etc/nix/nix.conf"
-readonly NIX_DAEMON_PROFILE="/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
+# Overridable so tests can neutralize it: the profile prepends the real Nix
+# to PATH, which would otherwise shadow a mocked nix and run for real.
+readonly NIX_DAEMON_PROFILE="${NIX_DAEMON_PROFILE:-/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh}"
 readonly -a NIX_SHELL_FILES=(
   /etc/bash.bashrc
   /etc/bashrc

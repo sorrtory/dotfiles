@@ -9,7 +9,9 @@ readonly BOOTSTRAP_DIR
 
 REPO_ROOT="$(cd -- "$BOOTSTRAP_DIR/../.." && pwd)"
 readonly REPO_ROOT
-readonly NIX_DAEMON_PROFILE="/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
+# Overridable so tests can neutralize it: the profile prepends the real Nix
+# to PATH, which would otherwise shadow a mocked nix and run for real.
+readonly NIX_DAEMON_PROFILE="${NIX_DAEMON_PROFILE:-/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh}"
 readonly HOME_MANAGER_PROFILE="${XDG_STATE_HOME:-$HOME/.local/state}/nix/profiles/home-manager"
 readonly HOME_MANAGER_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"
 readonly HOME_MANAGER_FINGERPRINT_FILE="$HOME_MANAGER_STATE_DIR/home-manager-source.sha256"
