@@ -41,6 +41,29 @@ without any system change or privileged step. On a machine whose GPU it still
 cannot reach, video output falls back through software rendering rather than
 disappearing — the picture stays, the Anime4K shaders do not.
 
+Those drivers are Mesa, which covers AMD and Intel. **A machine using the
+proprietary Nvidia driver is not covered**, and cannot be by this route: that
+driver's userspace has to match the running kernel module version exactly, so
+it cannot come from a pinned flake without knowing the machine. Symptoms are
+the ones above — no GPU device found, then software rendering and no working
+Anime4K.
+
+For that case, or for a machine where some other Nix program also needs the
+GPU, switch to system-wide drivers instead of MPV's wrapper. Enable Home
+Manager's own module — `targets.genericLinux.gpu.enable`, plus
+`nvidia.enable`, `nvidia.version`, and `nvidia.sha256` for the proprietary
+driver — activate, then create the system link once:
+
+```bash
+sudo "$(readlink -f ~/.nix-profile/bin/non-nixos-gpu-setup)"
+```
+
+That command exists only once that module is enabled. It points
+`/run/opengl-driver` at the Nixpkgs drivers, where every Nix program looks,
+and re-running it is how you update them after a `flake.lock` bump that moves
+the driver packages. Activation checks the link and prints the command when it
+is missing or stale; it never escalates on its own.
+
 ### Running phases individually
 
 ```bash
