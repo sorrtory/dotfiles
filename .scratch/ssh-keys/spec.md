@@ -26,8 +26,9 @@ whether the rest of the design is viable at all.
 In scope:
 
 - Selected SSH private keys as whole-file SOPS ciphertext.
-- `~/.ssh/config`, `known_hosts`, and public keys as ordinary repository
-  material — these are not secrets and should not be treated as such.
+- `~/.ssh/config` and public keys, split between plain repository material and
+  ciphertext. The repository is public, so host names, login names and ports are
+  not credentials but still must not be published; see ticket 03.
 - An explicit procedure for rotating and removing a key.
 
 Out of scope:
