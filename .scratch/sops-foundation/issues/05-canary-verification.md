@@ -1,6 +1,6 @@
 # 05 — Verify decryption end to end with a canary secret
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01, 02, 03, 04
 
 ## Goal
@@ -53,3 +53,37 @@ activating on the staging VM, and checking objectively there.
 - Recorded evidence of each check in step 5, including the store-grep result.
 - A clean host build after the canary is removed.
 - `git status` shows no canary residue.
+
+## Answer
+
+Verified on the staging VM, which already held the identity matching `.sops.yaml`,
+so no vault password was needed.
+
+Evidence, in the order the ticket asks for it:
+
+- The canary encrypted through the `.sops.yaml` creation rule to the configured
+  recipient, which exercises those rules rather than assuming them.
+- The ticket 03 gate accepted it: real ciphertext under `secrets/` passes, which
+  is that ticket's allowed path confirmed against a genuine file.
+- Host `nix flake check` and the activation build both succeeded.
+- Mirrored with `-n` first. The delete list wanted an empty leftover
+  `secrets/wireguard/` on the guest, which was inspected before being removed.
+- Activation through the normal dispatcher succeeded and ran `Activating
+  sops-nix`.
+- The decrypted file matched the plaintext exactly, at mode `0400`, owned by the
+  user, on tmpfs.
+- `activate` contains zero occurrences of `sudo`.
+- No plaintext in the store: scanned all 686 paths of the host closure and the
+  whole generation closure on the VM, both clean. The store copy of the canary
+  is ciphertext.
+- Canary removed; the host build succeeds without it and the working tree
+  matches `HEAD`.
+
+One finding worth more than the canary itself: **undeclaring a secret does not
+remove it from the machine.** After the canary was removed and the VM
+reactivated, the decrypted file, its symlink directory, and a runtime copy of
+the private age identity all remained, because sops-nix gates its entire config
+block on a non-empty secret set and so goes inert rather than cleaning up. The
+VM was cleaned by hand and the behavior is recorded in `docs/DECISIONS.md`,
+since it makes secret removal and key rotation explicit work in the WireGuard
+slice rather than a consequence of editing the module.
