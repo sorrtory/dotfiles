@@ -105,9 +105,78 @@ Replace absolute links and manually cloned plugins with Nixpkgs MPV scripts wher
 
 Specify and ticket intentional GNOME migration. Capture the current dconf state as evidence, retain deliberate preferences, and omit incidental runtime keys.
 
+### 10. Neovim
+
+Let Home Manager own the Neovim package and expose the native Lua
+configuration through `mkOutOfStoreSymlink`. Nix does not own the plugin set:
+`lazy.nvim` keeps its `lazy-lock.json` pins and mason keeps installing
+language servers and formatters, because translating a working 16-plugin
+configuration into Nix would trade live editability for reproducibility this
+repository does not need for an editor.
+
+Nix must supply what that configuration assumes is already present. Ten of the
+sixteen declared language servers are npm packages, so Node.js becomes a
+selected global user tool and the `fnm` PATH shim in `init.lua` is deleted
+rather than reproduced.
+
+The legacy `.vimrc` moves across as ordinary repository material with a
+symlink, not as a migration slice. It has no plugins, the operator does not
+use it, and its own header describes it as a drop-in for remote servers.
+
+### 11. tmux
+
+Let Home Manager own the tmux package and its three plugins, retiring TPM and
+its network clone from the fresh-machine flow. Keep `tmux.conf` readable and
+live-editable through `mkOutOfStoreSymlink`, since `prefix + r` reloads it in
+place and the file is tuned often.
+
+### 12. Yazi
+
+Let Home Manager own Yazi, its native TOML configuration, and the single
+pinned plugin the legacy manager restored. This removes the last legacy Snap
+dependency other than the browser.
+
+### 13. sing-box
+
+Replace the deprecated LXD proxy container with `sing-box` as an unprivileged
+local proxy. It is a granular per-application proxy, not a transparent VPN:
+applications opt in through the proxy environment variables or their own
+settings, and UDP-dependent applications keep using the netns VPN command
+from §7 instead.
+
+Run it as a `systemd` user service with no privilege, tunneling through a
+userspace WireGuard endpoint so no kernel module, TUN device, routing change,
+or resolver change is involved. Expose a `mixed` inbound on
+`127.0.0.1:1080` and an `http` inbound on `127.0.0.1:3128`, which are exactly
+the endpoints the existing `proxy-on` shell alias already exports.
+
+This slice carries the first real ciphertext into `secrets/`, which
+`modules/secrets.nix` was built for and deliberately left empty awaiting. The
+WireGuard profiles become whole-file SOPS secrets shared with §7's privileged
+consumer rather than a second encrypted representation.
+
+LXD, its container, Shadowsocks, and the legacy `iptables` bridge helper are
+retired rather than migrated. The operator retires the host-side machinery by
+reinstalling, so the slice itself removes documentation and repository
+references, not running host state.
+
 ## Additional candidates
 
-Reassess remaining candidates after the core milestone or when dependency analysis promotes one. Likely candidates include native Neovim and Kitty configs, Hyprland and Wofi, tmux configuration, Yazi configuration/plugins, selected helper scripts, and reviewed desktop applications.
+Reassess remaining candidates after the core milestone or when dependency analysis promotes one. Neovim, tmux, and Yazi were promoted into the core milestone as slices 10 to 12.
+
+Firefox under Nix was considered for the core milestone and deliberately left
+out. Taking it off the Ubuntu Snap would make its profile predictable, allow
+declarative preferences, and let it read the encrypted PAC file that Snap
+confinement denies — but none of that is load-bearing for the fresh-machine
+flow, and Snap-supplied Firefox keeps working. The trade is also not free: Nix
+would move browser security updates from Mozilla's cadence onto `flake.lock`
+bumps. The `firefox-nix` effort holds the specified work at `needs-triage`
+until this is reassessed. It depends on the sing-box slice, which produces the
+PAC it wants to encrypt.
+
+The Snap sourcing policy that effort records — `snapd` stays as host-owned
+infrastructure, and no software this repository declares comes from Snap — is
+independent of Firefox's fate and can land on its own. Kitty, Hyprland, Wofi, dunst, tmuxinator, Obsidian configuration, and the legacy VS Code snapshots were reviewed and deliberately dropped rather than deferred. The remaining candidates are selected helper scripts and the desktop applications still awaiting review.
 
 Use `mkOutOfStoreSymlink` only where live editing is intentional. Do not translate a readable native format merely for aesthetics.
 
