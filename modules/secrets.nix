@@ -40,9 +40,11 @@
     # but materializing the phone's and the desktops' keys on a laptop would
     # let one compromised machine impersonate every device on the network.
     #
-    # The name ends in .conf because wg-quick derives the interface name from
-    # the basename, so this decrypts to a path it can be pointed at directly.
-    "wireguard/laptop.conf" = {
+    # wg-quick derives the interface name from the basename, so the secret is
+    # named for the interface and sourced from this machine's device file. That
+    # way every machine brings up wg0 from whichever device it happens to be,
+    # and anything referring to the interface keeps working across machines.
+    "wireguard/wg0.conf" = {
       sopsFile = ../secrets/wireguard/laptop.conf;
       format = "binary";
       mode = "0600";

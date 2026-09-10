@@ -64,8 +64,8 @@
       # configuration does not live in /etc/wireguard. Both are easy to get
       # wrong by hand; neither needs an argument, since this machine decrypts
       # one device configuration.
-      vpn-up = ''sudo "$(command -v wg-quick)" up "$HOME/.config/sops-nix/secrets/wireguard/laptop.conf"'';
-      vpn-down = ''sudo "$(command -v wg-quick)" down "$HOME/.config/sops-nix/secrets/wireguard/laptop.conf"'';
+      vpn-up = ''sudo "$(command -v wg-quick)" up "$HOME/.config/sops-nix/secrets/wireguard/wg0.conf"'';
+      vpn-down = ''sudo "$(command -v wg-quick)" down "$HOME/.config/sops-nix/secrets/wireguard/wg0.conf"'';
     };
 
     siteFunctions = {
