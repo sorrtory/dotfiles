@@ -36,7 +36,11 @@ same ciphertext the `vpn` command will read.
 In scope:
 
 - A Home Manager module running `sing-box` as a systemd **user** service,
-  exposing a single `mixed` inbound (SOCKS5 + HTTP) on `127.0.0.1:1080`.
+  exposing a `mixed` inbound (SOCKS5 + HTTP) on `127.0.0.1:1080` and an
+  `http` inbound on `127.0.0.1:3128`. Those are exactly the two endpoints
+  `modules/programs/zsh.nix` already exports from its `proxy-on` alias, so
+  that module needs no change and `curl`, `wget`, `git` and `codex` work
+  through it unchanged.
 - WireGuard as a userspace `endpoint` (`"system": false`, gVisor netstack) —
   no kernel module, no TUN, no routing or resolver changes, no `sudo`.
 - The first real ciphertext under `secrets/wireguard/`: whole-file

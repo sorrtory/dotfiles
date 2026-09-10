@@ -1,7 +1,8 @@
 # sing-box local proxy
 
 Replace the legacy LXD + shadowsocks proxy with one unprivileged userspace
-process exposing SOCKS5 and HTTP on `127.0.0.1:1080`. The spec records the
+process exposing SOCKS5 and HTTP on `127.0.0.1:1080` and HTTP on
+`127.0.0.1:3128`. The spec records the
 measured evidence and the settled design decisions; see [spec.md](spec.md).
 
 ## Tickets
@@ -9,7 +10,7 @@ measured evidence and the settled design decisions; see [spec.md](spec.md).
 - [01: sing-box as an unprivileged local proxy service](issues/01-singbox-user-service.md) — ready-for-agent.
 - [02: Point Firefox and VS Code at the local proxy](issues/02-point-clients-at-the-proxy.md) — ready-for-agent; blocked by 01.
 - [03: Record the boundary between the proxy and the VPN command](issues/03-record-the-proxy-vpn-boundary.md) — ready-for-agent.
-- [04: Retire the LXD proxy machinery](issues/04-retire-the-lxd-proxy.md) — ready-for-agent; blocked by 02.
+- [04: Retire the LXD proxy machinery](issues/04-retire-the-lxd-proxy.md) — ready-for-agent; blocked by 02. Documentation only: the operator retires the host-side machinery by reinstalling.
 - [05: Transport failover for a blocked protocol](issues/05-transport-failover.md) — needs-info; waiting on which second transport to deploy on the VPS.
 
 ## Context

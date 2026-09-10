@@ -5,7 +5,8 @@ Status: ready-for-agent
 ## Goal
 
 Run `sing-box` as a systemd user service exposing SOCKS5 and HTTP on
-`127.0.0.1:1080`, tunneling through a userspace WireGuard endpoint whose
+`127.0.0.1:1080` and `127.0.0.1:3128`, tunneling through a userspace
+WireGuard endpoint whose
 profile arrives as whole-file SOPS ciphertext. This is the first real
 ciphertext in `secrets/`, which `modules/secrets.nix` was built to carry.
 
@@ -35,9 +36,19 @@ ciphertext in `secrets/`, which `modules/secrets.nix` was built to carry.
    - `[Peer] Endpoint` -> `peers[0].address` and `peers[0].port`
    - `[Peer] PublicKey`, `PresharedKey`, `AllowedIPs` -> the matching fields
    - a fixed `persistent_keepalive_interval` of 25
-   The endpoint must set `"system": false`. A single `mixed` inbound listens on
-   `127.0.0.1` at the configured port. One `direct` outbound, and one route
-   rule sending the inbound to the endpoint tag.
+   The endpoint must set `"system": false`. Two inbounds listen on
+   `127.0.0.1`: a `mixed` inbound on port `1080` and an `http` inbound on
+   port `3128`. One `direct` outbound, and route rules sending both inbounds
+   to the endpoint tag.
+
+   The second inbound is deliberate and is not redundant with `mixed`, which
+   already serves HTTP. `modules/programs/zsh.nix` already ships a `proxy-on`
+   alias exporting `http_proxy` and `https_proxy` as
+   `http://127.0.0.1:3128` and `all_proxy` as `socks5://127.0.0.1:1080`.
+   Matching both endpoints means this slice needs no edit to an already
+   shipped module, and `curl`, `wget`, `git` and `codex` work through
+   `proxy-on` unchanged. Keeping `:1080` as `mixed` rather than `socks` costs
+   nothing and means a client aimed at the wrong port still succeeds.
 5. Define the service in `systemd.user.services`:
    - `Wants` and `After` = `sops-nix.service`, so the profile is decrypted
      before the generator runs
@@ -73,11 +84,13 @@ ciphertext in `secrets/`, which `modules/secrets.nix` was built to carry.
 ## Acceptance
 
 - `nix flake check` passes; the activation package builds.
-- On the staging VM: `curl --proxy socks5h://127.0.0.1:1080` and
-  `--proxy http://127.0.0.1:1080` both return an exit IP different from the
+- On the staging VM: `curl --proxy socks5h://127.0.0.1:1080`,
+  `--proxy http://127.0.0.1:1080` and `--proxy http://127.0.0.1:3128` all
+  return an exit IP different from the
   direct one.
 - While running: zero WireGuard links, zero TUN links, unchanged default route
-  and `/etc/resolv.conf`, and `tcp 127.0.0.1:1080` the only added listener.
+  and `/etc/resolv.conf`, and `tcp 127.0.0.1:1080` plus `tcp 127.0.0.1:3128` the only added
+  listeners.
 - `systemctl --user restart sing-box` recovers without manual steps, and a
   reboot brings the service up with no interactive login.
 - `tests/` covers the generator and passes.
