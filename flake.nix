@@ -24,6 +24,9 @@
         inherit system;
         config.allowUnfreePredicate = package:
           builtins.elem (nixpkgs.lib.getName package) [
+            # mpv-cut ships a custom licence nixpkgs marks unfree; it is a
+            # retained script from the legacy MPV setup, not a new choice.
+            "mpv-cut"
             "obsidian"
             "spotify"
             "sublimetext4"

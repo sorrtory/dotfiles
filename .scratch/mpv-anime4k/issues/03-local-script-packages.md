@@ -1,6 +1,6 @@
 # 03 — Local packages for the three scripts Nixpkgs lacks
 
-Status: ready-for-agent
+Status: claimed
 Blocked by: 01
 
 ## Goal
@@ -48,3 +48,34 @@ Add all three to `programs.mpv.scripts`.
   - hovering the seek bar shows a thumbnail, proving thumbfast and its OSC
     are cooperating;
   - the OSC is not drawn twice.
+
+## Comments
+
+Four local packages rather than three: `packages/mpv-fuzzydir.nix`,
+`packages/mpv-show-filename.nix`, `packages/mpv-thumbfast-osc.nix`, and
+`packages/mpv-reload-sibwaf.nix`. The fourth arrived from ticket 02, whose
+`reload` row named a Nixpkgs attribute that is a different script; see that
+ticket's comments. It builds from the same `sibwaf/mpv-scripts` source
+`fuzzydir` already fetches, so it costs one file and no extra fetch.
+
+`show_filename` packaged without trouble, so the ticket's permission to drop
+it was not needed. Its upstream declares no licence at all, so `meta.license`
+is deliberately left unset rather than guessed.
+
+**The OSC question is answered, and the answer is that nothing in `mpv.conf`
+changes.** The pinned commit's first two statements are
+`mp.set_property("osc", "no")` followed by a check on `mp.get_script_name()`:
+the script disables the builtin OSC itself, then reloads itself to reclaim the
+`osc` script name once the builtin has unloaded. So neither `osc=no` in
+`mpv.conf` nor any special load order is required, which is also why the
+legacy setup never needed `osc=no`. The reclaim matches on a source path
+ending in `osc.lua`; `buildLua` derives that name from `scriptPath`, so the
+installed name is right. This is recorded in the package file so the next
+reader does not re-derive it.
+
+Host verification: all four derivations build, and the wrapper loads all eight
+scripts from `/nix/store` with no Lua errors against the migrated config.
+
+Outstanding: the two behavioral checks are inherently visual and need the VM —
+subtitles auto-loading from a `subs/` subdirectory (proving `fuzzydir`
+resolved `**`), a thumbnail on seek-bar hover, and the OSC not drawn twice.

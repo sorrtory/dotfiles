@@ -3,6 +3,7 @@
 {
   imports = [
     ./modules/packages.nix
+    ./modules/programs/mpv.nix
     ./modules/programs/neovim.nix
     ./modules/programs/ssh.nix
     ./modules/programs/sublime-text.nix

@@ -1,6 +1,6 @@
 # 01 — MPV module and native configuration
 
-Status: ready-for-agent
+Status: claimed
 
 ## Goal
 
@@ -39,3 +39,25 @@ before any script or shader is added to it.
   `~/Documents/dotfiles/configs/mpv/mpv.conf`.
 - `mpv --idle --vo=null` starts and exits cleanly with no configuration
   parse errors on stderr.
+
+## Comments
+
+Implemented on the host. `configs/mpv/mpv.conf` and `configs/mpv/input.conf`
+are byte-identical copies of the legacy files (verified by `sha256sum` before
+ticket 04 edited the shader bindings), `modules/programs/mpv.nix` follows the
+`vscode.nix` shape, and `home.nix` imports it.
+
+`nix build .#homeConfigurations.z.activationPackage` succeeds and the built
+generation's `.config/mpv/{mpv,input}.conf` resolve through their `hm_` store
+symlinks to `~/Documents/dotfiles/configs/mpv/`.
+
+Running the built `mpv` against a copy of the migrated config with
+`--idle=once --vo=null` exits cleanly with no parse errors. Note that a
+`--no-config` run instead produces a `SmartCopyPaste_II` Lua traceback at its
+`join_path` call; that is an artifact of having no config directory, not a
+packaging fault, and it does not appear once a config directory exists.
+
+Outstanding: the VM half of the acceptance. The `rsync` to the staging VM was
+denied by the sandbox in the session that did this work, so activation there,
+and with it the `~/.config/mpv/mpv.conf` resolution check on a real
+activation, has not run.

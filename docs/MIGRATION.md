@@ -105,7 +105,23 @@ Specify, ticket, and rewrite the VPN command. It must create and clean privilege
 
 ### 8. MPV and Anime4K
 
-Replace absolute links and manually cloned plugins with Nixpkgs MPV scripts where available. Package or pin missing dependencies, including Anime4K, and retain readable native MPV configuration when it remains clearer.
+Replace the absolute symlinks and manually cloned plugins with Nixpkgs MPV
+scripts where they exist, and package the rest locally at the pins the legacy
+manager recorded. Anime4K comes from Nixpkgs rather than a local package; its
+flat shader layout is why every `input.conf` shader binding changed. The native
+`mpv.conf` and `input.conf` stay readable and live-editable through
+`mkOutOfStoreSymlink`.
+
+Two scripts are local because Nixpkgs does not carry them, and both are
+load-bearing rather than cosmetic: `fuzzydir` supplies the `**` syntax
+`mpv.conf` depends on, and `thumbfast-osc` is what draws thumbfast's previews.
+
+Two legacy scripts did not survive the slice. `reload` is now the
+better-maintained Nixpkgs script rather than the legacy one of that name — it
+reloads automatically on a stalled cache instead of only on a key press, and
+`input.conf` restores the `Shift+R` the legacy script bound. `show_filename`
+is gone entirely: it was a pinned dependency for a single
+`show-text ${filename}` binding, which `input.conf` now does directly.
 
 ### 9. GNOME
 
