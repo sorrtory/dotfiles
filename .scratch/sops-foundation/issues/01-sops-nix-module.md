@@ -1,6 +1,6 @@
 # 01 — Wire sops-nix into the flake and the user environment
 
-Status: ready-for-agent
+Status: resolved
 
 ## Goal
 
@@ -42,3 +42,20 @@ repository ciphertext into the activated user environment.
   with no secret declared.
 - `flake.lock` gains exactly the sops-nix node and its own inputs; the
   nixpkgs node does not move.
+
+## Answer
+
+Implemented in `8c89030`. sops-nix has no release branch, so the input tracks
+`master`; the deviation from the `nixos-26.05` / `release-26.05` pins is noted
+in `flake.nix`.
+
+Verified: `nix flake check` passes, the activation package builds,
+`config.sops.age.keyFile` evaluates to `/home/z/.config/sops/age/keys.txt`, and
+`flake.lock` gained only the sops-nix node and its `follows` edge with nixpkgs
+and home-manager unmoved. All 12 `tests/*.sh` pass.
+
+Two findings carried forward to ticket 05: sops-nix wraps its whole config
+block in `lib.mkIf (cfg.secrets != { })`, so the module is inert until a secret
+is declared and this build proves wiring rather than decryption; and
+`sops.defaultSopsFile` has no default, so declaring the canary needs either
+that option or a per-secret `sopsFile`.
