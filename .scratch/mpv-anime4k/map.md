@@ -7,14 +7,15 @@ behavior baseline the legacy symlinks currently provide.
 
 ## Tickets
 
-- [01: MPV module and native configuration](issues/01-mpv-module-and-native-config.md) — claimed; implemented and verified on the host.
-- [02: Scripts available from Nixpkgs](issues/02-nixpkgs-scripts.md) — claimed; four of five as specified, `reload` moved to 03.
-- [03: Local packages for the scripts Nixpkgs lacks](issues/03-local-script-packages.md) — claimed; four packages, all building.
-- [04: Anime4K shaders and the input.conf bindings](issues/04-anime4k-shaders.md) — claimed; bindings rewritten, loading unproven.
-- [05: Documentation corrections](issues/05-documentation.md) — claimed; the three documents now describe what shipped.
+- [01: MPV module and native configuration](issues/01-mpv-module-and-native-config.md) — resolved.
+- [02: Scripts available from Nixpkgs](issues/02-nixpkgs-scripts.md) — resolved; `reload` came from Nixpkgs after the version review.
+- [03: Local packages for the scripts Nixpkgs lacks](issues/03-local-script-packages.md) — resolved; one local package, `fuzzydir`.
+- [04: Anime4K shaders and the input.conf bindings](issues/04-anime4k-shaders.md) — resolved; all six modes compile on the GPU path.
+- [05: Documentation corrections](issues/05-documentation.md) — resolved.
+- [06: GPU driver integration for a non-NixOS host](issues/06-gpu-driver-integration.md) — claimed; drivers verified, the privileged symlink step still unrun.
 
-All five are held at `claimed` rather than `resolved` because every ticket's
-acceptance ends on the staging VM, and the VM step has not run.
+Tickets 01 to 05 are resolved against the staging VM. Ticket 06 came out of
+that verification and is the only thing between this slice and completion.
 
 ## Context
 
@@ -27,36 +28,70 @@ acceptance ends on the staging VM, and the VM step has not run.
   has corrected the decision log.
 - The Nixpkgs package lays shaders flat; the legacy checkout nests them. All
   seven `input.conf` shader bindings change as a result — ticket 04.
-- Two of the four local packages are load-bearing rather than optional:
-  `fuzzydir` provides the `**` syntax `mpv.conf` depends on, and
-  `thumbfast-osc` is what draws thumbfast's previews.
+- Only `fuzzydir` ended up local, and it is load-bearing: `mpv.conf` depends
+  on the `**` syntax it provides. Thumbnail drawing moved to `uosc`.
 
-## What the host proved, and what it cannot
+## Verified on the staging VM
 
-Host-side, everything builds and every gate is green: `nix flake check`, the
-activation package, all `tests/*.sh`, and both staged-change gates. The
-`mpv-with-scripts` wrapper loads all eight scripts from `/nix/store`, and the
-migrated config parses without error.
+A normal `bootstrap.sh install home-manager` activated cleanly, and on that
+activation:
 
-Three things are still unproven, and two of them are the point of the slice:
+- `~/.config/mpv/{mpv,input}.conf` resolve to `~/Documents/dotfiles/configs/mpv/`,
+  the shader directory resolves into `/nix/store`, and no path anywhere in the
+  MPV config tree mentions `configs-manager`.
+- All seven scripts in the `mpv-with-scripts` wrapper resolve into `/nix/store`.
+- `fuzzydir` works: a clip in a directory with a sibling `subs/` auto-loaded
+  `subs/clip.srt` as an external subtitle track, which is `sub-file-paths=**`
+  resolving.
+- `uosc` owns the OSC: the `osc` property reads `no` at runtime with nothing in
+  `mpv.conf` saying so.
+- Driving the real bindings over mpv's IPC socket, `CTRL+1` sets exactly the six
+  expected shader paths and every one of those files exists at the activated
+  path; `CTRL+0` clears them. `Shift+ENTER` shows the filename. `R` reaches
+  `script-binding reload/reload_resume` at priority 19, beating mpv's weak
+  builtin `add sub-pos +1` — confirmed by pressing it and seeing `sub-pos`
+  unchanged.
 
-1. **Shader loading.** `--vo=null` never reaches shader compilation, so a
-   deliberately wrong path passes the same check as a correct one. `CTRL+1`
-   through `CTRL+6` need real playback.
-2. **The two visual behaviors** — thumbnails on seek-bar hover and a
-   single OSC — need a display.
-3. **A real activation**, which is what would show whether anything still
-   points into `~/.local/share/configs-manager/`.
+## The GPU path, once the drivers were reachable
 
-The `rsync` to the staging VM was denied by the sandbox in the session that
-did this work, so all three wait on that step.
+No Nix-built program can open a GPU context on a non-NixOS distro until
+`/run/opengl-driver` exists. Pointing one mpv process at the driver set
+`targets.genericLinux.gpu` already builds was enough to lift that for a test,
+and with `VO: [gpu-next]` running:
+
+- every Anime4K mode compiled — `shaderc compile status 'success' (0 errors,
+  0 warnings)`, no shader error in the session, shader counts matching each
+  binding, frames still advancing;
+- uosc drew: two window screenshots of identical size differ in hash across a
+  `flash-timeline`;
+- thumbfast rendered: a 120000-byte BGRA buffer whose contents change per
+  requested timestamp, from the same message uosc sends on hover.
+
+The renderer was llvmpipe rather than the host's RADV. Compilation is
+driver-side, so this proves correctness, not performance. Ticket 06 carries
+the remaining privileged step.
 
 ## Deviations from the tickets
 
-- Ticket 02's `reload` row named `mpvScripts.reload`, which is a different
-  script by a different author with a different key binding. It is now a local
-  package, and the operator can still choose the Nixpkgs one instead.
+- `reload` is Nixpkgs' script (4e6), not the legacy sibwaf one the ticket
+  table implied; `input.conf` restores the `Shift+R` binding. The operator
+  explicitly preferred better versions over legacy fidelity.
+- `show_filename` is not packaged at all. It was one `show-text ${filename}`
+  binding, which `input.conf` now does directly.
+- `thumbfast`'s source is overridden to upstream head, one commit past the
+  Nixpkgs pin, for the non-darwin environment-stripping fix.
+- `uosc` replaces the vanilla-OSC fork, on the operator's choice, retiring the
+  second local package.
+- `mpv.conf` is verbatim apart from `hwdec`, now `auto-safe` rather than `no`,
+  on the operator's choice.
 - `mpv-cut` is unfree in Nixpkgs, so `flake.nix` names it in
   `allowUnfreePredicate`.
-- Ticket 03's OSC question resolved to "no `mpv.conf` change": the fork
-  disables the builtin OSC itself.
+- Ticket 03's OSC question resolved to "no `mpv.conf` change" either way: both
+  the fork and uosc set `osc` to `no` themselves, confirmed at runtime.
+
+## Still on the table
+
+Nothing on versions: every remaining pin was checked against upstream and is
+current. `profile=gpu-hq` in `mpv.conf` is left as-is because mpv 0.41 expands
+it to exactly `profile=high-quality` — renaming it is cosmetic and changes no
+behavior.

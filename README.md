@@ -33,6 +33,21 @@ phases run unattended; the table says where one stops to ask you for something:
 **Then open a new login session.** The new shell, `PATH`, and Docker group
 membership only take effect there.
 
+### GPU-accelerated programs
+
+Nix-built graphical programs cannot use a non-NixOS distro's GPU drivers, so
+until this runs, MPV falls back to software output and its Anime4K shaders do
+not load at all. Home Manager builds matching drivers from Nixpkgs; pointing
+the system at them needs root once per machine:
+
+```bash
+sudo "$(readlink -f ~/.nix-profile/bin/non-nixos-gpu-setup)"
+```
+
+Activation never runs this itself — it only checks `/run/opengl-driver` and
+prints the command when it is missing or stale. Re-run it after a `flake.lock`
+update that moves the driver packages; the activation warning says when.
+
 ### Running phases individually
 
 ```bash
