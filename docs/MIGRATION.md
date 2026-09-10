@@ -77,7 +77,12 @@ Let Home Manager own `.zshrc`. Preserve selected aliases, history, environment v
 
 ### 5. WireGuard
 
-Recreate selected WireGuard configurations as whole-file SOPS ciphertext. Keep decryption user-owned and deployment to `/etc/wireguard/` explicit and privileged.
+Recreate selected WireGuard configurations as whole-file SOPS ciphertext,
+decrypted to a user-owned path. There is no privileged deployment step and
+nothing for the bootstrap flow to do: `wg-quick` accepts a config file path, so
+`/etc/wireguard/` is unnecessary and the configuration never lands root-owned on
+disk. Bringing an interface up needs privilege and belongs to the VPN command in
+the next slice. See `docs/DECISIONS.md`.
 
 ### 6. SSH keys and configuration
 
@@ -86,12 +91,13 @@ Recreate selected SSH private keys as whole-file SOPS ciphertext, and migrate
 rather than as secrets. This reverses the earlier position that SSH keys stay
 machine-local; `docs/DECISIONS.md` records the reversal and the risk it accepts.
 
-Reuse the conventions established by the WireGuard slice rather than inventing
-new ones. Prefer pointing `IdentityFile` at the decrypted path over writing
-private keys into `~/.ssh/`, so plaintext stays on tmpfs; verify that OpenSSH
-accepts a key reached that way and at the mode sops-nix assigns. Select keys
-deliberately: one that identifies a machine rather than the operator is a
-candidate for removal instead of migration.
+This slice ran ahead of WireGuard and so established the whole-file ciphertext
+conventions rather than reusing them; WireGuard now follows it. `IdentityFile`
+points at the decrypted path rather than plaintext being written into `~/.ssh/`,
+which keeps keys on tmpfs — OpenSSH was verified to accept a key reached that
+way at the mode sops-nix assigns. Keys are selected deliberately: one that
+identifies a machine rather than the operator is a candidate for removal instead
+of migration.
 
 ### 7. VPN command
 
