@@ -40,12 +40,23 @@
     # but materializing the phone's and the desktops' keys on a laptop would
     # let one compromised machine impersonate every device on the network.
     #
-    # wg-quick derives the interface name from the basename, so the secret is
-    # named for the interface and sourced from this machine's device file. That
-    # way every machine brings up wg0 from whichever device it happens to be,
-    # and anything referring to the interface keeps working across machines.
+    # wg-quick derives the interface name from the basename, so these are named
+    # for the interface and sourced from the file that supplies it. Numbering
+    # them by role rather than by device means every machine brings up the same
+    # two interfaces, and anything naming one keeps working across machines.
+    #
+    # wg0 is the primary tunnel this machine uses, sourced from its own device
+    # configuration. wg1 is the secondary one, used occasionally to put a single
+    # application on the other side; it is shared rather than per-device, which
+    # is why it is the same file on every machine.
     "wireguard/wg0.conf" = {
       sopsFile = ../secrets/wireguard/laptop.conf;
+      format = "binary";
+      mode = "0600";
+    };
+
+    "wireguard/wg1.conf" = {
+      sopsFile = ../secrets/wireguard/extra.conf;
       format = "binary";
       mode = "0600";
     };
