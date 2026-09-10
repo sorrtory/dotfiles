@@ -52,11 +52,13 @@ shell plugins, history policy, and zoxide integration. It preserves the small
 safe alias baseline and local proxy toggles. Neovim owns the single default
 editor selection through its Home Manager module.
 Runtime managers, media conversion, and integrations for deferred programs stay
-with their respective future slices. The exception is a pair of `wg-up` and
-`wg-down` shell functions, which exist because invoking `wg-quick` by hand needs
-both an absolute path for `sudo` and a config path rather than an interface
-name. They wrap an existing command rather than implementing privileged
-networking, and the VPN command supersedes them. The custom
+with their respective future slices. The exception is a pair of `vpn-up` and
+`vpn-down` aliases, which exist because invoking `wg-quick` by hand needs both
+an absolute path for `sudo` and a config path rather than an interface name.
+They stay aliases rather than functions: this machine decrypts one device
+configuration, so there is nothing to parameterize. They wrap an existing
+command rather than implementing privileged networking, and the VPN command
+supersedes them. The custom
 tmux and file-navigation helpers, unused Powerlevel10k setup, and zsh-lazyload
 setup are retired rather than reproduced. The host package supplies a stable
 login-shell path, and the explicit `login-shell` bootstrap phase selects it;

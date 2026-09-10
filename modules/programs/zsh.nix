@@ -58,6 +58,14 @@
       path = "readlink -f";
       dps = ''docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Ports}}"'';
       dpss = ''docker ps --format "table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.RunningFor}}\t{{.Status}}\t{{.Size}}\t{{.Ports}}"'';
+
+      # sudo cannot resolve a bare name from the Nix profile, and wg-quick
+      # wants the config path rather than an interface name because the
+      # configuration does not live in /etc/wireguard. Both are easy to get
+      # wrong by hand; neither needs an argument, since this machine decrypts
+      # one device configuration.
+      vpn-up = ''sudo "$(command -v wg-quick)" up "$HOME/.config/sops-nix/secrets/wireguard/laptop.conf"'';
+      vpn-down = ''sudo "$(command -v wg-quick)" down "$HOME/.config/sops-nix/secrets/wireguard/laptop.conf"'';
     };
 
     siteFunctions = {
@@ -71,26 +79,6 @@
 
       "proxy-off" = ''
         unset http_proxy https_proxy all_proxy no_proxy NO_PROXY
-      '';
-
-      # Thin wrappers over wg-quick until the VPN command replaces them. sudo
-      # cannot resolve a bare name from the Nix profile, and wg-quick wants the
-      # config path rather than an interface name, since the configuration does
-      # not live in /etc/wireguard. Both are easy to get wrong by hand.
-      "wg-up" = ''
-        local device="''${1:-laptop}"
-        local config="$HOME/.config/sops-nix/secrets/wireguard/$device.conf"
-        if [[ ! -r "$config" ]]; then
-          print -u2 "wg-up: no decrypted configuration at $config"
-          return 1
-        fi
-        sudo "$(command -v wg-quick)" up "$config"
-      '';
-
-      "wg-down" = ''
-        local device="''${1:-laptop}"
-        sudo "$(command -v wg-quick)" down \
-          "$HOME/.config/sops-nix/secrets/wireguard/$device.conf"
       '';
     };
   };
