@@ -34,11 +34,69 @@ the password is 'z'
 
 use ~/Documents/dotfiles/ as a guest repo
 
+### Mirroring the working tree
+
+The host is always the source of truth. The VM mirrors it and never syncs back,
+so anything that exists only on the guest is disposable, and every edit, commit,
+and test starts on the host. The guest copy is a plain directory rather than a
+clone, so Git operations stay on the host.
+
+This single command is the supported way to send the tree. Run it from the
+repository root:
+
+```bash
+rsync -ai --delete \
+  --exclude='.git/' --exclude='.scratch/' --exclude='result' --exclude='result-*' \
+  ./ z@192.168.122.214:~/Documents/dotfiles/
+```
+
+`-a` preserves modes, timestamps, and symlinks; `-i` reports exactly which files
+changed, which is what makes an unexpected transfer visible; and `--delete` is
+what makes the guest a mirror instead of a pile of accumulated leftovers. Repeat
+the command with `-n` first whenever the delete list matters. Do not add `-z`:
+the tree is small text over a local bridge, so compression costs more than the
+transfer.
+
+Each exclusion is load-bearing:
+
+- `.git/` keeps history on the host, where all Git operations belong.
+- `.scratch/` is host-side coordination material, not part of the flow.
+- `result` and `result-*` are guest build outputs pointing into the guest
+  `/nix/store`. They cannot come from the host, and without excluding them
+  `--delete` removes the very symlink `./result/activate` needs.
+
+`--delete` never removes an excluded path, which is what keeps `result` alive.
+The same protection means an excluded directory left by an earlier sync goes
+stale rather than disappearing, so remove a leftover guest `.scratch/` by hand
+when it is in the way.
+
+Then activate through the normal dispatcher:
+
+```bash
+ssh z@192.168.122.214 'cd ~/Documents/dotfiles && ./scripts/bootstrap.sh install home-manager'
+```
+
+A non-interactive `ssh` command runs without Nix on `PATH`. Bootstrap phases
+load the daemon profile themselves, but repository tooling that calls `nix`
+directly does not, so prefix those with
+`. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh &&`.
+
+On the host, evaluate and build without activating:
+
+```bash
+nix flake check
+nix build .#homeConfigurations.z.activationPackage
+```
+
+Activate a built generation directly with `./result/activate` only on the
+staging VM, or on the host after explicit operator approval.
+
 ## Project map
 
 ```text
 .
 ├── AGENTS.md
+├── CLAUDE.md               # pointer to AGENTS.md
 ├── CONTEXT.md
 ├── README.md
 ├── docs/
