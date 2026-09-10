@@ -40,22 +40,22 @@
     # but materializing the phone's and the desktops' keys on a laptop would
     # let one compromised machine impersonate every device on the network.
     #
-    # wg-quick derives the interface name from the basename, so these are named
-    # for the interface and sourced from the file that supplies it. Numbering
-    # them by role rather than by device means every machine brings up the same
-    # two interfaces, and anything naming one keeps working across machines.
+    # Named after the file they come from, so a path says what it is without a
+    # lookup. wg-quick takes the interface name from the basename, so these
+    # bring up `laptop` and `extra` rather than wg0 and wg1. A generic name
+    # would only pay off once something shared between machines refers to an
+    # interface by name, and nothing does; when something does, renaming the
+    # one that needs it is a line here.
     #
-    # wg0 is the primary tunnel this machine uses, sourced from its own device
-    # configuration. wg1 is the secondary one, used occasionally to put a single
-    # application on the other side; it is shared rather than per-device, which
-    # is why it is the same file on every machine.
-    "wireguard/wg0.conf" = {
+    # laptop is this machine's own tunnel. extra is shared across machines and
+    # used to put a single application on the other side rather than the host.
+    "wireguard/laptop.conf" = {
       sopsFile = ../secrets/wireguard/laptop.conf;
       format = "binary";
       mode = "0600";
     };
 
-    "wireguard/wg1.conf" = {
+    "wireguard/extra.conf" = {
       sopsFile = ../secrets/wireguard/extra.conf;
       format = "binary";
       mode = "0600";
