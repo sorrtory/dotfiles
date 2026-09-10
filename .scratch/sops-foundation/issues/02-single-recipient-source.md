@@ -1,6 +1,6 @@
 # 02 — Make `.sops.yaml` the only place the recipient is written
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 ## Goal
@@ -62,3 +62,24 @@ exact string".
 - A deliberately edited `.sops.yaml` recipient makes recovery reject the
   KeePassXC attachment, proving the two are actually coupled. Add this as a
   test case.
+
+## Answer
+
+Implemented, deviating from work item 2. Rather than extracting the recipient in
+Nix and injecting it at build time, the build copies `.sops.yaml` and the shared
+`sops-config.sh` helper into the store by content and points the packaged script
+at them. Both contexts therefore run the same single extraction, instead of a
+Nix implementation and a shell one that could disagree. The ticket's constraints
+still hold: only the public recipient passes through Nix, and no YAML parser
+entered the recovery closure.
+
+Two findings from review:
+
+- The first matcher was unanchored, so a recipient longer than 58 characters
+  silently matched its own prefix and returned a truncated value — which
+  verifies against a key nothing was encrypted to, and is worse than failing.
+  The file is now split into whole tokens first, and that case is a test.
+- The repository-checkout fallback resolves through `BASH_SOURCE`, so invoking
+  the script through a symlink breaks it. Left alone: every script in this
+  repository shares that pattern, so it is a repo-wide question rather than
+  this ticket's.
