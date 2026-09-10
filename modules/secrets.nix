@@ -34,5 +34,18 @@
       format = "binary";
       mode = "0600";
     };
+
+    # Only this machine's WireGuard identity is decrypted here. All six device
+    # configurations are kept as ciphertext so any machine can recover its own,
+    # but materializing the phone's and the desktops' keys on a laptop would
+    # let one compromised machine impersonate every device on the network.
+    #
+    # The name ends in .conf because wg-quick derives the interface name from
+    # the basename, so this decrypts to a path it can be pointed at directly.
+    "wireguard/laptop.conf" = {
+      sopsFile = ../secrets/wireguard/laptop.conf;
+      format = "binary";
+      mode = "0600";
+    };
   };
 }
