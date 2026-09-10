@@ -134,6 +134,11 @@ accelerate still shows a picture, and `gpu-api` becomes `auto`. The drivers
 themselves come from Nixpkgs through the MPV wrapper, because a Nix program
 cannot use the distro's; see `docs/DECISIONS.md`.
 
+Shipped and confirmed under normal use on the host. The legacy
+`~/Documents/configs/mpv/` tree is deliberately left in place: it is retired
+with the rest of the legacy repository when the operator reinstalls, not by
+this slice.
+
 ### 9. GNOME
 
 Specify and ticket intentional GNOME migration. Capture the current dconf state as evidence, retain deliberate preferences, and omit incidental runtime keys.

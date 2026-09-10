@@ -91,6 +91,23 @@ nix build .#homeConfigurations.z.activationPackage
 Activate a built generation directly with `./result/activate` only on the
 staging VM, or on the host after explicit operator approval.
 
+### What the VM cannot verify
+
+The guest has no usable GPU. It runs an X session on a virtual adapter whose
+only renderer is software, and mpv-class programs refuse a software renderer by
+design, so anything that needs a real GPU context — shaders, hardware decoding,
+GPU-accelerated compositing — cannot be judged there. A GPU feature can be
+shown to be *correct* on the VM by forcing the software device, which is enough
+for compilation and code paths, but never that it performs. Confirming that
+belongs to the host, under normal use.
+
+Prefer objective checks driven through the program's own control interface over
+reading logs and assuming. Where a program exposes one — mpv's IPC socket is
+the worked example — a check can press the actual key binding and read back the
+resulting state, which catches things inspection does not: a binding that
+parses but never binds, a property no configuration file mentions, a script
+that loads but draws nothing.
+
 ## Project map
 
 ```text
