@@ -11,6 +11,7 @@ readonly BOOTSTRAP_DIR
 readonly -a REQUIRED_COMMANDS=(
   curl
   git
+  zsh
 )
 
 check() {

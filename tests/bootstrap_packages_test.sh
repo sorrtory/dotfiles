@@ -20,7 +20,7 @@ cat >"$PACKAGES_TEST_ROOT/bin/sudo" <<'EOF'
 printf '%s\n' "$*" >>"$PACKAGE_LOG"
 for argument in "$@"; do
   case "$argument" in
-  git | curl)
+  git | curl | zsh)
     printf '#!/bin/sh\nexit 0\n' >"$FAKE_BIN/$argument"
     /bin/chmod +x "$FAKE_BIN/$argument"
     ;;
@@ -50,7 +50,8 @@ run_adapter() {
 
   printf 'ID=%s\nID_LIKE="%s"\n' "$id" "$id_like" >"$os_release"
   : >"$package_log"
-  rm -f "$PACKAGES_TEST_ROOT/bin/git" "$PACKAGES_TEST_ROOT/bin/curl"
+  rm -f "$PACKAGES_TEST_ROOT/bin/git" "$PACKAGES_TEST_ROOT/bin/curl" \
+    "$PACKAGES_TEST_ROOT/bin/zsh"
 
   PATH="$PACKAGES_TEST_ROOT/bin" \
     PACKAGE_LOG="$package_log" \
@@ -75,7 +76,8 @@ run_adapter arch '' 'pacman -S --needed --noconfirm git curl'
 
 : >"$PACKAGES_TEST_ROOT/packages.log"
 printf 'ID=alpine\nID_LIKE=""\n' >"$PACKAGES_TEST_ROOT/os-release"
-rm -f "$PACKAGES_TEST_ROOT/bin/git" "$PACKAGES_TEST_ROOT/bin/curl"
+rm -f "$PACKAGES_TEST_ROOT/bin/git" "$PACKAGES_TEST_ROOT/bin/curl" \
+  "$PACKAGES_TEST_ROOT/bin/zsh"
 if PATH="$PACKAGES_TEST_ROOT/bin" \
   PACKAGE_LOG="$PACKAGES_TEST_ROOT/packages.log" \
   FAKE_BIN="$PACKAGES_TEST_ROOT/bin" \
@@ -108,9 +110,9 @@ output="$(
     BOOTSTRAP_OS_RELEASE_FILE="$PACKAGES_TEST_ROOT/os-release" \
     "$PACKAGES_TEST_ROOT/bootstrap/01-host-deps.sh" install
 )"
-[[ "$output" == $'[host-deps] installing required host commands: curl git\n[host-deps] required commands available: curl git' ]] ||
+[[ "$output" == $'[host-deps] installing required host commands: curl git zsh\n[host-deps] required commands available: curl git zsh' ]] ||
   fail 'the host-deps phase should install and verify its authoritative command list'
-[[ "$(<"$PACKAGES_TEST_ROOT/packages.log")" == $'apt-get update\napt-get install -y curl git' ]] ||
+[[ "$(<"$PACKAGES_TEST_ROOT/packages.log")" == $'apt-get update\napt-get install -y curl git zsh' ]] ||
   fail 'the host-deps phase should use the detected host package manager'
 
 if output="$(

@@ -38,8 +38,9 @@ adds the invoking user to the `docker` group. Its explicit uninstall removes
 the packages, repository configuration, group membership, and all local Docker
 data, including images, containers, and volumes. See the canonical
 [bootstrap policy](docs/DECISIONS.md#bootstrap-policy) for the phase contract.
-Open a new login session after bootstrap completes so PATH and Docker group
-membership are both current.
+The final `login-shell` phase selects the distro-provided Zsh for the account.
+Open a new login session after bootstrap completes so the new shell, PATH, and
+Docker group membership are all current.
 
 The recovery app is also directly available for focused recovery or diagnosis:
 

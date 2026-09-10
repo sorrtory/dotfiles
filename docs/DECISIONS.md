@@ -47,6 +47,23 @@ Keep a readable native config when translating it to Nix would reduce clarity. U
 
 Home Manager should eventually own Zsh, Git, tmux, MPV, Yazi, and intentional GNOME dconf settings. Migration may preserve selected native configuration first and translate it later.
 
+The Zsh module owns the shell package, generated startup files, Oh My Zsh,
+shell plugins, history policy, and zoxide integration. It preserves the small
+safe alias baseline and local proxy toggles. Neovim owns the single default
+editor selection through its Home Manager module.
+Privileged networking, runtime managers, media conversion, and integrations
+for deferred programs stay with their respective future slices. The custom
+tmux and file-navigation helpers, unused Powerlevel10k setup, and zsh-lazyload
+setup are retired rather than reproduced. The host package supplies a stable
+login-shell path, and the explicit `login-shell` bootstrap phase selects it;
+normal Home Manager activation never changes the account shell.
+Because Debian-family `/etc/zsh/zprofile` does not source `/etc/profile`, the
+Zsh module loads the multi-user Nix profile script itself; otherwise the
+selected login shell would start without the user environment on `PATH` or
+`NIX_PROFILES`.
+The phase's explicit uninstall selects the stable host Bash rather than trying
+to infer historical account state.
+
 GNOME and Hyprland concerns remain separate. GNOME should use `dconf.settings` where practical; Hyprland may remain native and live-linked if that is clearer.
 
 ## Bootstrap policy

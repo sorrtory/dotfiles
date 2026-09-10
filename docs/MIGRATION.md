@@ -73,7 +73,7 @@ Review the desktop application inventory separately. Docker remains host-owned e
 
 ### 4. Zsh
 
-Let Home Manager own `.zshrc`. Preserve selected aliases, history, environment variables, options, and plugins, but remove redundant legacy setup. Changing the login shell remains an explicit host/bootstrap operation.
+Let Home Manager own `.zshrc`. Preserve selected aliases, history, environment variables, options, and plugins, but remove redundant legacy setup. The host prerequisites provide a stable distro Zsh, and the explicit `login-shell` bootstrap phase selects it after Home Manager activation.
 
 ### 5. WireGuard
 
@@ -111,8 +111,9 @@ The intended flow is:
 4. authenticate GitHub when `03-secret-recovery` invokes the flake recovery app and clones the private recovery repository
 5. enter the main KeePassXC vault password so the phase can restore and verify the private age identity
 6. let `04-home-manager` build and activate the normal profile with sops-nix secrets available
-7. open a new login shell
-8. run explicit privileged host setup where required
-9. authenticate any remaining mutable sessions once on that machine
+7. let the final `login-shell` phase select the host-owned Zsh
+8. open a new login shell
+9. run explicit privileged host setup where required
+10. authenticate any remaining mutable sessions once on that machine
 
 The repository currently targets the `z` user on `x86_64-linux`; broader host/user parameterization is a later migration decision.
