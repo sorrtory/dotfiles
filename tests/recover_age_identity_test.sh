@@ -143,4 +143,65 @@ if find "$(dirname -- "$unresolved_key_file")" -maxdepth 1 \
   fail 'a failing export should leave no temporary identity material'
 fi
 
+# The configured recipient comes from .sops.yaml, so a config naming a
+# different recipient must reject an otherwise valid attachment. This is what
+# couples recovery to the file encryption actually uses.
+run_with_config() {
+  local config="$1" target="$2"
+
+  printf '\n' | env \
+    PATH="$mock_bin:$PATH" \
+    RECOVERY_CALL_LOG="$call_log" \
+    RECOVERY_REPOSITORY_DIR="$recovery_repo" \
+    AGE_KEY_FILE="$target" \
+    SOPS_CONFIG_FILE="$config" \
+    MOCK_AGE_RECIPIENT="${MOCK_AGE_RECIPIENT:-age1rmcmjswz8e7fanjzegmug24euprves7p240kkedun2sn4qvqkekqqvkgew}" \
+    "$SUBJECT" install
+}
+
+other_config="$RECOVERY_TEST_ROOT/other.sops.yaml"
+printf 'keys:\n  - &z age1%s\n' "$(printf 'q%.0s' {1..58})" >"$other_config"
+mismatch_key_file="$RECOVERY_TEST_ROOT/mismatch/config/sops/age/keys.txt"
+if run_with_config "$other_config" "$mismatch_key_file" >/dev/null 2>&1; then
+  fail 'an attachment not matching .sops.yaml should be rejected'
+fi
+[[ ! -e "$mismatch_key_file" ]] ||
+  fail 'an attachment not matching .sops.yaml must not be installed'
+
+# A config the recipient cannot be read from is a repository error, not a
+# reason to fall back to some other value.
+empty_config="$RECOVERY_TEST_ROOT/empty.sops.yaml"
+printf 'creation_rules: []\n' >"$empty_config"
+empty_key_file="$RECOVERY_TEST_ROOT/empty/config/sops/age/keys.txt"
+if run_with_config "$empty_config" "$empty_key_file" >/dev/null 2>&1; then
+  fail 'a config naming no recipient should fail loudly'
+fi
+
+ambiguous_config="$RECOVERY_TEST_ROOT/ambiguous.sops.yaml"
+{
+  printf 'keys:\n'
+  printf '  - &a age1%s\n' "$(printf 'q%.0s' {1..58})"
+  printf '  - &b age1%s\n' "$(printf 'p%.0s' {1..58})"
+} >"$ambiguous_config"
+ambiguous_key_file="$RECOVERY_TEST_ROOT/ambiguous/config/sops/age/keys.txt"
+if run_with_config "$ambiguous_config" "$ambiguous_key_file" >/dev/null 2>&1; then
+  fail 'a config naming several recipients should fail loudly'
+fi
+
+# A recipient that is too long must not contribute its first 58 characters as
+# if they were a valid one; a truncated recipient verifies against a key
+# nothing was encrypted to.
+overlong_config="$RECOVERY_TEST_ROOT/overlong.sops.yaml"
+printf 'keys:\n  - &z age1%szz\n' "$(printf 'q%.0s' {1..58})" >"$overlong_config"
+overlong_key_file="$RECOVERY_TEST_ROOT/overlong/config/sops/age/keys.txt"
+if run_with_config "$overlong_config" "$overlong_key_file" >/dev/null 2>&1; then
+  fail 'a malformed recipient should fail loudly rather than be truncated'
+fi
+
+missing_config="$RECOVERY_TEST_ROOT/absent.sops.yaml"
+missing_key_file="$RECOVERY_TEST_ROOT/absent/config/sops/age/keys.txt"
+if run_with_config "$missing_config" "$missing_key_file" >/dev/null 2>&1; then
+  fail 'a missing config should fail loudly'
+fi
+
 printf 'recover age identity tests passed\n'

@@ -9,6 +9,7 @@ readonly -a COMMON_FILES=(
   scripts/bootstrap/common/phase.sh
   scripts/bootstrap/common/output.sh
   scripts/bootstrap/common/packages.sh
+  scripts/bootstrap/common/sops-config.sh
 )
 
 usage() {

@@ -190,8 +190,14 @@ readonly RECOVERY_ENTRY="${RECOVERY_ENTRY:-Encryption Keys/sops}"
 readonly RECOVERY_ATTACHMENT="${RECOVERY_ATTACHMENT:-keys.txt}"
 readonly AGE_KEY_FILE="${AGE_KEY_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/sops/age/keys.txt}"
 readonly AGE_KEY_METADATA_FILE="${AGE_KEY_METADATA_FILE:-${AGE_KEY_FILE}.recovery}"
-readonly EXPECTED_AGE_RECIPIENT="age1rmcmjswz8e7fanjzegmug24euprves7p240kkedun2sn4qvqkekqqvkgew"
+# The packaged build points both of these at its own store copies; a repository
+# checkout falls back to the working tree.
+readonly SOPS_CONFIG_LIB="${SOPS_CONFIG_LIB:-$(dirname -- "${BASH_SOURCE[0]}")/../bootstrap/common/sops-config.sh}"
+readonly SOPS_CONFIG_FILE="${SOPS_CONFIG_FILE:-$(dirname -- "${BASH_SOURCE[0]}")/../../.sops.yaml}"
 RECOVERY_TEMP_DIR=""
+
+# shellcheck disable=SC1090
+. "$SOPS_CONFIG_LIB"
 
 cleanup_recovery_temp() {
   if [[ -n "$RECOVERY_TEMP_DIR" && -d "$RECOVERY_TEMP_DIR" ]]; then
@@ -205,6 +211,10 @@ die() {
   printf 'recover-age-identity: %s\n' "$1" >&2
   exit 1
 }
+
+EXPECTED_AGE_RECIPIENT="$(sops_config_recipient "$SOPS_CONFIG_FILE")" || die \
+  'cannot read the configured age recipient'
+readonly EXPECTED_AGE_RECIPIENT
 
 file_mode() {
   stat -c '%a' "$1"

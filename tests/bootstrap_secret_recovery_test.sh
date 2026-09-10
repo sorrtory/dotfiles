@@ -68,4 +68,26 @@ HOME="$test_home" PATH="$mock_bin:$PATH" NIX_CALL_LOG="$nix_call_log" \
 grep -Eq '^run path:.+#recover-age-identity$' "$nix_call_log" ||
   fail 'the phase should invoke the packaged recovery app'
 
+# The phase reads the expected recipient from .sops.yaml too, so metadata that
+# satisfied it above must stop satisfying it under a config naming another
+# recipient.
+printf 'test identity\n' >"$key_file"
+chmod 600 "$key_file"
+hash="$(sha256sum "$key_file")"
+hash="${hash%% *}"
+{
+  printf 'recipient=%s\n' 'age1rmcmjswz8e7fanjzegmug24euprves7p240kkedun2sn4qvqkekqqvkgew'
+  printf 'sha256=%s\n' "$hash"
+} >"$metadata_file"
+chmod 600 "$metadata_file"
+
+HOME="$test_home" "$SUBJECT" status >/dev/null ||
+  fail 'metadata matching the repository config should satisfy the phase'
+
+other_config="$RECOVERY_PHASE_TEST_ROOT/other.sops.yaml"
+printf 'keys:\n  - &z age1%s\n' "$(printf 'q%.0s' {1..58})" >"$other_config"
+if HOME="$test_home" SOPS_CONFIG_FILE="$other_config" "$SUBJECT" status >/dev/null 2>&1; then
+  fail 'metadata should not satisfy the phase under a different configured recipient'
+fi
+
 printf 'bootstrap secret recovery tests passed\n'

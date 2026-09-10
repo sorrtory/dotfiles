@@ -2,9 +2,10 @@
 #
 # sops reads this file when encrypting, so the recipient named here is the one
 # ciphertext under secrets/ is actually written to. That is what makes it the
-# intended single source of truth for the recipient; see docs/DECISIONS.md,
-# "Secrets and authentication". The secret-recovery scripts still carry their
-# own copies of the literal and are being consolidated onto this file.
+# single source of truth for the recipient: the secret-recovery phase and the
+# recovery app both read it back from here rather than restating it, so an
+# identity can never verify against a recipient ciphertext is not written to.
+# See docs/DECISIONS.md, "Secrets and authentication".
 #
 # Only the public recipient belongs here. The matching private identity lives
 # outside Git at ~/.config/sops/age/keys.txt and is restored by the

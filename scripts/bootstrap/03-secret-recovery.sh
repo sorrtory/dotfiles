@@ -6,14 +6,17 @@ BOOTSTRAP_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly BOOTSTRAP_DIR
 # shellcheck disable=SC1091
 . "$BOOTSTRAP_DIR/common/phase.sh"
+# shellcheck disable=SC1091
+. "$BOOTSTRAP_DIR/common/sops-config.sh"
 
-readonly REPO_ROOT="$(cd -- "$BOOTSTRAP_DIR/../.." && pwd)"
+REPO_ROOT="$(cd -- "$BOOTSTRAP_DIR/../.." && pwd)"
+readonly REPO_ROOT
 # Overridable so tests can neutralize it: the profile prepends the real Nix
 # to PATH, which would otherwise shadow a mocked nix and run for real.
 readonly NIX_DAEMON_PROFILE="${NIX_DAEMON_PROFILE:-/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh}"
 readonly AGE_KEY_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/sops/age/keys.txt"
 readonly AGE_KEY_METADATA_FILE="${AGE_KEY_FILE}.recovery"
-readonly EXPECTED_AGE_RECIPIENT="age1rmcmjswz8e7fanjzegmug24euprves7p240kkedun2sn4qvqkekqqvkgew"
+readonly SOPS_CONFIG_FILE="${SOPS_CONFIG_FILE:-$REPO_ROOT/.sops.yaml}"
 
 load_nix_profile() {
   if [[ -r "$NIX_DAEMON_PROFILE" ]]; then
@@ -23,7 +26,11 @@ load_nix_profile() {
 }
 
 check() {
-  local actual_hash expected_hash mode recipient
+  local actual_hash expected_hash expected_recipient mode recipient
+
+  # A repository that does not name exactly one recipient cannot be inspected,
+  # which the phase contract distinguishes from being unsatisfied.
+  expected_recipient="$(sops_config_recipient "$SOPS_CONFIG_FILE")" || return 2
 
   if [[ ! -f "$AGE_KEY_FILE" || -L "$AGE_KEY_FILE" ]]; then
     phase_info 'age identity is not recovered'
@@ -42,7 +49,7 @@ check() {
 
   recipient="$(sed -n 's/^recipient=//p' "$AGE_KEY_METADATA_FILE")"
   expected_hash="$(sed -n 's/^sha256=//p' "$AGE_KEY_METADATA_FILE")"
-  if [[ "$recipient" != "$EXPECTED_AGE_RECIPIENT" || -z "$expected_hash" ]]; then
+  if [[ "$recipient" != "$expected_recipient" || -z "$expected_hash" ]]; then
     phase_info 'age identity recovery metadata does not match this repository'
     return 1
   fi
