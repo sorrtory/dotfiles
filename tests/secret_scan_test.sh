@@ -12,6 +12,28 @@ WIREGUARD_PRIVATE_KEY="$(printf 'A%.0s' {1..43})="
 readonly WIREGUARD_PRIVATE_KEY
 GITHUB_TOKEN="ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ$(printf '%s' 0123456789)"
 readonly GITHUB_TOKEN
+# Shaped like real whole-file SOPS output: an encrypted payload plus a sops
+# metadata block naming the encryption method and the age recipient.
+SOPS_CIPHERTEXT="$(
+  cat <<'FIXTURE'
+{
+	"data": "ENC[AES256_GCM,data:Tr7oAQ==,iv:aXY=,tag:dGFn,type:str]",
+	"sops": {
+		"age": [
+			{
+				"recipient": "age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq",
+				"enc": "-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWVuY3J5cHRpb24ub3JnL3Yx\n-----END AGE ENCRYPTED FILE-----\n"
+			}
+		],
+		"lastmodified": "2026-09-10T00:00:00Z",
+		"mac": "ENC[AES256_GCM,data:bWFj,iv:aXY=,tag:dGFn,type:str]",
+		"unencrypted_suffix": "_unencrypted",
+		"version": "3.10.2"
+	}
+}
+FIXTURE
+)"
+readonly SOPS_CIPHERTEXT
 trap 'rm -rf -- "$SECRET_SCAN_TEST_ROOT"' EXIT
 
 fail() {
@@ -46,14 +68,16 @@ assert_scan_result() {
   local expectation="$1"
   local description="$2"
   local content="$3"
+  local candidate="${4:-candidate}"
   local scan_output
   local scan_status
   local test_repo
 
   test_repo="$(new_repo)"
   scan_output="$test_repo/scan-output"
-  printf '%s\n' "$content" >"$test_repo/candidate"
-  git -C "$test_repo" add candidate
+  mkdir -p -- "$(dirname -- "$test_repo/$candidate")"
+  printf '%s\n' "$content" >"$test_repo/$candidate"
+  git -C "$test_repo" add -- "$candidate"
 
   if "$test_repo/scripts/repo/check-secrets.sh" --staged >"$scan_output" 2>&1; then
     scan_status=0
@@ -113,6 +137,54 @@ assert_scan_result \
   rejected \
   'default gitleaks GitHub token' \
   "$GITHUB_TOKEN"
+
+# The secrets/ invariant: ciphertext only, recognized by structure.
+
+assert_scan_result \
+  rejected \
+  'plaintext under secrets/ matching no gitleaks rule' \
+  'Endpoint = vpn.example.invalid:51820' \
+  'secrets/wireguard/wg0.conf'
+
+assert_scan_result \
+  allowed \
+  'SOPS ciphertext under secrets/' \
+  "$SOPS_CIPHERTEXT" \
+  'secrets/wireguard/wg0.conf'
+
+assert_scan_result \
+  rejected \
+  'file under secrets/ that merely mentions sops' \
+  '# encrypted with sops, honest' \
+  'secrets/wireguard/wg0.conf'
+
+# Regression: marker substrings are not proof of encryption. A plaintext file
+# can simply carry them in comments, so recognition must come from SOPS itself.
+assert_scan_result \
+  rejected \
+  'plaintext under secrets/ decorated with both SOPS markers' \
+  'Endpoint = vpn.example.invalid:51820
+# ENC[AES256_GCM,fake]
+# -----BEGIN AGE ENCRYPTED FILE-----' \
+  'secrets/wireguard/wg0.conf'
+
+assert_scan_result \
+  allowed \
+  'the same plaintext outside secrets/' \
+  'Endpoint = vpn.example.invalid:51820' \
+  'docs/example-endpoint.txt'
+
+assert_scan_result \
+  allowed \
+  'placeholder keeping secrets/ present' \
+  '' \
+  'secrets/.gitkeep'
+
+assert_scan_result \
+  allowed \
+  'non-sensitive metadata under secrets/' \
+  'This directory holds SOPS ciphertext only.' \
+  'secrets/README.md'
 
 assert_hook_behavior
 

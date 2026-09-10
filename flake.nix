@@ -63,7 +63,9 @@
       };
 
       devShells.${system}.default = pkgs.mkShellNoCC {
-        packages = [ gitleaks ];
+        # sops is here for the staged secret gate, which asks it whether a file
+        # under secrets/ is genuinely encrypted.
+        packages = [ gitleaks pkgs.sops ];
       };
 
       packages.${system}.recover-age-identity = recoverAgeIdentity;
