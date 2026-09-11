@@ -2,112 +2,78 @@
 
 Status: ready-for-agent
 
-## Why
+## Purpose
 
-`docs/MIGRATION.md` §5 calls for recreating WireGuard configurations as
-whole-file SOPS ciphertext with user-owned decryption. The legacy repository
-implements the browser-facing half of that as an LXD container.
-`install.sh setup_external_proxy` launches an Ubuntu container named
-`ssProxy`, pushes plaintext `.conf` files into its `/etc/wireguard/`, runs
-`wg-quick` and a `shadowsocks-rust` `ssserver` inside it, and pairs that with
-a second `shadowsocks-rust` process on the host translating SOCKS5/HTTP into
-the container.
+Replace the legacy LXD/Shadowsocks proxy with one unprivileged sing-box backend
+per machine. The local proxy is the first entry point; a later network namespace
+will let `vpn <app>` use the same backend for whole-application TCP and UDP.
+See `docs/DECISIONS.md` for the shared backend and identity decisions.
 
-Measured on the host while writing this spec:
+## Settled design
 
-- The container carries a full Ubuntu 24.04 rootfs with its own `systemd`,
-  `systemd-resolved`, `systemd-networkd`, `sshd`, `snapd` and `core22`, to
-  host one WireGuard interface and one proxy process.
-- Both shadowsocks ends run `method=none`. The second hop encrypts nothing;
-  it exists only to bridge into the container.
-- `ssserver` binds the shared LXD bridge with no authentication, so every
-  other container on `lxdbr0` has an open tunnel into the VPN.
-- A third process, a host-side `ssserver` that `snap services` reports as
-  `inactive`, holds 13 MB and listens on nothing.
-- `mode: tcp_and_udp` is configured but unreachable from the only client:
-  Firefox has never implemented SOCKS5 UDP ASSOCIATE, and disables HTTP/3
-  when a proxy is set.
-
-One userspace process replaces all of it, needs no privilege, and reads the
-same ciphertext the `vpn` command will read.
+- One backend per machine, with an exclusive per-machine WireGuard identity.
+  Both local entry points will share it; restarting the backend interrupts both.
+- Whole-file SOPS WireGuard ciphertext already exists. Reuse it, generating
+  runtime JSON without putting credentials in arguments, environment variables,
+  diagnostics, or the Nix store.
+- Run a systemd user service with a mixed SOCKS/HTTP listener on
+  `127.0.0.1:1080` and HTTP on `127.0.0.1:3128`, matching the existing
+  `proxy-on` shell function.
+- Use a userspace WireGuard endpoint. This first slice creates no TUN, changes
+  no host routes or resolver configuration, and needs no network privilege.
+- Proxied destinations and their DNS use the tunnel, with no direct fallback.
+  Host DNS may resolve the WireGuard endpoint itself when it is a hostname.
+  If the profile names no DNS server, use 1.1.1.1 through the tunnel.
+- Enable linger through an explicit bootstrap phase so the service runs before
+  login and after logout. Normal Home Manager activation remains unprivileged.
+- Start with pinned sing-box 1.13.19. Built-in namespace support needs 1.14+;
+  upgrading and verifying it belongs to the VPN prototype, not this service.
+- Keep legacy host machinery until normal-use review. Retirement ticket 04 is
+  documentation only; the operator retires the old installation by reinstalling.
 
 ## Scope
 
-In scope:
+Ticket 01 establishes the backend, profile-to-config generator, runtime secret
+handling, linger, tests, and staging verification. Ticket 02 selects proxy use
+in Firefox and VS Code. Ticket 03 records the shared-backend boundary. Ticket
+04 records retirement after client verification.
 
-- A Home Manager module running `sing-box` as a systemd **user** service,
-  exposing a `mixed` inbound (SOCKS5 + HTTP) on `127.0.0.1:1080` and an
-  `http` inbound on `127.0.0.1:3128`. Those are exactly the two endpoints
-  `modules/programs/zsh.nix` already exports from its `proxy-on` alias, so
-  that module needs no change and `curl`, `wget`, `git` and `codex` work
-  through it unchanged.
-- WireGuard as a userspace `endpoint` (`"system": false`, gVisor netstack) —
-  no kernel module, no TUN, no routing or resolver changes, no `sudo`.
-- The first real ciphertext under `secrets/wireguard/`: whole-file
-  `.conf` SOPS secrets, one per device, shared with the future `vpn` command.
-- Pointing Firefox and VS Code at the proxy.
-- Deleting the legacy container, its snaps, and its setup code.
+Whole-application capture, Discord voice/UDP, namespace DNS isolation, and
+Snap/Flatpak launch behavior belong to the VPN effort. An ordinary proxy
+setting does not establish whole-application coverage.
 
-Out of scope:
+Transport failover stays deferred: there is no second server transport to
+exercise. Do not add an untested selector or a direct fallback.
 
-- Anything that makes the proxy system-wide. The value of this design is that
-  `apt`, `nix` and every CLI keep going direct.
-- The netns `vpn` command (`MIGRATION.md` §7). It stays, with a boundary
-  recorded in ticket 03.
-- Firefox packaging and the PAC file's encryption and delivery. Those are the
-  separate `firefox-nix` effort; this effort only points a pref at the PAC
-  where it already sits.
-- UDP proxying. No client in use needs it.
+## Profile ownership
 
-## Verified on the staging VM
+`dotfiles.localProxy.profile` selects existing per-device ciphertext, defaulting
+to `laptop` for this machine. Other machines must select their own identity.
+The shared `extra` profile is not eligible. A `wg-quick` client and sing-box
+must not use the same peer identity simultaneously, including across machines.
+The legacy whole-host aliases remain available but require the proxy backend
+to be stopped first when they use its identity.
 
-Built from the pinned nixpkgs (`sing-box` 1.13.19), `desktop-ubuntu` profile,
-port 1080, as an unprivileged systemd user service:
+## Definition of done
 
-| Check | Result |
-| --- | --- |
-| `curl` direct | the host's own ISP address |
-| `curl --proxy socks5h://127.0.0.1:1080` | the VPN egress address |
-| `curl --proxy http://127.0.0.1:1080` | the VPN egress address |
-| WireGuard links / TUN links while running | `0` / `0` |
-| Default route, `/etc/resolv.conf`, `ip rule` | unchanged |
-| Listening sockets | `tcp 127.0.0.1:1080` only |
-| `archive.ubuntu.com`, `cache.nixos.org` | `200` throughout, direct |
-| Resident memory | 43 MB (legacy stack: ~109 MB) |
-| Stop, then check for residue | port gone, no links, route and resolver identical |
-| 240 s hypervisor freeze, then resume | recovered on the first probe, 1 s, `NRestarts: 0` |
+- The generator validates supported profiles and rejects ambiguous or unsupported
+  input without revealing credentials; output is private and atomically replaced.
+- The flake evaluates and the activation package builds without decrypting secrets.
+- The VM's three proxy URLs give tunnel egress while a direct request stays direct.
+- Restart recovers; stopping removes listeners and runtime config, leaves host
+  routes/rules/interfaces/resolver unchanged, and makes proxy requests fail.
+- Linger is enabled through the normal dispatcher; startup before login is verified.
+- Client routing and retirement are verified in their own tickets before closing
+  this effort. Namespace functionality is not claimed by these proxy tests.
 
-The freeze test is why no resume hook is specified: `persistent_keepalive_interval`
-plus WireGuard's own handshake retry recover unaided. A hypervisor freeze does
-not reproduce a network change across suspend, so that case remains unverified;
-if it misbehaves the fix is a `Restart=` nudge, not a design change.
+## Historical experiment
 
-## Design decisions
-
-Settled by grilling before any code was written:
-
-- **Coexist with the netns `vpn` command**, boundary recorded in
-  `docs/DECISIONS.md`: sing-box is the always-on per-app proxy for anything
-  speaking SOCKS/HTTP; `vpn` is whole-app tunneling for what cannot.
-- **Whole-file encrypted `.conf`**, per `MIGRATION.md` §5, not fields split
-  between Nix and SOPS. Two mechanisms are only tolerable sharing one source
-  of truth; splitting guarantees drift the first time a peer is re-issued.
-  The cost is that the sing-box config is generated at service start rather
-  than at evaluation time; ticket 01 mitigates that with `sing-box check` in
-  `ExecStartPre` and a generator test.
-- **One `mixed` inbound on 1080.** A PAC `PROXY host:port` directive means an
-  HTTP proxy, and `mixed` answers both protocols on one port, so the existing
-  PAC needs no edit.
-- **Linger enabled.** Suspend does not end a session, so linger is not about
-  suspend; it keeps the proxy up across logout and before login. It is safe
-  here only because the SOPS identity is an age keyfile — a GPG identity would
-  make sops-nix wanted by `graphical-session-pre.target` and leave a lingering
-  pre-login service nothing to decrypt with.
-- **No `urltest` failover yet** (ticket 05). A group with one member is
-  theater, and a second member pointing at a server that does not exist is an
-  untested path.
-- **No rollback path.** The flow is dedicated to fresh bootstrap, so ticket 04
-  deletes the legacy machinery outright rather than keeping it dormant.
+The earlier spec recorded an unprivileged sing-box 1.13.19 experiment on the
+staging VM using the desktop-ubuntu profile and port 1080. It reported distinct
+direct/proxy egress, no host networking changes, 43 MB resident memory, and
+recovery after a 240-second hypervisor freeze. Those measurements were evidence
+for the design, not a shipped implementation or a real suspend/network-change
+test. Current implementation results belong in ticket 01.
 
 ## Tickets
 

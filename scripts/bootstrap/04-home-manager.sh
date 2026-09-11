@@ -29,7 +29,12 @@ configuration_fingerprint() {
 
   mapfile -d '' -t source_files < <(
     cd -- "$REPO_ROOT"
-    find flake.nix flake.lock home.nix modules packages -type f -print0 | sort -z
+    {
+      find flake.nix flake.lock home.nix modules packages -type f -print0
+      if [[ -d scripts/bin ]]; then
+        find scripts/bin -type f -print0
+      fi
+    } | sort -z
   )
 
   (

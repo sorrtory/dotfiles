@@ -93,8 +93,12 @@ The user's approval of the resulting configuration and intentional behavior chan
 _Avoid_: Automated review
 
 **VPN command**:
-The user-facing command that creates an isolated WireGuard network environment, launches a payload there as the invoking user, and cleans up privileged network state.
-_Avoid_: Root command launcher, WireGuard config
+The opt-in command that launches an application with its network traffic confined to a tunnel while other applications retain their ordinary connection.
+_Avoid_: Whole-host VPN, proxy setting, root command launcher
+
+**Local proxy**:
+The user environment's tunnel entry point for applications that explicitly send connections through their proxy settings.
+_Avoid_: VPN command, whole-application tunneling
 
 **Package baseline**:
 The package requirements declared by the legacy installation sources, translated into user-owned and host-owned responsibilities during migration.

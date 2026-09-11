@@ -65,8 +65,8 @@ with their respective future slices. The exception is a pair of `vpn-up` and
 an absolute path for `sudo` and a config path rather than an interface name.
 They stay aliases rather than functions: this machine decrypts one device
 configuration, so there is nothing to parameterize. They wrap an existing
-command rather than implementing privileged networking, and the VPN command
-supersedes them. The custom
+command rather than implementing privileged networking. They remain whole-host
+controls; the application VPN command does not replace them. The custom
 tmux and file-navigation helpers, unused Powerlevel10k setup, and zsh-lazyload
 setup are retired rather than reproduced. The host package supplies a stable
 login-shell path, and the explicit `login-shell` bootstrap phase selects it;
@@ -140,21 +140,55 @@ The host-identifying half of `~/.ssh/config` is ciphertext for a different reaso
 
 WireGuard configurations are whole-file SOPS ciphertext decrypted to a user-owned path, with no privileged deployment step. `wg-quick` accepts a config file path as readily as an interface name, deriving the interface from the basename, so `/etc/wireguard/` is unnecessary and the configuration never lands root-owned on disk. This replaces the earlier position that deployment to `/etc/wireguard/` was an explicit privileged action; that step turned out to buy nothing.
 
-Most of these configurations are per-device identities, so a machine decrypts only its own: materializing all of them everywhere would let one compromised machine impersonate every device on the network, and would buy nothing, since a laptop has no use for the phone's key. The exception is the secondary configuration used to put a single application on the far side of the tunnel rather than the whole host; that one is shared, and every machine decrypts it. Selecting per machine is done by hand until host parameterization exists.
+Most of these configurations are per-device identities, so a machine decrypts only its own: materializing all of them everywhere would let one compromised machine impersonate every device on the network, and would buy nothing, since a laptop has no use for the phone's key. The legacy secondary `extra` configuration remains decrypted during migration, but the shared sing-box backend uses an exclusive per-machine identity instead. Selecting per machine is done by hand until host parameterization exists.
 
 Secrets are named after the file they come from, so `wg-quick` takes the interface name from the basename and brings up `laptop` and `extra`. A generic `wg0` would make the interface name identical across machines, which pays off only once something shared refers to an interface by name; nothing does, and renaming the one that needs it is a line of configuration when something eventually does. Until then the generic name costs a lookup every time someone reads a path and has to ask which device it means.
 
-Bringing an interface up still needs `CAP_NET_ADMIN`, and nothing can change that. It is a runtime action rather than machine setup, so it belongs to the VPN command and not to a bootstrap phase — the bootstrap flow needs nothing for WireGuard. `wireguard-tools` is a Home Manager package rather than a host prerequisite. The packaged `wg-quick` is a wrapper that prepends its own dependencies to `PATH`, so it runs correctly under `sudo` despite being outside the host's `secure_path`; what `sudo` cannot do is resolve the bare name, so it must be invoked as `sudo "$(command -v wg-quick)"` or through a command that has the store path baked in.
+Bringing up a WireGuard interface in the host network namespace needs `CAP_NET_ADMIN`. It is an explicit runtime action rather than machine setup; the bootstrap flow does not bring up a host tunnel. `wireguard-tools` is a Home Manager package rather than a host prerequisite. The packaged `wg-quick` is a wrapper that prepends its own dependencies to `PATH`, so it runs correctly under `sudo` despite being outside the host's `secure_path`; what `sudo` cannot do is resolve the bare name, so it must be invoked as `sudo "$(command -v wg-quick)"` or through a command that has the store path baked in.
 
-Home Manager does not bring interfaces up and cannot. It owns user systemd units, and creating a network interface needs `CAP_NET_ADMIN`, so the tunnel is started either by hand, by a host-owned system unit outside this repository, or by the VPN command. Home Manager's responsibility ends at making the configuration and the tool available.
+Home Manager does not create host network interfaces. It can own the unprivileged sing-box user service, whose userspace WireGuard endpoint needs no host interface. Namespace-owned TUN support is a separate prototype; user namespaces can change the privilege boundary, so its requirements must be verified against the host policy.
 
 Everything committed under `secrets/` must already be public-safe, and the staged secret gate enforces that mechanically rather than trusting the convention. Under that directory the test is inverted: elsewhere a file is rejected when it looks like a secret, but here it is rejected unless it is positively recognized as encrypted, because the likeliest way a key arrives is in a form no detection rule matches. Recognition asks `sops` itself, since marker strings can appear in a plaintext file's comments and prove nothing. Note the residual limit: SOPS permits partially encrypted documents, so this establishes that a file is a SOPS document rather than that every value in it is encrypted. Never copy a legacy secrets tree or expose plaintext through Nix expressions, logs, patches, or the Nix store.
 
 ## Scripts and privileged networking
 
-Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. Only the VPN command is selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
+Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 
-Keep VPN Bash source under `scripts/bin/` and package it with `writeShellApplication` by reading the separate source. The explicit command may request `sudo`, but payload commands inside the network namespace must run as the invoking user. Rewrite it in its own specified and ticketed slice after the WireGuard foundation exists.
+Keep VPN Bash source under `scripts/bin/` and package it with `writeShellApplication` by reading the separate source. Payload commands inside the network namespace must run as the invoking user.
+
+Use one sing-box backend per machine for the local SOCKS/HTTP proxy and the
+future `vpn <app>` launcher. The launcher opts an application into an isolated
+network namespace whose traffic reaches that backend through a TUN interface;
+other applications retain ordinary host networking. A proxy setting alone
+does not capture an application's UDP traffic. This replaces the proposed
+separate kernel-WireGuard backend for the launcher. Sharing the backend means
+a restart interrupts both entry points; tunneled applications must lose
+connectivity rather than fall back to the host connection.
+
+Implement the local proxy first using pinned sing-box 1.13.19, with no TUN or
+host route/resolver changes. Then prototype namespace support and Discord UDP,
+DNS isolation, restart behavior, and confinement compatibility before building
+the launcher. Upstream TUN `netns` and namespace `unshare` require 1.14 or later;
+rootless operation additionally depends on host user-namespace policy. Neither
+the upgrade nor compatibility is assumed verified by the initial service.
+
+Each machine uses its own WireGuard peer identity. Never share `extra` between
+simultaneously connected machines, or run the whole-host `wg-quick` client
+concurrently with sing-box using the same identity: independent clients make
+the server's peer endpoint roam between them. The local proxy selects an
+existing per-device encrypted profile; the old shared profile remains only
+for legacy use until the launcher is replaced. A separate identity is needed
+if a simultaneous whole-host tunnel is wanted.
+
+Generate the proxy configuration at service start from whole-file SOPS
+ciphertext, into a private user runtime directory. Validate it before starting
+sing-box and keep keys out of arguments, environment variables, diagnostics,
+and the Nix store. Application DNS goes through the tunnel; resolving a
+WireGuard endpoint hostname is the sole host-DNS bootstrap exception. With no
+profile DNS, use 1.1.1.1 through the tunnel. The explicit `user-linger` bootstrap
+phase enables startup before login; Home Manager activation stays unprivileged.
+Linger is shared by user services, so that ensure-only phase does not disable
+it on uninstall.
 
 ## Migration and review
 

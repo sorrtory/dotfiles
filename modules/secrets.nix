@@ -48,7 +48,8 @@
     # one that needs it is a line here.
     #
     # laptop is this machine's own tunnel. extra is shared across machines and
-    # used to put a single application on the other side rather than the host.
+    # used by the legacy application launcher. The new sing-box backend uses
+    # its selected exclusive per-device identity, never this shared extra key.
     "wireguard/laptop.conf" = {
       sopsFile = ../secrets/wireguard/laptop.conf;
       format = "binary";

@@ -1,171 +1,77 @@
 # Spec: VPN command
 
-Status: ready-for-agent
+Status: needs-triage
 
-## Why
+## Purpose
 
-`docs/MIGRATION.md` §7. `docs/DECISIONS.md` parks this slice until the
-WireGuard foundation exists, which it now does: `modules/secrets.nix` decrypts
-`extra.conf`, and its own comment already states this command's purpose —
-`extra` is "shared across machines and used to put a single application on the
-other side rather than the host."
+Provide `vpn <app>`: explicitly launch an application's TCP and UDP traffic
+through a tunnel, including Discord voice, while other applications retain
+ordinary host connectivity. See `CONTEXT.md` and `docs/DECISIONS.md`.
 
-Today that is a 686-line legacy script at `~/Documents/scripts/vpn.sh`, outside
-this repository, pointing at `/etc/wireguard/extra.conf`, a path the WireGuard
-slice deliberately stopped using. The `vpn-up` and `vpn-down` aliases in
-`modules/programs/zsh.nix` are a different thing entirely — they put the whole
-host on a tunnel. This command puts one application there and leaves the host
-alone.
+## Selected architecture
 
-## The behavior worth keeping
+The local proxy effort first establishes one sing-box backend per machine with
+an exclusive per-machine WireGuard identity. The VPN command will launch apps
+inside a network namespace with a TUN entry point into that same backend.
+It must not start another WireGuard client or reuse the shared extra profile.
 
-The legacy script's architecture is sound and the rewrite keeps it:
+The existing sing-box pin is 1.13.19. Upstream documents TUN netns and unshare
+namespace support for 1.14+. A prototype must verify a suitable pinned version,
+host user-namespace policy, and desktop compatibility before implementation
+tickets become ready. Rootless operation is a candidate, not a demonstrated
+property of this host.
 
-- A network namespace holding a WireGuard interface, so only processes placed
-  inside it use the tunnel.
-- The interface created on the host and moved in, because the tunnel's own
-  encrypted packets must leave through the real network.
-- A veth pair with NAT on the host, and a route pinned to the peer endpoint
-  through it, so the tunnel does not try to route itself.
-- A private mount namespace for the payload, so the namespace's resolver can be
-  bind-mounted over `/etc/resolv.conf` for applications that read it directly.
-- Dropping back to the invoking user before running anything.
-
-## What changes
-
-**DNS comes from the tunnel and never touches the host.** The legacy script has
-three DNS modes, one of which repoints the host's `/etc/resolv.conf` and relies
-on a backup to put it back. That is the one failure that outlives the command
-and breaks the machine for everything else. The rewrite reads `DNS` from the
-WireGuard configuration, falls back to a fixed resolver when the configuration
-names none, writes only `/etc/netns/<ns>/resolv.conf`, and never modifies host
-state that is not namespace-scoped.
-
-**There is no GUI flag.** `-g` exists because the plain path does not work for
-confined applications. Since a desktop application is the normal case, its
-behavior becomes the only behavior: always a private mount namespace, always
-the resolver overlay, always the desktop environment.
-
-**The environment is inherited, not enumerated.** The legacy script names
-sixteen variables and hardcodes fallbacks for six of them. Anything it forgets
-is missing inside the namespace, and the fallbacks quietly lie when wrong. The
-rewrite captures the invoking user's environment before escalating and restores
-it after dropping back, so what runs inside sees what it would have seen
-outside.
-
-**It refuses to lie.** If the requested application is already running outside
-the tunnel, the command stops and says so.
-
-## The failure this exists to prevent
-
-Electron and Chromium applications keep a `SingletonLock` and `SingletonSocket`
-in their profile directory. Starting a second copy does not start a process: it
-hands the request to the running one over that socket, which opens a window.
-Run inside the namespace with a copy already running outside, the window
-appears, the application works, and every byte it sends goes through the host's
-normal connection. Nothing reports an error.
-
-Snaps and Flatpaks have their own versions of this. `snap-confine` reuses a
-per-snap mount namespace; Flatpak shares instances through its session
-services. In each case, the observable result of "it worked" is identical to
-the result of "it silently did nothing."
-
-A tool whose purpose is to route one application through a tunnel cannot have a
-silent mode where it does not. Detecting the case and refusing is therefore
-part of the feature, not a nicety.
-
-## Scope
-
-In scope:
-
-- `scripts/bin/vpn.sh`, packaged with `writeShellApplication` and exposed as
-  `vpn` in the user environment.
-- Namespace lifecycle: create, reuse, tear down, and tear down automatically
-  when nothing is left inside.
-- The payload running as the invoking user with a faithful environment.
-- Refusing to run when an untunneled instance already exists.
-- A test mode that reports the external address, and whether DNS can leak.
-- Retiring the `vpn-up`/`vpn-down` aliases only if this command replaces what
-  they do, which it does not today — they tunnel the host, this tunnels an
-  application. See ticket 06.
-
-Out of scope:
-
-- Multiple simultaneous tunnels. This machine decrypts one shared `extra`
-  configuration for this purpose; a second namespace has nothing to put in it.
-- Transparent proxying of already-running processes. Moving a live process
-  between network namespaces is not something Linux offers.
-- The legacy script's `-r` resolved-uplink mode, which the spec above replaces,
-  and its host `/etc/resolv.conf` rewriting, which it removes.
-- Per-application proxying without a tunnel. That is §13, sing-box, and the
-  boundary between the two is recorded there.
-
-## Why not sing-box
-
-The obvious question, since §13 brings in a userspace WireGuard endpoint
-anyway: why keep a privileged namespace at all?
-
-Because the two give different guarantees, and only one of them is a guarantee.
-
-sing-box's local proxy is opt-in per connection. An application uses it when it
-honors the proxy environment variables or has a proxy setting of its own, and
-for Chromium-based applications `--proxy-server=socks5://127.0.0.1:1080` works
-well. But opt-in means everything that does not opt in goes straight out: UDP
-and QUIC, which Chromium prefers unless told otherwise; WebRTC; anything that
-is not HTTP; and name resolution, unless the proxy is asked to resolve remotely
-rather than the application resolving first. An application that ignores the
-setting cannot be made to honor it. The failure mode is once again traffic
-leaving untunneled while everything looks fine.
-
-The network namespace is not opt-in. A process inside it has no route to
-anything except the tunnel, whatever it thinks it is doing, whatever protocol
-it speaks. That unconditional property is the entire reason to accept needing
-root.
-
-sing-box does have a mode that captures everything — a `tun` inbound with
-`process_name` routing rules — but it wants `CAP_NET_ADMIN`, a TUN device, and
-changes to the host's routing for *all* traffic in order to then exempt most of
-it. That is a larger intervention in the host than a namespace that only
-contains what is put in it, and it is precisely what §13 rules out.
-
-So the boundary `docs/DECISIONS.md` already records stands, and this is the
-reasoning behind it: sing-box is the convenient path for applications that
-cooperate, this command is the guaranteed path for everything else and for
-anything where being sure matters.
+Restarting the shared backend interrupts both proxy and VPN applications.
+VPN applications must remain isolated and lose connectivity, never fall back
+to host networking. The prototype must decide how to recover when the backend
+recreates a namespace while existing processes still hold the old one.
 
 ## Behavior baseline
 
-1. Normal Home Manager activation must not invoke `sudo` (working rule 7).
-   Only the command itself escalates, and only when run.
-2. The payload runs as the invoking user, never as root.
-3. The WireGuard private key must not reach a command line, an environment
-   variable, a log, or the Nix store. The legacy script passes it through file
-   descriptors; keep that.
-4. Host state outside the namespace is restored on teardown, and nothing that
-   is not namespace-scoped is modified in the first place.
-5. Failure is loud. Every path that could leave an application untunneled ends
-   in a non-zero exit and a message naming the cause.
+- The application runs as the invoking user, with its desktop environment.
+- UDP capture does not depend on application proxy support.
+- DNS stays inside the application network environment and traverses the tunnel.
+  The host resolver configuration is unchanged.
+- An existing untunneled application instance must not silently receive the
+  launch request. Refuse such handoff and name the conflicting instance.
+- Normal activation never invokes sudo. Any required runtime privilege is
+  explicit and limited to namespace setup, never the application payload.
+- No private key reaches command arguments, environment, logs, or the store.
+- Cleanup removes launcher-owned resources after the last application exits
+  without stopping the shared proxy backend.
+- No host-wide capture, veth/NAT routing machinery, or direct fallback is part
+  of the selected design. If the prototype cannot meet it, report the
+  limitation before selecting an alternative architecture.
+
+## Scope
+
+Package separate launcher source through writeShellApplication and expose vpn.
+Support launching commands with arguments, reuse of the application namespace,
+cleanup, and objective tunnel diagnostics. Verify desktop/native Electron,
+Snap and Flatpak launchers individually; unsupported cases must fail clearly.
+The existing untracked scripts/bin/vpn.sh is prior work, not authorization to
+overwrite it with the new design.
+
+Proxy client configuration, remote-server transport deployment, and retirement
+of the operator's legacy installation are separate work. Whole-host aliases
+are a different entry point and are not replaced by this command.
 
 ## Definition of done
 
-- `nix flake check`, the activation build, and `tests/*.sh` pass.
-- `vpn curl https://ident.me` reports an address belonging to the tunnel, and
-  the same command without `vpn` does not.
-- An Electron application from `/usr/bin`, a snap, and a Flatpak each run
-  through it with a working window, sound, and DNS, and each is verified to be
-  in the namespace by comparing `/proc/<pid>/ns/net` against the namespace
-  rather than by looking at the window.
-- Starting one that is already running outside the tunnel fails with a message
-  naming the running instance.
-- After the last process exits, no namespace, veth, NAT rule, or resolver file
-  remains.
-- `docs/SOFTWARE.md` and `docs/MIGRATION.md` §7 describe what shipped.
+- The namespace prototype passes before implementation tickets are finalized.
+- Direct and VPN requests demonstrate distinct egress.
+- Discord voice/UDP, DNS and IPv6 behavior are verified objectively.
+- For each supported launcher family, the actual application's network
+  namespace is checked rather than inferred from a visible window.
+- An already-running untunneled instance produces a refusal.
+- Backend loss cannot cause direct egress; restart recovery behavior is tested.
+- Last-application cleanup leaves the local proxy usable.
+- Flake, build and tests pass; the operator verifies normal desktop use before
+  host activation/commit according to repository policy.
 
-## A note on verifying this
+## Superseded design
 
-Every meaningful check needs root on a machine with a desktop session. The
-staging VM has one, but privileged commands there have been refused by the
-sandbox in past sessions, and the VM cannot render GPU-accelerated
-applications. Expect part of the verification to need the operator's hands or
-an explicit permission rule, and say so early rather than reporting an untested
-command as finished.
+The earlier spec retained the legacy script's separate kernel-WireGuard
+interface, veth and NAT setup and argued against sing-box. That overlooked
+combining sing-box with namespace-scoped TUN capture. The operator selected
+the shared backend instead. Git history preserves the old design and tickets.

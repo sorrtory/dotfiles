@@ -101,7 +101,13 @@ of migration.
 
 ### 7. VPN command
 
-Specify, ticket, and rewrite the VPN command. It must create and clean privileged network state while running the requested payload as the invoking user. Package the separate Bash source through `writeShellApplication` and expose `vpn` in the user environment.
+Build the VPN command after §13 establishes the shared sing-box backend.
+First prototype a namespace-scoped TUN on a compatible sing-box release,
+including Discord UDP, DNS isolation, and failure/restart behavior. Then
+implement `vpn <app>` as a launcher into that namespace, running the payload
+as the invoking user and cleaning up launcher-owned resources. Package the
+separate Bash source through `writeShellApplication`. Do not create a second
+WireGuard client with the same identity or change host-wide routing.
 
 ### 8. MPV and Anime4K
 
@@ -179,8 +185,8 @@ dependency other than the browser.
 Replace the deprecated LXD proxy container with `sing-box` as an unprivileged
 local proxy. It is a granular per-application proxy, not a transparent VPN:
 applications opt in through the proxy environment variables or their own
-settings, and UDP-dependent applications keep using the netns VPN command
-from §7 instead.
+settings. UDP-dependent applications will use §7's namespace launcher into
+the same backend once its prototype is verified.
 
 Run it as a `systemd` user service with no privilege, tunneling through a
 userspace WireGuard endpoint so no kernel module, TUN device, routing change,
@@ -188,10 +194,16 @@ or resolver change is involved. Expose a `mixed` inbound on
 `127.0.0.1:1080` and an `http` inbound on `127.0.0.1:3128`, which are exactly
 the endpoints the existing `proxy-on` shell alias already exports.
 
-This slice carries the first real ciphertext into `secrets/`, which
-`modules/secrets.nix` was built for and deliberately left empty awaiting. The
-WireGuard profiles become whole-file SOPS secrets shared with §7's privileged
-consumer rather than a second encrypted representation.
+The WireGuard migration already supplies whole-file SOPS ciphertext. Select
+one exclusive peer identity per machine, generate the sing-box configuration
+on tmpfs at startup, and use it for both entry points. The initial local proxy
+does not require TUN support or a sing-box upgrade; the namespace prototype
+does. The explicit `user-linger` phase enables startup before login.
+
+The initial local proxy service is implemented and verified on staging,
+including restart, cleanup and startup before login after reboot. Client
+configuration, namespace capture and normal-use retirement remain separate
+work; this does not yet deliver `vpn <app>` or Discord UDP capture.
 
 LXD, its container, Shadowsocks, and the legacy `iptables` bridge helper are
 retired rather than migrated. The operator retires the host-side machinery by
@@ -232,9 +244,10 @@ The intended flow is:
 4. authenticate GitHub when `03-secret-recovery` invokes the flake recovery app and clones the private recovery repository
 5. enter the main KeePassXC vault password so the phase can restore and verify the private age identity
 6. let `04-home-manager` build and activate the normal profile with sops-nix secrets available
-7. let the final `login-shell` phase select the host-owned Zsh
-8. open a new login shell
-9. run explicit privileged host setup where required
-10. authenticate any remaining mutable sessions once on that machine
+7. let `login-shell` select the host-owned Zsh
+8. let `user-linger` enable user services before login and after logout
+9. open a new login shell
+10. run explicit privileged host setup where required
+11. authenticate any remaining mutable sessions once on that machine
 
 The repository currently targets the `z` user on `x86_64-linux`; broader host/user parameterization is a later migration decision.

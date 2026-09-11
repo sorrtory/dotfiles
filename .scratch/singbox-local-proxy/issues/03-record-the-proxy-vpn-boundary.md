@@ -1,35 +1,26 @@
-# 03 — Record the boundary between the proxy and the VPN command
+# 03 — Record the shared backend and the two entry points
 
-Status: ready-for-agent
+Status: resolved
 
 ## Goal
 
-Two VPN mechanisms are only maintainable if the line between them is written
-down. Record it, so the overlap is a decision rather than an accident.
+Record the operator-confirmed design: one sing-box backend and one exclusive
+WireGuard peer per machine, with local proxy settings and a namespace launcher
+as separate entry points.
 
-## Work
+## Answer
 
-1. Add to `docs/DECISIONS.md`, under "Scripts and privileged networking", the
-   boundary: `sing-box` is the always-on, unprivileged, per-application proxy
-   for anything that speaks SOCKS or HTTP; the `vpn` command is whole-app
-   tunneling through a network namespace for what cannot. Record that both
-   read the same whole-file SOPS WireGuard ciphertext, and that this shared
-   source of truth is what keeps the duplication acceptable.
-2. Note the consequence in `docs/MIGRATION.md` §5: the ciphertext now has two
-   consumers, and the browser path needs no deployment to `/etc/wireguard/`
-   and no privilege at all. §5's privileged-deployment requirement applies
-   only to the `vpn` command in §7.
-3. Record in `docs/DECISIONS.md` that a peer identity is per-device: two
-   clients sharing one private key make the server re-pin that peer's endpoint
-   to whichever handshook last, so both flap. This is why profiles are
-   selected per machine rather than shared.
+`CONTEXT.md` distinguishes the local proxy from the VPN command.
+`docs/DECISIONS.md` records the shared backend, per-machine peer identities,
+restart interruption, no direct fallback, and the host-DNS bootstrap exception.
+`docs/MIGRATION.md` orders the work as proxy service, namespace prototype,
+then launcher. The local proxy can use 1.13.19; built-in namespace support
+requires 1.14+ and host-policy validation.
 
-## Constraints
+The former claim that sing-box necessarily needs host-wide capture to support
+UDP is superseded. Namespace-scoped capture is the selected direction, with
+compatibility to be proven by the prototype. Two independent WireGuard clients
+must not reuse a peer identity, even on the same machine.
 
-- Record decisions already made; do not introduce new ones here.
-- Keep `CONTEXT.md` vocabulary consistent if either term needs an entry.
-
-## Acceptance
-
-- A reader can determine from `docs/DECISIONS.md` alone which mechanism to
-  reach for, and why both exist.
+The original shared-extra design and separate kernel-WireGuard launcher are
+retained only as history; existing legacy execution is not removed here.

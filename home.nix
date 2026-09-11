@@ -6,6 +6,7 @@
     ./modules/programs/mpv.nix
     ./modules/programs/neovim.nix
     ./modules/programs/ssh.nix
+    ./modules/programs/sing-box.nix
     ./modules/programs/sublime-text.nix
     ./modules/programs/vscode.nix
     ./modules/programs/zsh.nix
@@ -15,6 +16,8 @@
   home.username = "z";
   home.homeDirectory = "/home/z";
   home.stateVersion = "26.05";
+
+  dotfiles.localProxy.enable = true;
 
   programs.home-manager.enable = true;
 }

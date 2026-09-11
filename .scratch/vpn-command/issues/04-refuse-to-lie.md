@@ -1,7 +1,14 @@
 # 04 — Refuse when the application is already running outside the tunnel
 
-Status: ready-for-agent
-Blocked by: 03
+Status: needs-triage
+Blocked by: 00, 03
+
+## Design gate
+
+The operator selected a shared sing-box backend and namespace TUN instead of
+the separate kernel-WireGuard design. The work below is historical planning,
+not an implementation instruction. Resolve ticket 00, then rewrite this ticket
+around the verified lifecycle and compatibility results before claiming it.
 
 ## Goal
 

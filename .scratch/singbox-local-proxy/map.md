@@ -1,25 +1,24 @@
 # sing-box local proxy
 
-Replace the legacy LXD + shadowsocks proxy with one unprivileged userspace
-process exposing SOCKS5 and HTTP on `127.0.0.1:1080` and HTTP on
-`127.0.0.1:3128`. The spec records the
-measured evidence and the settled design decisions; see [spec.md](spec.md).
+One sing-box backend per machine supplies the initial local proxy and the
+future namespace launcher. See [spec.md](spec.md).
 
 ## Tickets
 
-- [01: sing-box as an unprivileged local proxy service](issues/01-singbox-user-service.md) — ready-for-agent.
-- [02: Point Firefox and VS Code at the local proxy](issues/02-point-clients-at-the-proxy.md) — ready-for-agent; blocked by 01.
-- [03: Record the boundary between the proxy and the VPN command](issues/03-record-the-proxy-vpn-boundary.md) — ready-for-agent.
-- [04: Retire the LXD proxy machinery](issues/04-retire-the-lxd-proxy.md) — ready-for-agent; blocked by 02. Documentation only: the operator retires the host-side machinery by reinstalling.
-- [05: Transport failover for a blocked protocol](issues/05-transport-failover.md) — needs-info; waiting on which second transport to deploy on the VPS.
+- [01: Local proxy service](issues/01-singbox-user-service.md) — resolved; built, tested and verified on staging, including reboot. Awaiting operator review before commit/host activation.
+- [02: Firefox and VS Code](issues/02-point-clients-at-the-proxy.md) — ready-for-agent; blocked by 01.
+- [03: Shared backend boundary](issues/03-record-the-proxy-vpn-boundary.md) — resolved; decisions and glossary updated.
+- [04: Legacy retirement](issues/04-retire-the-lxd-proxy.md) — ready-for-agent; blocked by 02 and normal-use verification. Documentation only; the operator reinstalls the host.
+- [05: Transport failover](issues/05-transport-failover.md) — needs-info; waiting for a second server transport.
 
 ## Context
 
-- This effort carries the first real ciphertext into `secrets/`, which
-  `modules/secrets.nix` was built for and deliberately left empty awaiting.
-- `docs/MIGRATION.md` §5 already specifies whole-file SOPS ciphertext for
-  WireGuard; this effort implements the unprivileged consumer of it, and §7's
-  `vpn` command will be the privileged one.
-- The Firefox snap's confinement denies hidden home paths and the sops runtime
-  directory, which is why PAC encryption cannot land here. That work moves to
-  [`firefox-nix`](../firefox-nix/map.md).
+- WireGuard ciphertext already exists. Each machine selects its own peer identity.
+- The new service uses pinned sing-box 1.13.19 without TUN or host routing changes.
+- [VPN prototype](../vpn-command/issues/00-sing-box-namespace-prototype.md) follows
+  ticket 01 and verifies a namespace-capable version before launcher implementation.
+- The Firefox PAC delivery remains in the separate Firefox effort.
+- Staging uses desktop-ubuntu through an evaluation override; the host's
+  running legacy container owns laptop. Ticket 01 records the detected peer
+  collision and exact staging activation command. Do not replace the staging
+  override with the default generation while that legacy peer is active.

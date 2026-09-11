@@ -1,7 +1,14 @@
 # 05 — Verify the launcher families, and the leaks
 
-Status: ready-for-agent
-Blocked by: 04
+Status: needs-triage
+Blocked by: 00, 04
+
+## Design gate
+
+The operator selected a shared sing-box backend and namespace TUN instead of
+the separate kernel-WireGuard design. The work below is historical planning,
+not an implementation instruction. Resolve ticket 00, then rewrite this ticket
+around the verified lifecycle and compatibility results before claiming it.
 
 ## Goal
 

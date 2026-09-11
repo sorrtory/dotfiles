@@ -11,6 +11,12 @@ current profile targets user `z` on `x86_64-linux`.
 
 ## Install on a fresh machine
 
+Select that machine's exclusive WireGuard identity before activation:
+`dotfiles.localProxy.profile` defaults to `"laptop"`; set it in `home.nix`
+for a different device. Never run two machines or clients with the same peer
+identity at once. Existing ciphertext names are listed in the
+[proxy module](modules/programs/sing-box.nix).
+
 ```bash
 git clone https://github.com/sorrtory/dotfiles.git ~/Documents/dotfiles
 cd ~/Documents/dotfiles
@@ -29,9 +35,30 @@ phases run unattended; the table says where one stops to ask you for something:
 | 05  | `yt-dlp`          | Installs the verified official release binary into `~/.local/bin`, so `yt-dlp -U` stays your update path.                                                                    | —                                                                         |
 | 06  | `docker`          | The deliberate privileged exception: installs Docker's host components and adds you to the `docker` group.                                                                   | sudo password                                                             |
 | 07  | `login-shell`     | Makes the distro-provided Zsh your login shell.                                                                                                                              | sudo password                                                             |
+| 08  | `user-linger`     | Keeps user services, including the local proxy, running before login and after logout. | Host polkit authentication, if required |
 
 **Then open a new login session.** The new shell, `PATH`, and Docker group
 membership only take effect there.
+
+### Local proxy
+
+The sing-box user service exposes SOCKS5/HTTP at `127.0.0.1:1080` and HTTP at
+`127.0.0.1:3128`. Applications opt in through their proxy settings, or use
+`proxy-on` / `proxy-off` in one shell. To resolve names through the proxy with
+curl, use `curl --proxy socks5h://127.0.0.1:1080 https://api.ipify.org`.
+The shell helper's `socks5://` setting does not itself guarantee remote DNS.
+
+Use `systemctl --user status sing-box` to inspect the service and
+`systemctl --user restart sing-box` after changing its encrypted profile.
+The existing `vpn-up` whole-host alias uses the same laptop identity: stop
+sing-box before using it, and bring that interface down before restarting the
+proxy. The per-app `vpn <app>` launcher and Discord UDP support are still
+pending their namespace prototype.
+
+On the current migration host, the running legacy LXD proxy also uses the
+laptop peer. Stop its use of that identity before activating the new backend
+on this host, or select a different exclusive peer. The staging VM is tested
+with its separate desktop-ubuntu identity.
 
 ### GPU-accelerated programs
 

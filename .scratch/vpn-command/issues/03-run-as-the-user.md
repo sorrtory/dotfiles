@@ -1,7 +1,14 @@
 # 03 — Run the payload as the invoking user, in a desktop it recognizes
 
-Status: ready-for-agent
-Blocked by: 01, 02
+Status: needs-triage
+Blocked by: 00, 01, 02
+
+## Design gate
+
+The operator selected a shared sing-box backend and namespace TUN instead of
+the separate kernel-WireGuard design. The work below is historical planning,
+not an implementation instruction. Resolve ticket 00, then rewrite this ticket
+around the verified lifecycle and compatibility results before claiming it.
 
 ## Goal
 

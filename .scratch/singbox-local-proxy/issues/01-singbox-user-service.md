@@ -1,96 +1,107 @@
 # 01 — sing-box as an unprivileged local proxy service
 
-Status: ready-for-agent
+Status: resolved
 
 ## Goal
 
-Run `sing-box` as a systemd user service exposing SOCKS5 and HTTP on
-`127.0.0.1:1080` and `127.0.0.1:3128`, tunneling through a userspace
-WireGuard endpoint whose
-profile arrives as whole-file SOPS ciphertext. This is the first real
-ciphertext in `secrets/`, which `modules/secrets.nix` was built to carry.
+Establish one backend per machine, initially exposing the local proxy and
+later shared with the namespace launcher. Follow the decisions in
+`docs/DECISIONS.md` and [spec.md](../spec.md).
 
 ## Work
 
-1. Encrypt the selected wg-quick profiles from `~/Documents/secrets/wireguard/`
-   to `secrets/wireguard/<device>.conf` using the `.sops.yaml` recipient.
-   Encrypt whole-file, so the ciphertext is opaque and the endpoint address is
-   not published in a public repository. Select deliberately: `desktop-old`,
-   `desktop-win` and `phone` are candidates for omission rather than migration.
-2. Declare each as a `sops.secrets` entry with `format = "binary"`, which
-   sops-nix writes through verbatim.
-3. Add `modules/programs/sing-box.nix` with an option selecting which profile
-   this machine uses, defaulting to `desktop-ubuntu`. Per-device selection is
-   a one-line change at bootstrap; nothing about the peer is transcribed into
-   Nix.
-4. Add the profile-to-config generator as shell using `jq`, under
-   `scripts/bin/`, packaged with `writeShellApplication` per
-   `docs/DECISIONS.md`. It reads a decrypted wg-quick `.conf` and writes a
-   sing-box config, mapping:
-   - `[Interface] Address` -> `endpoints[0].address` (list)
-   - `[Interface] PrivateKey` -> `endpoints[0].private_key`
-   - `[Interface] MTU` if present, else `1420` -> `endpoints[0].mtu`
-   - `[Interface] DNS` -> one `dns.servers` entry per address, each with
-     `detour` set to the endpoint tag, so resolution happens through the
-     tunnel rather than on the host
-   - `[Peer] Endpoint` -> `peers[0].address` and `peers[0].port`
-   - `[Peer] PublicKey`, `PresharedKey`, `AllowedIPs` -> the matching fields
-   - a fixed `persistent_keepalive_interval` of 25
-   The endpoint must set `"system": false`. Two inbounds listen on
-   `127.0.0.1`: a `mixed` inbound on port `1080` and an `http` inbound on
-   port `3128`. One `direct` outbound, and route rules sending both inbounds
-   to the endpoint tag.
-
-   The second inbound is deliberate and is not redundant with `mixed`, which
-   already serves HTTP. `modules/programs/zsh.nix` already ships a `proxy-on`
-   alias exporting `http_proxy` and `https_proxy` as
-   `http://127.0.0.1:3128` and `all_proxy` as `socks5://127.0.0.1:1080`.
-   Matching both endpoints means this slice needs no edit to an already
-   shipped module, and `curl`, `wget`, `git` and `codex` work through
-   `proxy-on` unchanged. Keeping `:1080` as `mixed` rather than `socks` costs
-   nothing and means a client aimed at the wrong port still succeeds.
-5. Define the service in `systemd.user.services`:
-   - `Wants` and `After` = `sops-nix.service`, so the profile is decrypted
-     before the generator runs
-   - `RuntimeDirectory=sing-box` with `RuntimeDirectoryMode=0700`, and write
-     the generated config there — never to `~/.config`, never to the store
-   - `ExecStartPre` runs the generator, then `sing-box check -c` on its output
-   - `ExecStart` runs `sing-box run -c` against the generated file
-   - `Restart=on-failure`
-6. Enable linger for the user, so the proxy survives logout and starts before
-   graphical login. Do this in a `scripts/bootstrap/` phase, not in Home
-   Manager activation: `loginctl enable-linger` is a polkit action
-   (`org.freedesktop.login1.set-self-linger`), and activation must not
-   become privileged.
-7. Add a test under `tests/` running the generator against a fixture `.conf`
-   holding a throwaway key, asserting the emitted config passes
-   `sing-box check`. The fixture must not contain a real key.
-
-## Constraints
-
-- No private key or preshared key may reach the Nix store, a log, or
-  `~/.config`. The only plaintext is the sops runtime path and the generated
-  config in `RuntimeDirectory`.
-- `nix build .#homeConfigurations.z.activationPackage` must succeed without
-  the age identity present.
-- Activation must not invoke `sudo` (`AGENTS.md` rule 7).
-- The service must not create a TUN device, alter routing, alter
-  `/etc/resolv.conf`, or listen on any address other than loopback.
-- `sing-box` must come from the pinned nixpkgs. Do not add a flake input for
-  it; 1.13.19 is present at the current pin.
-- Use the WireGuard `endpoints` schema. The `wireguard` *outbound* was removed
-  in 1.13.0 and errors out; most published examples still use it.
+1. Reuse existing whole-file WireGuard ciphertext. Select an exclusive
+   per-machine identity, defaulting to laptop here; do not migrate secrets again.
+2. Add a Home Manager module with an explicit profile option, the package,
+   a private SOPS runtime secret, and a systemd user service.
+3. Package the separate Bash generator through `writeShellApplication`.
+   Map the profile address, keys, endpoint, allowed IPs, optional MTU and DNS
+   into the 1.13 WireGuard endpoint schema. Use keepalive 25; default MTU 1420
+   and DNS 1.1.1.1. Accept one interface and one peer; reject hooks, duplicates,
+   unknown fields, and invalid values rather than executing or guessing them.
+   ListenPort and PersistentKeepalive are accepted source fields, but the
+   userspace client uses an ephemeral port and the fixed keepalive policy.
+4. Publish validated JSON atomically at mode 0600 inside a mode-0700 systemd
+   runtime directory. Keep credentials out of arguments, environment, logs,
+   and the Nix store. Do not print raw validator diagnostics.
+5. Route both loopback listeners and destination DNS through the endpoint.
+   Host DNS is only for resolving an endpoint hostname. No direct fallback.
+6. Order after sops-nix; retry failed startup. Add an explicit ensure-only
+   linger bootstrap phase. Removing this service must not disable linger
+   needed by other user services.
+7. Test valid/invalid profiles, defaults, failure redaction and atomicity.
+   Ensure the bootstrap source fingerprint includes the new packaged source.
 
 ## Acceptance
 
-- `nix flake check` passes; the activation package builds.
-- On the staging VM: `curl --proxy socks5h://127.0.0.1:1080`,
-  `--proxy http://127.0.0.1:1080` and `--proxy http://127.0.0.1:3128` all
-  return an exit IP different from the
-  direct one.
-- While running: zero WireGuard links, zero TUN links, unchanged default route
-  and `/etc/resolv.conf`, and `tcp 127.0.0.1:1080` plus `tcp 127.0.0.1:3128` the only added
-  listeners.
-- `systemctl --user restart sing-box` recovers without manual steps, and a
-  reboot brings the service up with no interactive login.
-- `tests/` covers the generator and passes.
+- `nix flake check`, activation build, shell checks, and repository tests pass.
+- On staging, SOCKS5h and HTTP on 1080 and HTTP on 3128 give tunnel egress.
+- The runtime directory/config have modes 0700/0600.
+- Restart recovers; stop removes listeners and runtime config.
+- Routes, rules, interfaces and host resolver do not change.
+- Proxy requests fail when stopped while direct requests work.
+- Linger is enabled and the service starts before interactive login.
+- Host activation and normal-use review remain operator-controlled.
+
+## Follow-up
+
+The namespace prototype establishes the version upgrade and capture behavior.
+Client configuration and legacy retirement remain separate tickets.
+
+## Answer
+
+Implemented in `modules/programs/sing-box.nix`, with the private runtime
+generator in `scripts/bin/sing-box-config.sh` and the explicit ensure-only
+`08-user-linger` bootstrap phase. The Home Manager source fingerprint now
+includes packaged scripts, covered by an isolated regression fixture.
+
+Verification on 2026-09-11:
+
+- ShellCheck, all 14 repository test scripts, `nix flake check`, and the
+  activation build passed. The build did not read decrypted credentials.
+- Normal staging dispatcher activation installed the service and enabled linger.
+- All three listener URLs returned an egress different from direct requests,
+  including after a 30-second idle interval.
+- Runtime directory/config modes were 0700/0600.
+- Restart recovered. Stop removed both listeners and the generated runtime
+  directory. Hashes of routes, rules, interfaces and host resolver stayed equal
+  through stop/start. Requests aimed at a stopped proxy failed; direct traffic
+  still worked.
+- After a staging reboot, the service was active 9.555 seconds into boot,
+  before the verification SSH session began at 26.844 seconds. Linger was
+  enabled, NRestarts was zero, and the proxy returned HTTP 200.
+
+### Identity collision found during verification
+
+The initial VM generation used the default laptop identity. Numeric IPv4 and
+DNS-based requests intermittently stalled, then recovered together. Read-only
+public-key fingerprint comparison proved that the running legacy ssProxy
+container used that same identity. Stopped the VM service immediately; the
+legacy container was not changed.
+
+Retesting with the desktop-ubuntu identity used by the prior staging experiment
+eliminated the reproduced stalls and passed the original probe, including an
+idle interval. The VM's peer fingerprint differs from the legacy host peer.
+This is the real integration regression case; a generator unit test cannot
+reproduce contention with another machine's WireGuard connection.
+
+The VM uses an evaluation override from the mirrored host source, not a guest
+source edit:
+
+```bash
+. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+cd ~/Documents/dotfiles
+nix build --impure --out-link result-singbox-staging --expr '
+  let f = builtins.getFlake "path:/home/z/Documents/dotfiles";
+  in (f.homeConfigurations.z.extendModules {
+    modules = [ { dotfiles.localProxy.profile = "desktop-ubuntu"; } ];
+  }).config.home.activationPackage
+'
+./result-singbox-staging/activate
+```
+
+Do not run the default Home Manager dispatcher on this VM while the legacy
+host proxy is active: it would restore laptop and reintroduce the collision.
+The host was built but not activated. Before host activation, the legacy
+proxy must stop using laptop, or the new backend must select another exclusive
+identity. No legacy files or services were removed or stopped.

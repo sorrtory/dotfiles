@@ -4,10 +4,19 @@ set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly REPO_ROOT
-readonly SUBJECT="$REPO_ROOT/scripts/bootstrap/04-home-manager.sh"
 HOME_MANAGER_TEST_ROOT="$(mktemp -d)"
 readonly HOME_MANAGER_TEST_ROOT
 trap 'rm -rf -- "$HOME_MANAGER_TEST_ROOT"' EXIT
+
+# Use an isolated source tree so freshness tests never edit the real checkout.
+fixture_repo="$HOME_MANAGER_TEST_ROOT/repo"
+mkdir -p "$fixture_repo/scripts/bootstrap/common" "$fixture_repo/scripts/bin" \
+  "$fixture_repo/modules" "$fixture_repo/packages"
+cp "$REPO_ROOT/scripts/bootstrap/04-home-manager.sh" "$fixture_repo/scripts/bootstrap/"
+cp "$REPO_ROOT/scripts/bootstrap/common/"*.sh "$fixture_repo/scripts/bootstrap/common/"
+touch "$fixture_repo/flake.nix" "$fixture_repo/flake.lock" "$fixture_repo/home.nix"
+printf '# initial generator\n' >"$fixture_repo/scripts/bin/generator.sh"
+readonly SUBJECT="$fixture_repo/scripts/bootstrap/04-home-manager.sh"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -55,6 +64,14 @@ HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT"
   fail 'install should activate the built Home Manager generation'
 HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null ||
   fail 'the activated repository configuration should satisfy the phase'
+
+printf '# changed generator\n' >"$fixture_repo/scripts/bin/generator.sh"
+if HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null 2>&1; then
+  fail 'changing packaged script source must invalidate activation'
+fi
+HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" install >/dev/null
+HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null ||
+  fail 're-activation should capture the changed packaged source'
 
 printf 'stale\n' >"$test_home/.local/state/dotfiles/home-manager-source.sha256"
 if HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null 2>&1; then
