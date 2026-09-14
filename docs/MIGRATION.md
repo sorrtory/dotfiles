@@ -163,9 +163,16 @@ sixteen declared language servers are npm packages, so Node.js becomes a
 selected global user tool and the `fnm` PATH shim in `init.lua` is deleted
 rather than reproduced.
 
-The legacy `.vimrc` moves across as ordinary repository material with a
-symlink, not as a migration slice. It has no plugins, the operator does not
-use it, and its own header describes it as a drop-in for remote servers.
+The legacy `.vimrc` moves across as ordinary repository material, not as a
+migration slice. It has no plugins, the operator does not use it, and its own
+header describes it as a drop-in for remote servers, so `~/.vimrc` is a store
+symlink rather than a live-editable one and Vim itself stays undeclared.
+
+One mechanism detail surfaced during the work: `programs.neovim` writes its own
+generated `init.lua` into the directory this slice links whole, which cannot
+coexist with owning that directory. `sideloadInitLua` hands the generated Lua
+to the wrapper instead, and since this configuration generates none, nothing is
+lost.
 
 ### 11. tmux
 
@@ -174,11 +181,38 @@ its network clone from the fresh-machine flow. Keep `tmux.conf` readable and
 live-editable through `mkOutOfStoreSymlink`, since `prefix + r` reloads it in
 place and the file is tuned often.
 
+That pairing is why the module does not use `programs.tmux`: that option
+generates `tmux.conf` itself and offers no way to decline, so the module
+declares the package with `home.packages` and links each plugin into
+`~/.config/tmux/plugins/` under its upstream name. Reproducing TPM's layout is
+what repairs `prefix + Ctrl+d`, which was already broken on the legacy host: it
+names resurrect's own `save.sh` beneath a directory nothing ever created.
+
+`Ctrl+h/j/k/l` navigation is one feature split across this section and the
+Neovim one; the tmux `is_vim` bindings and `vim-tmux-navigator` are each half
+of it.
+
 ### 12. Yazi
 
 Let Home Manager own Yazi, its native TOML configuration, and the single
 pinned plugin the legacy manager restored. This removes the last legacy Snap
 dependency other than the browser.
+
+Nixpkgs carries dozens of Yazi plugins but not `copy-file-contents`, so it is a
+small local package pinned at the revision `configs/yazi/package.toml` records.
+That manifest stays in the repository as the record of the pin, is regenerated
+by `ya pkg add` rather than edited by hand, and is deliberately not linked into
+the config directory, where only `ya pkg` would read it.
+
+The slice then went past the legacy setup on purpose. "Copy" was one key there,
+and it is three operations: the file onto the system clipboard as
+`text/uri-list` (`y`, through the packaged `clipboard.yazi`), its contents as
+text (`Ctrl+y`), and its path (`c c`, already a Yazi preset). `Alt+Shift+Y`
+copies contents behind each file's path in a code fence, which is what the
+newer plugin revision buys. `!` opens a real `$SHELL` in the hovered directory,
+which Yazi's `;` and `:` command boxes are not. `xclip` joins `wl-clipboard`,
+because both the tmux copy chain and the clipboard plugin pick their tool by
+session type.
 
 ### 13. sing-box
 

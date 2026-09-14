@@ -17,6 +17,13 @@
     httpie
     imagemagick
     jdk21
+
+    # Global rather than per-project because mason installs ten of Neovim's
+    # language servers as npm packages, and they need Node at runtime, not
+    # only to install. Without it the editor looks subtly broken rather than
+    # obviously broken. See docs/SOFTWARE.md for the selection this settles.
+    nodejs
+
     obs-studio
     obsidian
     pkg-config
@@ -29,6 +36,11 @@
     wget
     wireguard-tools
     wl-clipboard
+
+    # The X11 half of the same job. Both the tmux copy-mode chain and Yazi's
+    # clipboard plugin pick their tool by session type, so an X session — the
+    # staging VM is one — needs this to copy at all.
+    xclip
   ];
 
   home.sessionPath = [ "$HOME/.local/bin" ];

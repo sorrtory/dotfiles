@@ -1,0 +1,43 @@
+# Three operations that Yazi's `;` and `:` conflate into one command-input box,
+# given three keys. The fourth, copying a path as text, is already a Yazi
+# preset: `c c` for the full path, `c f` for the filename.
+
+# The file itself, onto the system clipboard as `text/uri-list`. That is what a
+# GUI application reads as "a file was copied", so Nautilus pastes a copy and
+# Telegram attaches it, instead of pasting the path as text.
+#
+# `yank` runs first because the plugin copies whatever is in Yazi's yank
+# register; this keeps `y` doing its normal job as well, so `p` still pastes
+# inside Yazi.
+[[mgr.prepend_keymap]]
+on = "y"
+run = ["yank", "plugin clipboard -- --action=copy"]
+desc = "Yank, and copy the file(s) to the system clipboard"
+
+[[mgr.prepend_keymap]]
+on = "<C-p>"
+run = "plugin clipboard -- --action=paste"
+desc = "Paste the file(s) on the system clipboard into this directory"
+
+# What is inside the file, as text, for an editor or a chat window.
+[[mgr.prepend_keymap]]
+on = "<C-y>"
+run = "plugin copy-file-contents -- plain"
+desc = "Copy the contents of the file(s)"
+
+# The same, but each file behind its own path and wrapped in a code fence,
+# which is the form worth pasting into a conversation.
+[[mgr.prepend_keymap]]
+on = "<A-Y>"
+run = "plugin copy-file-contents -- multi"
+desc = "Copy the contents of the file(s), each behind its path in a fence"
+
+# An actual `$SHELL` in the hovered directory, with its own history, aliases,
+# completion, pipes and quoting. `exit` or Ctrl+D returns to this Yazi session.
+# Yazi's `;` and `:` stay where they are; they are a different thing, a single
+# command typed into a prompt.
+[[mgr.prepend_keymap]]
+on = "!"
+for = "unix"
+run = 'shell "$SHELL" --block'
+desc = "Open a shell in this directory"

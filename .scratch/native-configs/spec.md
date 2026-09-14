@@ -63,7 +63,10 @@ Out of scope:
 2. `Ctrl+h/j/k/l` moves between Neovim splits and tmux panes seamlessly, in
    both directions. This is one feature implemented in two files.
 3. tmux sessions survive a reboot through resurrect/continuum.
-4. Yazi's `Alt+y` copies file contents.
+4. Yazi copies file contents. Amended by ticket 05: the key is `Ctrl+y`
+   rather than the legacy `Alt+y`, because contents are now one of three
+   copy-shaped operations that each got their own key. `Alt+y` is retired
+   deliberately, not dropped.
 
 ## Definition of done
 

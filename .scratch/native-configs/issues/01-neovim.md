@@ -1,6 +1,6 @@
 # 01 — Neovim
 
-Status: ready-for-agent
+Status: claimed
 
 ## Goal
 
@@ -59,3 +59,60 @@ assume are already on `PATH`.
   - opening a `.ts` file attaches `ts_ls` and shows treesitter highlighting;
   - `:lua vim.print(vim.env.PATH)` contains no `fnm` path.
 - `grep -rn fnm configs/nvim/` returns nothing.
+
+## Comments
+
+Implemented on the host. `configs/nvim/` is a verbatim copy of the legacy tree
+including `lazy-lock.json`, minus the eight-line `fnm` shim; `grep -rn fnm
+configs/nvim/` returns nothing. `modules/programs/neovim.nix` keeps `enable`
+and `defaultEditor` and links the whole directory with `mkOutOfStoreSymlink`
+in the `configRoot` shape `vscode.nix` uses. `nodejs` is in
+`modules/packages.nix`. `.vimrc` is at `configs/vim/.vimrc`, exposed through
+`home.file.".vimrc"`, and no Vim package is declared.
+
+One thing the ticket could not have known: `programs.neovim` writes its own
+generated `init.lua` into `nvim/`, and Home Manager refuses to install a file
+inside a directory that is itself an out-of-store symlink — the build fails
+with `Error installing file '.config/nvim/init.lua' outside $HOME`. The module
+sets `sideloadInitLua = true`, which hands that generated Lua to the wrapper
+instead of to a file. Nothing is lost, because this configuration generates
+none. Recorded in `docs/DECISIONS.md` and `docs/MIGRATION.md` §10.
+
+Verified on the host without activating, by running the built Neovim against a
+copy of `configs/nvim/` in a throwaway `XDG_*` sandbox:
+
+- `nix build .#homeConfigurations.z.activationPackage` succeeds, and the
+  generated `home-manager-files` carries `.config/nvim` as a symlink resolving
+  to `/home/z/Documents/dotfiles/configs/nvim`.
+- `lazy.nvim` bootstrapped itself and installed every plugin in
+  `lazy-lock.json`: 21 directories for 21 lock entries. The ticket's "16" is
+  the number of declared specs; the other five are their dependencies
+  (`plenary.nvim`, `nui.nvim`, `nvim-web-devicons`, `nvim-lspconfig`,
+  `blink.cmp`).
+- `vim.fn.exepath("node")` and `exepath("npm")` both resolve inside
+  `/nix/store`, and `vim.env.PATH` contains no `fnm` path.
+- `treesitter.lua`'s `auto_install` compiled its grammars with `cc` resolving
+  inside `/nix/store`, which is the confirmation the ticket asked for about
+  GCC. One grammar (`typescript`) failed a tarball extraction on first attempt
+  and succeeded on the retry, which is nvim-treesitter's own download
+  behaviour rather than anything this repository controls.
+- mason installs against this Node: `prettierd` (npm) and
+  `lua-language-server` (prebuilt download) both install, and `prettierd
+  --help` runs, which is the runtime half of the Node argument rather than the
+  install half.
+- opening the sample `.ts` file attaches `ts_ls` and
+  `vim.treesitter.highlighter.active` holds the buffer, so both acceptance
+  behaviours for a TypeScript file hold.
+- `:checkhealth` reports no missing dependency this configuration uses. It does
+  report three things, none of them that: `luarocks` and Lua 5.1 are absent,
+  which only limits plugins requiring rocks and none of the sixteen do;
+  `Composer`, `PHP` and `julia` are absent under mason, which are optional
+  runtimes for tools this configuration does not install; and "no clipboard
+  tool" plus a non-UTF-8 locale are artifacts of the `env -i` sandbox, since
+  `wl-clipboard` is already a global user tool and a real session has a locale.
+
+What the host could not settle, and why: the staging VM could not be synced
+from this session — `rsync` to the guest was refused by this session's
+permission layer as a shared-resource change. A clean `bootstrap.sh install`
+there, and `:Lazy` read in a real terminal, still want either that permission
+or the operator.

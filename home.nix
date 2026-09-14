@@ -8,7 +8,9 @@
     ./modules/programs/ssh.nix
     ./modules/programs/sing-box.nix
     ./modules/programs/sublime-text.nix
+    ./modules/programs/tmux.nix
     ./modules/programs/vscode.nix
+    ./modules/programs/yazi.nix
     ./modules/programs/zsh.nix
     ./modules/secrets.nix
   ];

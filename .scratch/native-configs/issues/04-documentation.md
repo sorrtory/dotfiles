@@ -1,6 +1,6 @@
 # 04 — Documentation corrections
 
-Status: ready-for-agent
+Status: claimed
 Blocked by: 01, 02, 03
 
 ## Goal
@@ -40,3 +40,42 @@ slice either fulfilled differently or proved wrong.
 - Every `SOFTWARE.md` row touched by this slice links to a file that exists.
 - No canonical document claims lazygit is part of the Neovim configuration.
 - `tests/*.sh` still pass.
+
+## Comments
+
+Done, in the same working tree as 01 to 03.
+
+- `docs/SOFTWARE.md`: the `Neovim`, `tmux`, and `Yazi` rows now describe the
+  mechanism that shipped and link the modules. `Node.js and pnpm` is split,
+  because only Node was selected: a `Node.js` row pointing at
+  `modules/packages.nix` with the reason, and a `pnpm` row still deferred. The
+  `fnm` row moves from "deferred" to "not selected", with the reason the shim
+  existed. Two rows were added for what Nix now owns, following the precedent
+  of the `MPV script:` rows: the three tmux plugins, and the Yazi plugin
+  package.
+- The `lazygit` row claimed it was "integrated by retained Neovim
+  configuration; deferred to the Neovim migration". Nothing in `configs/nvim/`
+  mentions lazygit, so the row now reads "Not selected; nothing in the Neovim
+  configuration ever referenced it, so no migration was waiting on it".
+- The `Vim` row keeps its judgment and gains the clarifying clause: the
+  package stays undeclared, while `configs/vim/.vimrc` ships as repository
+  material, and its Definition cell points at where that delivery is defined.
+- `docs/DECISIONS.md`, Configuration policy: the plugin-ownership split is
+  recorded as two specific judgments rather than a rule, along with the
+  upstream-name plugin layout that repairs `prefix + Ctrl+d`, the
+  `PATH`-obligation that makes Node global, and the two Home Manager modules
+  that generate the file a native config must occupy. The ownership sentence
+  now says Home Manager owns Zsh, Neovim, tmux, MPV, and Yazi.
+- `docs/MIGRATION.md` §10 to §12 now match what shipped, including the
+  `sideloadInitLua` detail, the reason the tmux module avoids `programs.tmux`,
+  and the Yazi plugin's pin and `setup` call.
+
+`tests/*.sh` still pass, except `tests/sing_box_config_test.sh`, which fails
+with "sing-box must be on PATH" for reasons belonging to another slice in the
+same tree.
+
+Nothing was written about the legacy repository's retirement.
+
+Deliberately not done: the four `SOFTWARE.md` rows and the `MIGRATION.md`
+sections carry no "shipped and confirmed under normal use" line, because the
+slice has not been through a VM activation yet. See the Comments on 01 to 03.

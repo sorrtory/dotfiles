@@ -1,6 +1,6 @@
 # 02 — tmux
 
-Status: ready-for-agent
+Status: claimed
 
 ## Goal
 
@@ -52,3 +52,72 @@ Let Home Manager own tmux and its three plugins, retiring TPM, while keeping
   - `Ctrl+h` from inside Neovim moves to the Neovim split, and from a shell
     pane moves to the tmux pane.
 - `grep -c tpm configs/tmux/tmux.conf` returns 0.
+
+## Comments
+
+Implemented on the host, with one deliberate deviation from step 2 and one
+extra fix.
+
+The deviation: `programs.tmux.enable` cannot coexist with step 3. That option
+always defines `xdg.configFile."tmux/tmux.conf".text`, so pointing the same
+path at a `mkOutOfStoreSymlink` is a conflicting definition, and forcing ours
+through would leave `programs.tmux.plugins` generating plugin loads into a file
+nobody reads. `modules/programs/tmux.nix` therefore declares `pkgs.tmux` with
+`home.packages` and links the three plugins itself, under their upstream names
+(`tmux-sensible`, `tmux-resurrect`, `tmux-continuum`), which is the layout TPM
+produced. The module still owns the package it configures, so the
+`docs/DECISIONS.md` rule holds, and `tmux` is not in `modules/packages.nix`.
+
+That layout is also the answer to step 5: the `prefix + Ctrl+d` binding names
+`~/.config/tmux/plugins/tmux-resurrect/scripts/save.sh`, and the path now
+resolves to resurrect's own script rather than to nothing, so the binding is
+repaired without reproducing the wrong path or hard-coding a store path into a
+native file.
+
+The extra fix: `prefix + r` was broken in exactly the same silent way, and the
+ticket did not know it. `source-file ~/.config/tmux/tmux.conf` fails with
+`No such file or directory: ~/.config/tmux/tmux.conf`, because tmux resolves a
+non-absolute `source-file` argument against the client's working directory and
+never expands the tilde. Confirmed against both tmux 3.6a from this closure and
+the host's own tmux 3.6, so it is pre-existing rather than a regression from
+this slice. The binding now goes through `run-shell`, the same idiom the
+`Ctrl+d` binding beside it already used, where the shell expands the tilde.
+
+Everything else in `tmux.conf` is verbatim; `git diff` against the legacy file
+shows only the plugin section, the two binding changes, and their comments.
+`grep -c tpm configs/tmux/tmux.conf` returns 0.
+
+Verified on the host without activating, by starting a tmux server on a private
+socket with `HOME` and `XDG_STATE_HOME` in a throwaway sandbox, the repository
+file symlinked in as activation would link it, and the plugin directories
+copied from the built `home-manager-files`:
+
+- all three plugins load with no error in `show-messages`; `prefix` is `C-a`,
+  `C-b` is unbound, sensible's `prefix a` and resurrect's `prefix C-s` and
+  `prefix C-r` bindings are present, and `@resurrect-dir`,
+  `@continuum-save-interval` and `@continuum-restore` hold their intended
+  values.
+- `prefix + Ctrl+d`, run as the command tmux itself stored in the key table,
+  with a real client attached through a pty: resurrect wrote
+  `$XDG_STATE_HOME/tmux/resurrect/tmux_resurrect_*.txt` and its `last`
+  symlink, the "tmux environment saved; detaching" message was displayed, the
+  client detached, and the session survived.
+- `prefix + r`, also run from the key table: an edit appended to
+  `configs/tmux/tmux.conf` in the repository appeared in the server's options
+  after the reload, and the message was displayed. The file was restored byte
+  for byte afterwards.
+- the `is_vim` condition answers correctly per pane — "vim" for a pane running
+  Neovim, "not vim" for a shell pane — so `Ctrl+h` sends the key into Neovim in
+  the first case and moves tmux panes in the second. This is the tmux half of
+  the shared feature; ticket 01's `vim-tmux-navigator` is installed.
+
+Two things the host cannot settle. Continuum's periodic save hook refuses to
+install itself when another tmux server is already running on the machine — by
+design, so two servers cannot overwrite each other's saved state — and the
+operator's own tmux server was running throughout, so `status-right` was left
+alone. A machine with no other server is the place to see that, which means the
+VM. And `Ctrl+h` pressed by a human, rather than its condition evaluated, is a
+normal-use check.
+
+The VM could not be synced from this session: `rsync` to the guest was refused
+by this session's permission layer as a shared-resource change.

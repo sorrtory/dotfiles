@@ -53,7 +53,7 @@ MPV is what surfaced all of this, and it also showed the second half of the prob
 
 Keep a readable native config when translating it to Nix would reduce clarity. Use `mkOutOfStoreSymlink` intentionally when immediate editability is valuable.
 
-Home Manager should eventually own Zsh, Git, tmux, MPV, Yazi, and intentional GNOME dconf settings. Migration may preserve selected native configuration first and translate it later.
+Home Manager owns Zsh, Neovim, tmux, MPV, and Yazi, and should eventually own Git and intentional GNOME dconf settings. Migration may preserve selected native configuration first and translate it later.
 
 The Zsh module owns the shell package, generated startup files, Oh My Zsh,
 shell plugins, history policy, and zoxide integration. It preserves the small
@@ -77,6 +77,20 @@ selected login shell would start without the user environment on `PATH` or
 `NIX_PROFILES`.
 The phase's explicit uninstall selects the stable host Bash rather than trying
 to infer historical account state.
+
+Plugin ownership is decided per program rather than by rule. Nix owns tmux's three plugins and Yazi's one: all four are packaged, both sets are small and stable, and each program's own manager would otherwise cost a network fetch and a manual first run on every fresh machine. `lazy.nvim` and mason keep Neovim's sixteen, because `lazy-lock.json` already pins them and moving them into Nix would trade lazy-loading and live editing for a reproducibility an editor does not need that badly. These are two judgments about two specific plugin sets, not a general rule; the next program with plugins gets asked the same question again.
+
+The tmux plugins are linked under their upstream repository names rather than their Nixpkgs attribute names, reproducing the layout TPM created. That is what makes `prefix + Ctrl+d` work: the binding names resurrect's own `save.sh` beneath that path, and it failed on the legacy host only because nothing ever created the directory it named.
+
+Where a retained plugin manager assumes something is already on `PATH`, Nix supplies it. That is why Node is a global user tool rather than a per-project one: mason installs ten of Neovim's language servers as npm packages, and they need Node to run, not only to install. Without it those servers fail to start and the editor looks subtly broken rather than obviously broken. The `fnm` shim the legacy `init.lua` carried is deleted rather than migrated, because a Nix-provided Node has no shell-dependent `PATH` to lose in a GUI or session launch.
+
+Two Home Manager modules generate the very file a native configuration must occupy, and they are resolved differently. `programs.neovim` writes its generated `init.lua` into the directory this repository links whole, so `sideloadInitLua` hands that Lua to the wrapper instead of to a file; nothing is lost, because this configuration generates none. `programs.tmux` generates `tmux.conf` with no comparable hatch, so the tmux module declares the package with `home.packages` and links the plugins itself, keeping ownership of the package it configures without also owning a file the operator edits.
+
+"Copy" in a file manager is three operations, and Yazi's own keymap gives two of them away cheaply while hiding the third. The path is `c c`, a preset. The file itself and the file's contents are not the same thing: one belongs on the system clipboard as `text/uri-list`, which is what makes a GUI application paste an attachment instead of a path string, and the other is text for an editor or a chat window. They get `y` and `Ctrl+y`, with `Alt+Shift+Y` for the same contents behind each file's path in a code fence. `y` runs `yank` before the clipboard plugin, so Yazi's own `p` keeps working; nothing is taken away by the override. The legacy `Alt+y` is retired rather than aliased, because three similar keys for three different operations is the point.
+
+`!` opens a real `$SHELL` in the hovered directory, which Yazi's `;` and `:` are not: those are command-input boxes for a single command, with no history, aliases or job control. Both stay bound; they are a different tool, not a worse one.
+
+This is also why `xclip` is now declared next to `wl-clipboard`. Both the tmux copy chain and Yazi's clipboard plugin choose their tool by session type, so an X11 session without it copies nothing — and the staging VM is an X11 session, which would have left the feature unverifiable. `xsel` stays undeclared: it is only the third branch of the tmux chain, which reaches `xclip` first.
 
 GNOME and Hyprland concerns remain separate. GNOME should use `dconf.settings` where practical; Hyprland may remain native and live-linked if that is clearer.
 
