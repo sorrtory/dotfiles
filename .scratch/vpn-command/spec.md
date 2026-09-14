@@ -19,8 +19,10 @@ command, desktop entry and applicable URL handler. Start capture on demand;
 do not autostart Vesktop at boot, and do not use its tray: closing the window
 must end the process so capture's last-app cleanup applies. Vesktop settings
 live in `configs/vesktop/settings.json`, linked out of store so the UI can
-still change them; they set `tray`, `minimizeToTray`, `checkUpdates` and
-`arRPC` (unreachable from the namespace's own loopback) to false.
+still change them; they set `tray`, `minimizeToTray` and `arRPC` (unreachable
+from the namespace's own loopback) to false. This Vesktop has no `checkUpdates`
+setting. Activation seeds `state.json` once so the first-launch tour, which
+would reset these and can write an untunneled autostart entry, never runs.
 
 Each configuration names its identity explicitly with `dotfiles.vpn.identity`.
 The flake's `staging` configuration differs from `z` only in identity; the

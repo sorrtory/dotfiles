@@ -23,7 +23,7 @@ if [[ ${1-} == --inside ]]; then
   setpriv=$(command -v setpriv)
   # The program gets the caller's PATH, not this helper's runtime inputs.
   PATH=$VPN_USER_PATH
-  unset VPN_USER_PATH VPN_ENTER VPN_SYSTEMD_RUN
+  unset "${!VPN_@}"
   exec "$setpriv" --bounding-set=-all --inh-caps=-all --ambient-caps=-all \
     --no-new-privs -- "$@"
 fi
@@ -44,7 +44,8 @@ for ((attempt = 0; attempt < 100; attempt++)); do
   fi
   sleep 0.1
 done
-[[ $holder =~ ^[1-9][0-9]*$ ]] || die 'capture namespace did not start; inspect vpn-capture.service'
+[[ $holder =~ ^[1-9][0-9]*$ ]] ||
+  die 'capture namespace did not start; see systemctl --user status vpn-capture. On Ubuntu, check ./scripts/bootstrap.sh status apparmor'
 expected=$(readlink "/proc/$holder/ns/net") || die 'capture namespace disappeared'
 [[ $expected != "$(readlink /proc/self/ns/net)" ]] || die 'capture did not isolate networking'
 nsenter -U --preserve-credentials --keep-caps -n -t "$holder" \

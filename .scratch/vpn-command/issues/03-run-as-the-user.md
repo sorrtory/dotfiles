@@ -1,6 +1,6 @@
 # 03 — Install Vesktop and wrap its managed launch paths
 
-Status: ready-for-agent
+Status: claimed
 Blocked by: 01, 02
 
 ## Goal
@@ -37,3 +37,25 @@ launches use capture without typing vpn.
 - Arguments, URL handoff, audio and desktop integration work.
 - The raw executable bypass is documented; this is routing, not a hostile-app
   security sandbox.
+
+## Comments — Implementation
+
+`dotfiles.vpnizedApps.vesktop.enable` (set in `home.nix`) installs a
+`symlinkJoin` of Nixpkgs Vesktop whose `bin/vesktop` and `vesktop.desktop`
+`Exec=` are replaced by a private launcher calling `vpn -- <raw vesktop>`.
+The desktop ID, icons and `MimeType=x-scheme-handler/discord` are kept, and
+Home Manager's desktop database maps `discord://` to `vesktop.desktop`. The
+standalone package entry is removed.
+
+`configs/vesktop/settings.json` is linked out of store; Vesktop saves settings
+with a plain `writeFileSync`, which writes through the link. Close only quits
+when `tray` or `minimizeToTray` is literally false. Activation seeds
+`state.json` with `firstLaunch` once, because the first-launch tour resets
+those settings and can enable an autostart entry that runs the raw Electron
+command line, outside the VPN.
+
+AppArmor profiles are generated from the package paths and installed by the
+new `apparmor` bootstrap phase; activation warns when installed ones differ.
+The generated attachments equal the hand-pinned paths proven on staging.
+Built both configurations; phase, command and shellcheck tests pass. Launch
+verification on a freshly bootstrapped VM is pending, after ticket 04.

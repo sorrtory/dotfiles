@@ -1,9 +1,0 @@
-# Explicit host integration for the currently pinned Nixpkgs Vesktop runtime.
-# This is a user-namespace allowance, NOT a complete application confinement
-# profile. See docs/VESKTOP-APPARMOR.md before installing or updating it.
-abi <abi/4.0>,
-include <tunables/global>
-
-profile dotfiles-vesktop-electron /nix/store/7qzynzr99rh0yadbkj5g5imn8mc9ch8k-electron-unwrapped-43.1.0/libexec/electron/electron flags=(unconfined) {
-  userns,
-}

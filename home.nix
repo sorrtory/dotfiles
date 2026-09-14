@@ -25,6 +25,7 @@
   # Change this to switch VPN profiles. The staging configuration in flake.nix
   # overrides it, because the VM runs alongside this machine.
   dotfiles.vpn.identity = "laptop";
+  dotfiles.vpnizedApps.vesktop.enable = true;
 
   programs.home-manager.enable = true;
 }

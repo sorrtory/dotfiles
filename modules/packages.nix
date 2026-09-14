@@ -33,7 +33,6 @@
     spotify
     tealdeer
     tree
-    vesktop
     wget
     wireguard-tools
     wl-clipboard
