@@ -17,10 +17,13 @@ fi
 for dir in "$proc"/[0-9]*; do
   [[ -O $dir ]] || continue
   mapfile -d '' -t argv 2>/dev/null < "$dir/cmdline" || continue
+  # Chromium rewrites its command line into one space-joined string, with
+  # flags before the app path, so match the joined line rather than argv[1].
   # Only the main process: Electron's helpers carry --type=, and its sandboxed
   # children have their own network namespaces by design.
-  [[ ${#argv[@]} -ge 2 && ${argv[1]} == */opt/Vesktop/resources/app.asar ]] || continue
-  [[ " ${argv[*]} " != *' --type='* ]] || continue
+  cmdline=" ${argv[*]} "
+  [[ $cmdline == *'/opt/Vesktop/resources/app.asar '* ]] || continue
+  [[ $cmdline != *' --type='* ]] || continue
   if [[ ! $holder =~ ^[1-9][0-9]*$ || ! $dir/ns/net -ef $proc/$holder/ns/net ]]; then
     printf 'vesktop: Vesktop is already running outside the VPN (PID %s). Quit it, then start Vesktop again.\n' \
       "${dir##*/}" >&2

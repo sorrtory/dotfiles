@@ -36,18 +36,25 @@ launch 'discord://-/channels/1' || fail 'cold start refused'
   fail 'launcher did not hand the raw package and arguments to vpn'
 
 process 20 ns-session /nix/store/other-app/bin/electron /nix/store/other/resources/app.asar
-process 21 ns-session /nix/store/e/electron "$asar" --type=renderer
+process 21 ns-session "/nix/store/e/electron --type=renderer --app-path=$asar --lang=en-US"
 launch || fail 'unrelated apps or Electron helpers caused a refusal'
 
+# Real shape on staging: Chromium rewrites the main process's command line into
+# one space-joined string with flags before the app path.
 printf '7\n' > "$root/run/vpn-capture/namespace.pid"
-process 30 ns-capture /nix/store/e/electron "$asar" --enable-speech-dispatcher
+process 30 ns-capture "/nix/store/e/electron --enable-speech-dispatcher $asar"
 launch || fail 'refused an instance already inside capture'
 
-process 31 ns-session /nix/store/e/electron "$asar"
+process 31 ns-session "/nix/store/e/electron --enable-speech-dispatcher $asar"
 if output=$(launch 2>&1); then fail 'handed off to an untunneled instance'; fi
 [[ $output == *'(PID 31)'* ]] || fail 'refusal does not name the PID'
 [[ ! -e $root/launched ]] || fail 'vpn ran despite the refusal'
 rm -rf "$root/proc/31"
+
+# The unrewritten form, one argument per NUL, is refused the same way.
+process 32 ns-session /nix/store/e/electron --enable-speech-dispatcher "$asar"
+if launch 2>/dev/null; then fail 'handed off to an untunneled instance with a NUL-separated argv'; fi
+rm -rf "$root/proc/32"
 
 rm "$root/run/vpn-capture/namespace.pid"
 if launch 2>/dev/null; then fail 'accepted an instance while capture is not running'; fi

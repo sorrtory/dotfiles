@@ -57,6 +57,19 @@ trap 'rm -f -- "$private/resolv.conf" "$private/nsswitch.conf"; rmdir -- "$priva
 printf 'nameserver 172.31.255.2\noptions timeout:2 attempts:2\n' > "$private/resolv.conf"
 awk '/^hosts:/ { print "hosts: files dns"; next } { print }' \
   /etc/nsswitch.conf > "$private/nsswitch.conf"
+# The payload keeps this process's PID through every exec below. Electron moves
+# its main process into a systemd scope of its own, so stopping this scope when
+# capture fails would not reach it; this helper forwards the stop instead.
+# Explicit stdin, because a background job otherwise reads /dev/null.
 nsenter -U --preserve-credentials --keep-caps -n -t "$holder" \
   unshare --mount --propagation private \
-  "$0" --inside "$private" "$expected" "$(id -u)" "$@"
+  "$0" --inside "$private" "$expected" "$(id -u)" "$@" <&0 &
+payload=$!
+trap 'kill -TERM "$payload" 2>/dev/null' TERM HUP
+# Ctrl-C reaches the payload directly; let it decide, and keep waiting.
+trap : INT
+status=0
+while kill -0 "$payload" 2>/dev/null; do
+  wait "$payload" && status=0 || status=$?
+done
+exit "$status"
