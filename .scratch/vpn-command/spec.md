@@ -1,77 +1,124 @@
-# Spec: VPN command
+# Spec: VPNized applications
 
-Status: needs-triage
+Status: ready-for-agent
 
-## Purpose
+## Purpose and interface
 
-Provide `vpn <app>`: explicitly launch an application's TCP and UDP traffic
-through a tunnel, including Discord voice, while other applications retain
-ordinary host connectivity. See `CONTEXT.md` and `docs/DECISIONS.md`.
+Make everyday Vesktop launches use the shared sing-box backend for TCP and UDP
+without requiring the operator to type a VPN command. This updates the existing
+VPN effort, not a new implementation alongside it.
 
-## Selected architecture
+The selected Home Manager interface is:
 
-The local proxy effort first establishes one sing-box backend per machine with
-an exclusive per-machine WireGuard identity. The VPN command will launch apps
-inside a network namespace with a TUN entry point into that same backend.
-It must not start another WireGuard client or reuse the shared extra profile.
+```nix
+dotfiles.vpnizedApps.vesktop.enable = true;
+```
 
-The existing sing-box pin is 1.13.19. Upstream documents TUN netns and unshare
-namespace support for 1.14+. A prototype must verify a suitable pinned version,
-host user-namespace policy, and desktop compatibility before implementation
-tickets become ready. Rootless operation is a candidate, not a demonstrated
-property of this host.
+Enabling Vesktop installs its Nixpkgs package and owns the normal terminal
+command, desktop entry and applicable URL handler. Start capture on demand;
+do not autostart Vesktop at boot. "Always tunneled" covers these managed launch
+paths, not arbitrary execution of the underlying package or a malicious app.
+Other applications keep ordinary host networking.
 
-Restarting the shared backend interrupts both proxy and VPN applications.
-VPN applications must remain isolated and lose connectivity, never fall back
-to host networking. The prototype must decide how to recover when the backend
-recreates a namespace while existing processes still hold the old one.
+## Selected implementation
+
+Reuse the existing tested prototype: one long-lived sing-box tunnel backend,
+plus an on-demand, credential-free sing-box capture process holding a Linux
+network namespace. Capture forwards TCP/UDP through the backend's local SOCKS
+endpoint. There is only one WireGuard peer connection, not one per app.
+
+Application lifetime tracking keeps capture alive while needed. Backend
+restart preserves capture's namespace; backend loss must not cause direct
+egress. Capture failure terminates dependent apps rather than silently moving
+them to ordinary networking. Last-app exit removes capture-owned resources
+without stopping the local proxy.
+
+The prototype builds with pinned sing-box 1.14.0 and has passed CLI networking
+and lifecycle tests. Ticket 00 preserves the evidence and remaining desktop
+gates; it is not yet a verified everyday Vesktop replacement.
+
+## Ownership and simplification
+
+Target layout, to be created during implementation rather than this plan update:
+
+```text
+modules/programs/vpnized-apps/
+  default.nix
+  enter.sh
+  capture-config.sh
+```
+
+Keep necessary runtime glue private beside its owning module and package it
+with explicit dependencies through writeShellApplication. These helpers do
+not belong in scripts/bin/, which is for deliberately user-facing commands.
+Keep readable shell source separate rather than hiding its complexity inside
+Nix strings. Exact private file count may shrink if behavior and tests survive.
+
+Replace the provisional dotfiles.appVpn module/interface, rather than layering
+another independent implementation over it. Reuse namespace-entry and capture
+logic; simplify generic CLI dispatch and redundant delegation. Generate
+app-specific launchers from one shared implementation. Do not build an
+arbitrary-app framework before the first app works.
+
+A generic vpn <command> is optional follow-up, not a requirement of this slice.
+If later exposed, it must use this implementation and may have a user-facing
+source in scripts/bin/. No new doctor/status/cleanup CLI is required here.
 
 ## Behavior baseline
 
-- The application runs as the invoking user, with its desktop environment.
+- Payload runs as the invoking user without elevated capabilities and with its
+  actual desktop session. Preserve arguments, working directory and required
+  environment; document intentional proxy-variable removal.
 - UDP capture does not depend on application proxy support.
-- DNS stays inside the application network environment and traverses the tunnel.
-  The host resolver configuration is unchanged.
-- An existing untunneled application instance must not silently receive the
-  launch request. Refuse such handoff and name the conflicting instance.
-- Normal activation never invokes sudo. Any required runtime privilege is
-  explicit and limited to namespace setup, never the application payload.
-- No private key reaches command arguments, environment, logs, or the store.
-- Cleanup removes launcher-owned resources after the last application exits
-  without stopping the shared proxy backend.
-- No host-wide capture, veth/NAT routing machinery, or direct fallback is part
-  of the selected design. If the prototype cannot meet it, report the
-  limitation before selecting an alternative architecture.
+- Private resolver/nsswitch mounts route app DNS through capture and the tunnel;
+  never rewrite host resolver files. Keep the backend's endpoint-bootstrap DNS
+  exception and encrypted-secret ownership unchanged.
+- Refuse handoff to an existing untunneled Vesktop, including the legacy native
+  installation. Do not kill it, delete singleton locks, or copy login state.
+- Preserve Electron sandboxing; do not use --no-sandbox as a workaround.
+- Detect unsupported host namespace policy clearly. Normal Home Manager
+  activation never invokes sudo or silently relaxes host security policy.
+- No secret in arguments, environment, logs, patches or the Nix store.
+- Use an exclusive, explicitly checked machine identity. Never run staging,
+  legacy WireGuard and the replacement concurrently with the same peer key.
+- No host-wide TUN interception, veth/NAT machinery, second WireGuard client,
+  new protocol deployment, or automatic browser/editor proxy configuration.
+- Session/login data remains machine-local.
 
-## Scope
+## Scope and verification
 
-Package separate launcher source through writeShellApplication and expose vpn.
-Support launching commands with arguments, reuse of the application namespace,
-cleanup, and objective tunnel diagnostics. Verify desktop/native Electron,
-Snap and Flatpak launchers individually; unsupported cases must fail clearly.
-The existing untracked scripts/bin/vpn.sh is prior work, not authorization to
-overwrite it with the new design.
+Support Nixpkgs Vesktop first. Inspect its executable wrapping, desktop ID,
+desktop actions and URL scheme metadata before generating overrides. Installation
+may be a small package declaration; correct launch integration is separate work.
+Snap/Flatpak, other Electron apps and general launcher-family support are deferred.
 
-Proxy client configuration, remote-server transport deployment, and retirement
-of the operator's legacy installation are separate work. Whole-host aliases
-are a different entry point and are not replaced by this command.
+Reuse the existing configuration and manual integration tests, adapting them to
+the module-owned launch path. Verify terminal, desktop and URL launches by actual
+process namespace, not by the appearance of a window. Test singleton handoff,
+voice UDP, audio/desktop integration, DNS, IPv6 no-escape behavior, backend
+stop/restart, capture crash, concurrent launch and last-app cleanup.
 
-## Definition of done
+Test network loss, resume and connection changes because staging previously
+needed a backend restart; do not equate an active process with a healthy tunnel.
+If a failure reproduces, diagnose it before selecting recovery machinery.
 
-- The namespace prototype passes before implementation tickets are finalized.
-- Direct and VPN requests demonstrate distinct egress.
-- Discord voice/UDP, DNS and IPv6 behavior are verified objectively.
-- For each supported launcher family, the actual application's network
-  namespace is checked rather than inferred from a visible window.
-- An already-running untunneled instance produces a refusal.
-- Backend loss cannot cause direct egress; restart recovery behavior is tested.
-- Last-application cleanup leaves the local proxy usable.
-- Flake, build and tests pass; the operator verifies normal desktop use before
-  host activation/commit according to repository policy.
+Build without host activation; use staging where its policy and hardware allow.
+Record host-only desktop/GPU checks explicitly. Host activation and changes to
+legacy host services require operator approval.
 
-## Superseded design
+## Completion and retirement
 
-The earlier spec retained the legacy script's separate kernel-WireGuard
-interface, veth and NAT setup and argued against sing-box. That overlooked
-combining sing-box with namespace-scoped TUN capture. The operator selected
-the shared backend instead. Git history preserves the old design and tickets.
+Ship only after tests and operator normal-use review. Preserve the legacy
+scripts/bin/vpn.sh and external legacy installation until then; they are not
+dependencies of the new implementation and are not modified by this plan update.
+Retire them deliberately after verification and approval, never as incidental
+cleanup.
+
+Update canonical docs in the implementation/documentation ticket: in particular
+the old mandatory VPN command and scripts/bin source-location wording in
+docs/DECISIONS.md and docs/MIGRATION.md §7. This operator-approved plan changes
+that earlier scope; it does not claim those changes have shipped. Preserve
+CONTEXT.md vocabulary until canonical terminology is reviewed.
+
+Keep the existing .scratch/vpn-command paths and ticket numbers for continuity.
+Git history preserves superseded kernel-WireGuard and generic-launcher plans.

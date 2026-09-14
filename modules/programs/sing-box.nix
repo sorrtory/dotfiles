@@ -4,13 +4,14 @@ let
   cfg = config.dotfiles.localProxy;
   generator = pkgs.writeShellApplication {
     name = "sing-box-config";
-    runtimeInputs = [ pkgs.coreutils pkgs.jq pkgs.sing-box ];
+    runtimeInputs = [ pkgs.coreutils pkgs.jq cfg.package ];
     text = builtins.readFile ../../scripts/bin/sing-box-config.sh;
   };
 in
 {
   options.dotfiles.localProxy = {
     enable = lib.mkEnableOption "the per-machine sing-box local proxy";
+    package = lib.mkPackageOption pkgs "sing-box" { };
     profile = lib.mkOption {
       type = lib.types.enum [ "laptop" "desktop-ubuntu" "desktop-old" "desktop-win" "phone" ];
       default = "laptop";
@@ -22,7 +23,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [ pkgs.sing-box generator ];
+    home.packages = [ cfg.package generator ];
 
     sops.secrets."sing-box-wireguard" = {
       sopsFile = ../../secrets/wireguard + "/${cfg.profile}.conf";
@@ -42,7 +43,7 @@ in
         RuntimeDirectoryMode = "0700";
         UMask = "0077";
         ExecStartPre = "${generator}/bin/sing-box-config ${config.sops.secrets."sing-box-wireguard".path} %t/sing-box/config.json";
-        ExecStart = "${pkgs.sing-box}/bin/sing-box run -c %t/sing-box/config.json";
+        ExecStart = "${cfg.package}/bin/sing-box run -c %t/sing-box/config.json";
         Restart = "on-failure";
         RestartSec = 5;
         NoNewPrivileges = true;

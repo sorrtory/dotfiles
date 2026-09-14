@@ -4,6 +4,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
+    # Only sing-box needs the namespace support absent from the stable pin.
+    # Keep the rest of the user environment on its existing release.
+    nixpkgs-networking.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -17,9 +21,10 @@
     };
   };
 
-  outputs = { nixpkgs, home-manager, sops-nix, ... }:
+  outputs = { nixpkgs, nixpkgs-networking, home-manager, sops-nix, ... }:
     let
       system = "x86_64-linux";
+      networkingPkgs = import nixpkgs-networking { inherit system; };
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfreePredicate = package:
@@ -71,12 +76,18 @@
         packages = [ gitleaks pkgs.sops ];
       };
 
-      packages.${system}.recover-age-identity = recoverAgeIdentity;
+      packages.${system} = {
+        recover-age-identity = recoverAgeIdentity;
+        sing-box = networkingPkgs.sing-box;
+      };
 
       homeConfigurations.z = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = { inherit sops-nix; };
-        modules = [ ./home.nix ];
+        modules = [
+          ./home.nix
+          { dotfiles.localProxy.package = networkingPkgs.sing-box; }
+        ];
       };
     };
 }

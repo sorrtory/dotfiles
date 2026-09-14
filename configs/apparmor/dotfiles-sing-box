@@ -1,0 +1,8 @@
+# Exact-path namespace allowance for the pinned capture implementation.
+# Not an application confinement profile; see docs/VESKTOP-APPARMOR.md.
+abi <abi/4.0>,
+include <tunables/global>
+
+profile dotfiles-sing-box /nix/store/bcbfbiaxbsvh3qnsglcgnl2ab5wz0y18-sing-box-1.14.0/bin/sing-box flags=(unconfined) {
+  userns,
+}

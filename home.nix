@@ -11,6 +11,7 @@
     ./modules/programs/sublime-text.nix
     ./modules/programs/tmux.nix
     ./modules/programs/vscode.nix
+    ./modules/programs/vpn.nix
     ./modules/programs/yazi.nix
     ./modules/programs/zsh.nix
     ./modules/secrets.nix
