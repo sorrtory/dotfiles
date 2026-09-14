@@ -34,6 +34,10 @@ the password is 'z'
 
 use ~/Documents/dotfiles/ as a guest repo
 
+Resetting the VM or bootstrapping it from a snapshot: follow
+[docs/STAGING.md](docs/STAGING.md). It covers disk size, sudo without a TTY,
+the operator-only recovery step and the `staging` configuration.
+
 ### Mirroring the working tree
 
 The host is always the source of truth. The VM mirrors it and never syncs back,
