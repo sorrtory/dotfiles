@@ -124,6 +124,11 @@ flakes_enabled() {
     :
   else
     result=$?
+    # Newer Nix refuses this query until nix-command is enabled, which answers
+    # the question rather than failing to.
+    if [[ "$(nix config show experimental-features 2>&1 >/dev/null)" == *"experimental Nix feature 'nix-command' is disabled"* ]]; then
+      return 1
+    fi
     phase_error "cannot inspect Nix experimental features: nix exited $result"
     return 2
   fi

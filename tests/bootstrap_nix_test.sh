@@ -54,6 +54,24 @@ fi
 [[ $result -eq 2 ]] ||
   fail 'a failed feature query should be an inspection error'
 
+# Nix 2.35 refuses the feature query itself until nix-command is enabled.
+nix() {
+  if [[ "$1" == --version ]]; then
+    printf 'nix test-version\n'
+    return
+  fi
+  printf "error: experimental Nix feature 'nix-command' is disabled; add '--extra-experimental-features nix-command' to enable it\n" >&2
+  return 1
+}
+
+if check >/dev/null 2>&1; then
+  fail 'a disabled nix-command should not be reported as satisfied'
+else
+  result=$?
+fi
+[[ $result -eq 1 ]] ||
+  fail 'a disabled nix-command should leave flakes to be enabled, not error'
+
 # Called indirectly by nss_entry_absent.
 # shellcheck disable=SC2329
 getent() { return 2; }
