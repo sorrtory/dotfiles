@@ -70,6 +70,10 @@ if systemctl --user is-active --quiet vpn-capture.service; then
 fi
 [[ ! -d ${XDG_RUNTIME_DIR}/vpn-capture ]]
 echo 'PASS: last application exit stops capture and removes runtime namespace'
+for ((n=0;n<5;n++)); do
+  "$vpn" /bin/true || { echo 'FAIL: back-to-back launch lost to the queued capture stop'; exit 1; }
+done
+echo 'PASS: back-to-back launches survive the queued capture stop'
 "$vpn" /bin/sleep 30 &
 victim=$!
 sleep 1

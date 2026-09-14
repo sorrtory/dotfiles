@@ -29,6 +29,8 @@ mapfile -t args < "$test_root/args"
 [[ ${args[-2]} == first && ${args[-1]} == 'second argument' ]] || fail 'arguments not preserved'
 printf '%s\n' "${args[@]}" | grep -qx -- '--property=BindsTo=vpn-capture.service' ||
   fail 'scope is not bound to capture'
+printf '%s\n' "${args[@]}" | grep -qx -- '--job-mode=replace' ||
+  fail 'a relaunch would fail against the queued capture stop'
 [[ $(<"$test_root/user-path") == "$user_path" ]] || fail 'caller PATH not handed to the helper'
 
 vpn -- multicall-name || fail 'rejected -- separator'

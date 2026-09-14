@@ -38,7 +38,9 @@ case "$target" in
 esac
 
 export VPN_USER_PATH=$PATH
-exec "$VPN_SYSTEMD_RUN" --user --scope --quiet --collect \
+# When the last tunneled program has just exited, capture already has a stop
+# job queued; the default job mode refuses a scope that needs it again.
+exec "$VPN_SYSTEMD_RUN" --user --scope --quiet --collect --job-mode=replace \
   --unit="vpn-app-$(</proc/sys/kernel/random/uuid)" \
   --property=Requires=vpn-capture.service \
   --property=BindsTo=vpn-capture.service \

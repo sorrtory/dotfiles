@@ -106,6 +106,10 @@ in
           Wants = [ "sing-box.service" ];
           After = [ "sing-box.service" ];
           StopWhenUnneeded = true;
+          # Each tunneled program's exit can stop capture, so a burst of short
+          # launches (`vpn curl` in a loop) is a burst of starts. Capture never
+          # restarts itself, so the default start limit only breaks those.
+          StartLimitIntervalSec = 0;
         };
         Service = {
           Type = "simple";
