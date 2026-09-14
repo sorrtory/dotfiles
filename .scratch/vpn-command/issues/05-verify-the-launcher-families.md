@@ -54,3 +54,7 @@ Not yet evidenced: a real voice call on this rebuilt setup (operator login
 needed; the prototype call passed on 2026-09-14), a change to a different
 network or address, and suspend/resume. Host checks (GPU, the host's own
 policy) belong to host activation, which needs operator approval.
+
+A 60 s VM pause (`virsh suspend`/`resume`, a stand-in rather than a guest
+suspend-to-RAM) recovered HTTPS through capture 5 s after resume, with no
+sing-box restart and Vesktop still running.
