@@ -53,7 +53,7 @@ MPV is what surfaced all of this, and it also showed the second half of the prob
 
 Keep a readable native config when translating it to Nix would reduce clarity. Use `mkOutOfStoreSymlink` intentionally when immediate editability is valuable.
 
-Home Manager owns Zsh, Neovim, tmux, MPV, and Yazi, and should eventually own Git and intentional GNOME dconf settings. Migration may preserve selected native configuration first and translate it later.
+Home Manager owns Zsh, Neovim, tmux, MPV, Yazi, and Git, and should eventually own intentional GNOME dconf settings. Migration may preserve selected native configuration first and translate it later.
 
 The Zsh module owns the shell package, generated startup files, Oh My Zsh,
 shell plugins, history policy, and zoxide integration. It preserves the small
@@ -91,6 +91,12 @@ Two Home Manager modules generate the very file a native configuration must occu
 `!` opens a real `$SHELL` in the hovered directory, which Yazi's `;` and `:` are not: those are command-input boxes for a single command, with no history, aliases or job control. Both stay bound; they are a different tool, not a worse one.
 
 This is also why `xclip` is now declared next to `wl-clipboard`. Both the tmux copy chain and Yazi's clipboard plugin choose their tool by session type, so an X11 session without it copies nothing — and the staging VM is an X11 session, which would have left the feature unverifiable. `xsel` stays undeclared: it is only the third branch of the tmux chain, which reaches `xclip` first.
+
+Git is the one program whose configuration is Nix-ified rather than kept native, and the reasoning inverts the tmux and Yazi cases. The file is eleven lines, the operator does not edit it in place, and `git config --global` writes to it, which a read-only store symlink would break rather than preserve.
+
+That choice forces a migration step: Git ignores `~/.config/git/config` entirely whenever `~/.gitconfig` exists — not per key, the whole file, as `git config --list --show-origin` confirms. Home Manager writes the XDG path, so a leftover `~/.gitconfig` would leave the module silently inert. Activation moves it to `~/.gitconfig.pre-home-manager` rather than deleting it, and only when it is a real file, so an already-migrated home is untouched.
+
+The legacy file carried delta and `merge.conflictStyle = zdiff3` commented out. That was intent never finished wiring up, so it is enabled rather than dropped. Home Manager binds delta through `pager.blame/diff/log/show` rather than a blanket `core.pager`, which is narrower than the commented block asked for and leaves everything else paging normally.
 
 GNOME and Hyprland concerns remain separate. GNOME should use `dconf.settings` where practical; Hyprland may remain native and live-linked if that is clearer.
 
