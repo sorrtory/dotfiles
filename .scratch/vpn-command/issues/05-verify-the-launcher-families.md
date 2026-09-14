@@ -50,9 +50,11 @@ link returns with no sing-box restart and Vesktop still in capture. The host
 capture test (`tests/manual/vpn_capture.sh`) passes every stage, including the
 new back-to-back stage.
 
-Not yet evidenced: a real voice call on this rebuilt setup (operator login
-needed; the prototype call passed on 2026-09-14), a change to a different
-network or address, and suspend/resume. Host checks (GPU, the host's own
+The operator logged in on the rebuilt staging setup and confirmed a working
+voice call through the managed launch.
+
+Not yet evidenced: a change to a different network or address, and a real
+guest suspend-to-RAM. Host checks (GPU, the host's own
 policy) belong to host activation, which needs operator approval.
 
 A 60 s VM pause (`virsh suspend`/`resume`, a stand-in rather than a guest
