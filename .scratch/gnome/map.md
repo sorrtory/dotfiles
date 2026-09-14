@@ -38,5 +38,5 @@ it.
   - The staging VM is shared, and `rsync --delete` mirrors a whole tree.
     Two efforts syncing different working trees would overwrite each other's
     guest copy, so staging must be taken in turns.
-  - The current Lubuntu VM has no GNOME and has been reset. The operator will
-    add an Ubuntu GNOME VM.
+  - The Lubuntu VM has no GNOME. Stage this effort on the Ubuntu GNOME VM
+    (`z@192.168.122.242`, GNOME Shell 50.1), which AGENTS.md describes.
