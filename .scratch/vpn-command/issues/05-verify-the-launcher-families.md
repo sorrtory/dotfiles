@@ -1,6 +1,6 @@
 # 05 — Verify everyday Vesktop and failure behavior
 
-Status: ready-for-agent
+Status: claimed
 Blocked by: 04
 
 ## Goal
@@ -33,3 +33,24 @@ Prove the selected module supports everyday Vesktop, not just CLI/STUN probes.
 - Other applications retain ordinary connectivity, with no host-wide capture.
 - Unsupported prerequisites and unverified cases are documented honestly.
 - No Snap/Flatpak/general launcher-family coverage is required for this slice.
+
+## Comments — Staging evidence, 2026-09-15
+
+Fresh VM from the `ssh-server` snapshot, full bootstrap as `staging`
+(docs/STAGING.md), reboot into the autologin session.
+
+Passed: direct vs tunneled egress differ (IPv4 212.118.38.195 via the tunnel);
+IPv6 is captured too (`vpn curl -6` exits 2a0d:8480:3:10b::100 while the VM
+itself has no IPv6); DNS confinement (ticket 02); stdin through `vpn`;
+last-app exit stops capture and removes its runtime; ten back-to-back launches
+and repeated `vpn curl`; relaunching Vesktop right after quitting; backend
+restart keeps capture's namespace and restores HTTPS without restarting
+Vesktop; killing capture ends Vesktop; a 45 s link drop recovers 5 s after the
+link returns with no sing-box restart and Vesktop still in capture. The host
+capture test (`tests/manual/vpn_capture.sh`) passes every stage, including the
+new back-to-back stage.
+
+Not yet evidenced: a real voice call on this rebuilt setup (operator login
+needed; the prototype call passed on 2026-09-14), a change to a different
+network or address, and suspend/resume. Host checks (GPU, the host's own
+policy) belong to host activation, which needs operator approval.

@@ -1,6 +1,6 @@
 # 04 — Prevent untunneled Vesktop instance handoff
 
-Status: claimed
+Status: resolved
 Blocked by: 03
 
 ## Goal
@@ -45,3 +45,14 @@ fresh. `tests/vesktop_launcher_test.sh` covers cold start with arguments,
 ignored helpers and unrelated Electron apps, reuse inside capture, refusal
 outside it, and refusal while capture is down. Real process argv and handoff
 are verified on staging with ticket 05.
+
+## Answer
+
+Verified on staging: with the raw package's Vesktop running outside capture,
+the managed `vesktop` exits non-zero with "Vesktop is already running outside
+the VPN (PID N)" and starts no capture; with the tunneled instance running,
+`vesktop discord://…` and `xdg-open discord://…` hand off to it and no second
+main process appears. The first implementation matched argv[1], which never
+matches because Chromium rewrites its cmdline into one space-joined string;
+the check now matches the joined command line (13dab7d), and the test uses
+both shapes.

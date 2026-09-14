@@ -1,6 +1,6 @@
 # 03 — Install Vesktop and wrap its managed launch paths
 
-Status: claimed
+Status: resolved
 Blocked by: 01, 02
 
 ## Goal
@@ -59,3 +59,21 @@ new `apparmor` bootstrap phase; activation warns when installed ones differ.
 The generated attachments equal the hand-pinned paths proven on staging.
 Built both configurations; phase, command and shellcheck tests pass. Launch
 verification on a freshly bootstrapped VM is pending, after ticket 04.
+
+## Answer
+
+Verified on a staging VM bootstrapped from a snapshot with every phase in
+order (2026-09-15). After reboot into the autologin session (whose
+XDG_DATA_DIRS now carries the Home Manager profile), `gtk-launch vesktop`
+from the desktop entry, the `vesktop` command and `xdg-open discord://…` all
+reach Vesktop inside capture. The main process runs as UID 1000 with zero
+effective capabilities, NoNewPrivs, the `dotfiles-vesktop-electron` label, the
+caller's PATH without launcher variables; a renderer has its own
+net/user/PID namespaces and Seccomp 2. The global restriction stays 1 and plain
+unshare stays denied. The first-launch tour did not appear, settings in the
+repository were not rewritten, and no autostart entry exists.
+
+Two defects found and fixed while verifying: launching again right after the
+last app exited failed against capture's queued stop, and a burst of short
+launches hit systemd's start limit (7f3b963); Electron moves its main process
+into its own systemd scope, so vpn-enter now forwards termination (13dab7d).
