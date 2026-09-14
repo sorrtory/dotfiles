@@ -62,6 +62,12 @@ DNS included, inside a namespace that reaches the network only through this
 backend. It loses networking rather than going direct when the tunnel is down.
 Electron and Chromium apps other than Vesktop are not supported yet.
 
+Vesktop is installed this way: its command, menu entry and `discord://` links
+always start it through the VPN, and a Vesktop already running outside the VPN
+is refused rather than silently reused. Its preferences live in
+`configs/vesktop/settings.json`, which Vesktop edits in place. On Ubuntu both
+need phase 09; see [docs/VESKTOP-APPARMOR.md](docs/VESKTOP-APPARMOR.md).
+
 On the current migration host, the running legacy LXD proxy also uses the
 laptop peer. Stop its use of that identity before activating the new backend
 on this host, or select a different exclusive peer. The staging VM is tested
@@ -184,6 +190,7 @@ expressions — it does not prove content is safe to publish.
 - [docs/MIGRATION.md](docs/MIGRATION.md) defines migration order and verification.
 - [docs/SOFTWARE.md](docs/SOFTWARE.md) maps software to its installation mechanism.
 - [AGENTS.md](AGENTS.md) contains agent operating rules and the staging target.
+- [docs/STAGING.md](docs/STAGING.md) bootstraps the staging VM from a snapshot.
 
 This repository is intended to become public. Never add plaintext secrets or a
 private age identity.

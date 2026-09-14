@@ -1,6 +1,6 @@
 # 06 — Document, review and gate legacy retirement
 
-Status: ready-for-agent
+Status: claimed
 Blocked by: 05
 
 ## Goal
@@ -36,3 +36,23 @@ and evidence. Packaging begins in tickets 01/03, not after desktop verification.
 - One chosen app-VPN implementation serves everyday Vesktop.
 - Builds/tests pass; operator review, activation and retirement are distinct gates.
 - Legacy data and session state are not deleted automatically.
+
+## Comments — Documentation pass
+
+Done in parallel with ticket 05's remaining network checks, as the map allows.
+DECISIONS records where script sources live (user-facing in scripts/bin,
+module-private helpers beside the module), the two sing-box processes and one
+peer connection, capture lifecycle including the Electron scope escape and the
+relaunch job mode, VPNized applications and their refusal, the AppArmor phase,
+explicit identity selection, and private resolver files. MIGRATION §5, §7 and §13
+and the fresh-machine flow describe shipped behaviour and name what is not yet
+verified. SOFTWARE gains AppArmor and Vesktop rows and drops "later VPN command",
+dnsmasq/iptables reassessments and the LXD/Shadowsocks deferrals. README
+describes Vesktop's managed launch and points to the staging doc. CONTEXT gains
+"VPNized application" and "VPN identity"; "VPN command" was still accurate.
+
+Legacy retirement has no targets in this repository: the operator bootstraps
+machines fresh, the old veth/NAT script was never committed, and the
+`vpn-up`/`vpn-down` whole-host aliases are unchanged. Remaining gates are the
+operator's review, ticket 05's network change and suspend-to-RAM, and host
+activation with explicit approval.

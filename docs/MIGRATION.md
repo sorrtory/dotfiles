@@ -81,8 +81,9 @@ Recreate selected WireGuard configurations as whole-file SOPS ciphertext,
 decrypted to a user-owned path. There is no privileged deployment step and
 nothing for the bootstrap flow to do: `wg-quick` accepts a config file path, so
 `/etc/wireguard/` is unnecessary and the configuration never lands root-owned on
-disk. Bringing an interface up needs privilege and belongs to the VPN command in
-the next slice. See `docs/DECISIONS.md`.
+disk. Bringing a whole-host interface up needs privilege and stays an explicit
+runtime action; per-application tunneling needs no host interface and belongs to
+§7. See `docs/DECISIONS.md`.
 
 ### 6. SSH keys and configuration
 
@@ -101,13 +102,24 @@ of migration.
 
 ### 7. VPN command
 
-Build the VPN command after §13 establishes the shared sing-box backend.
-First prototype a namespace-scoped TUN on a compatible sing-box release,
-including Discord UDP, DNS isolation, and failure/restart behavior. Then
-implement `vpn <app>` as a launcher into that namespace, running the payload
-as the invoking user and cleaning up launcher-owned resources. Package the
-separate Bash source through `writeShellApplication`. Do not create a second
-WireGuard client with the same identity or change host-wide routing.
+Implemented on §13's shared backend. `vpn PROGRAM` runs one program as the
+invoking user in an on-demand, rootless capture namespace that forwards TCP and
+UDP through the backend; it creates no second WireGuard client and changes no
+host routing. Vesktop is the first VPNized application: its command, desktop
+entry and `discord://` handler always go through the VPN. `docs/DECISIONS.md`
+records the design and [VESKTOP-APPARMOR.md](VESKTOP-APPARMOR.md) the Ubuntu
+policy it needs.
+
+Verified on a staging VM bootstrapped through every phase: tunneled launches
+from all three entry points, a voice call, private DNS, IPv6 through the tunnel,
+refusal of an untunneled Vesktop, backend restart, capture failure, relaunch
+and a dropped link. A change to a different network and a real suspend-to-RAM
+are not yet verified.
+
+Machines are bootstrapped fresh rather than migrated, so the legacy launcher and
+the native `/opt/Vesktop` retire with the reinstall instead of coexisting.
+Several identities, per-application identity and other Electron applications
+are follow-up work.
 
 ### 8. MPV and Anime4K
 
@@ -219,8 +231,8 @@ session type.
 Replace the deprecated LXD proxy container with `sing-box` as an unprivileged
 local proxy. It is a granular per-application proxy, not a transparent VPN:
 applications opt in through the proxy environment variables or their own
-settings. UDP-dependent applications will use §7's namespace launcher into
-the same backend once its prototype is verified.
+settings. UDP-dependent applications use §7's VPN command into the same
+backend.
 
 Run it as a `systemd` user service with no privilege, tunneling through a
 userspace WireGuard endpoint so no kernel module, TUN device, routing change,
@@ -231,13 +243,12 @@ the endpoints the existing `proxy-on` shell alias already exports.
 The WireGuard migration already supplies whole-file SOPS ciphertext. Select
 one exclusive peer identity per machine, generate the sing-box configuration
 on tmpfs at startup, and use it for both entry points. The initial local proxy
-does not require TUN support or a sing-box upgrade; the namespace prototype
+does not require TUN support or a sing-box upgrade; §7's namespace capture
 does. The explicit `user-linger` phase enables startup before login.
 
-The initial local proxy service is implemented and verified on staging,
-including restart, cleanup and startup before login after reboot. Client
-configuration, namespace capture and normal-use retirement remain separate
-work; this does not yet deliver `vpn <app>` or Discord UDP capture.
+The local proxy service is implemented and verified on staging, including
+restart, cleanup and startup before login after reboot. Namespace capture and
+Discord UDP are delivered by §7.
 
 LXD, its container, Shadowsocks, and the legacy `iptables` bridge helper are
 retired rather than migrated. The operator retires the host-side machinery by
@@ -273,15 +284,16 @@ Mine the legacy manager, link script, installer, package list, secrets-fetch log
 The intended flow is:
 
 1. clone the public dotfiles repository
-2. run `scripts/bootstrap.sh install`
+2. set this machine's `dotfiles.vpn.identity`, then run `scripts/bootstrap.sh install`
 3. let `01-host-deps` establish bootstrap prerequisites and `02-nix` install Nix
 4. authenticate GitHub when `03-secret-recovery` invokes the flake recovery app and clones the private recovery repository
 5. enter the main KeePassXC vault password so the phase can restore and verify the private age identity
 6. let `04-home-manager` build and activate the normal profile with sops-nix secrets available
 7. let `login-shell` select the host-owned Zsh
 8. let `user-linger` enable user services before login and after logout
-9. open a new login shell
-10. run explicit privileged host setup where required, including the GPU driver choice in the README's "GPU-accelerated programs" section
-11. authenticate any remaining mutable sessions once on that machine
+9. let `apparmor` install the user-namespace allowances where Ubuntu restricts them
+10. open a new login session
+11. run explicit privileged host setup where required, including the GPU driver choice in the README's "GPU-accelerated programs" section
+12. authenticate any remaining mutable sessions once on that machine
 
 The repository currently targets the `z` user on `x86_64-linux`; broader host/user parameterization is a later migration decision.

@@ -160,13 +160,13 @@ The host-identifying half of `~/.ssh/config` is ciphertext for a different reaso
 
 WireGuard configurations are whole-file SOPS ciphertext decrypted to a user-owned path, with no privileged deployment step. `wg-quick` accepts a config file path as readily as an interface name, deriving the interface from the basename, so `/etc/wireguard/` is unnecessary and the configuration never lands root-owned on disk. This replaces the earlier position that deployment to `/etc/wireguard/` was an explicit privileged action; that step turned out to buy nothing.
 
-Most of these configurations are per-device identities, so a machine decrypts only its own: materializing all of them everywhere would let one compromised machine impersonate every device on the network, and would buy nothing, since a laptop has no use for the phone's key. The legacy secondary `extra` configuration remains decrypted during migration, but the shared sing-box backend uses an exclusive per-machine identity instead. Selecting per machine is done by hand until host parameterization exists.
+Most of these configurations are per-device identities, so a machine decrypts only its own: materializing all of them everywhere would let one compromised machine impersonate every device on the network, and would buy nothing, since a laptop has no use for the phone's key. The legacy secondary `extra` configuration remains decrypted during migration, but the shared sing-box backend uses an exclusive per-machine identity instead. Each configuration names its identity explicitly with `dotfiles.vpn.identity`, which has no default; the flake's `staging` configuration differs from `z` only in that choice, and the home-manager phase remembers which configuration a machine activated.
 
 Secrets are named after the file they come from, so `wg-quick` takes the interface name from the basename and brings up `laptop` and `extra`. A generic `wg0` would make the interface name identical across machines, which pays off only once something shared refers to an interface by name; nothing does, and renaming the one that needs it is a line of configuration when something eventually does. Until then the generic name costs a lookup every time someone reads a path and has to ask which device it means.
 
 Bringing up a WireGuard interface in the host network namespace needs `CAP_NET_ADMIN`. It is an explicit runtime action rather than machine setup; the bootstrap flow does not bring up a host tunnel. `wireguard-tools` is a Home Manager package rather than a host prerequisite. The packaged `wg-quick` is a wrapper that prepends its own dependencies to `PATH`, so it runs correctly under `sudo` despite being outside the host's `secure_path`; what `sudo` cannot do is resolve the bare name, so it must be invoked as `sudo "$(command -v wg-quick)"` or through a command that has the store path baked in.
 
-Home Manager does not create host network interfaces. It can own the unprivileged sing-box user service, whose userspace WireGuard endpoint needs no host interface. Namespace-owned TUN support is a separate prototype; user namespaces can change the privilege boundary, so its requirements must be verified against the host policy.
+Home Manager does not create host network interfaces. It owns the unprivileged sing-box user service, whose userspace WireGuard endpoint needs no host interface, and the VPN command's TUN exists only inside a rootless network namespace. User namespaces widen what an unprivileged process can reach in the kernel, which is why Ubuntu restricts them; the application VPN decisions below record how that is handled.
 
 Everything committed under `secrets/` must already be public-safe, and the staged secret gate enforces that mechanically rather than trusting the convention. Under that directory the test is inverted: elsewhere a file is rejected when it looks like a secret, but here it is rejected unless it is positively recognized as encrypted, because the likeliest way a key arrives is in a form no detection rule matches. Recognition asks `sops` itself, since marker strings can appear in a plaintext file's comments and prove nothing. Note the residual limit: SOPS permits partially encrypted documents, so this establishes that a file is a SOPS document rather than that every value in it is encrypted. Never copy a legacy secrets tree or expose plaintext through Nix expressions, logs, patches, or the Nix store.
 
@@ -174,37 +174,72 @@ Everything committed under `secrets/` must already be public-safe, and the stage
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 
-Keep VPN Bash source under `scripts/bin/` and package it with `writeShellApplication` by reading the separate source. Payload commands inside the network namespace must run as the invoking user.
+A command the operator runs keeps its Bash source under `scripts/bin/`; the VPN
+command is `scripts/bin/vpn.sh`. Helpers only a module calls live beside that
+module, so they are never exposed as user tools: namespace entry and capture
+configuration sit in `modules/programs/vpnized-apps/`. Both kinds are packaged
+with `writeShellApplication` from the separate source. The VPN command takes no
+runtime inputs and reaches its helpers by absolute path, because the program it
+launches must be found on, and inherit, the caller's own `PATH`. Payload
+commands run as the invoking user with no capabilities.
 
-Use one sing-box backend per machine for the local SOCKS/HTTP proxy and the
-future `vpn <app>` launcher. The launcher opts an application into an isolated
-network namespace whose traffic reaches that backend through a TUN interface;
-other applications retain ordinary host networking. A proxy setting alone
-does not capture an application's UDP traffic. This replaces the proposed
-separate kernel-WireGuard backend for the launcher. Sharing the backend means
-a restart interrupts both entry points; tunneled applications must lose
-connectivity rather than fall back to the host connection.
+Use one sing-box backend per machine for both the local SOCKS/HTTP proxy and
+the VPN command. The command places one program in a rootless network namespace
+owned by capture: a second, credential-free sing-box process started on demand,
+whose TUN forwards TCP and UDP to the backend's local SOCKS endpoint, so there is
+still one WireGuard peer connection. A proxy setting alone does not capture UDP,
+which is why Discord voice needs the namespace; other programs keep ordinary
+host networking. This replaced both the proposed separate kernel-WireGuard
+backend and the legacy root-run veth/NAT launcher.
 
-Implement the local proxy first using pinned sing-box 1.13.19, with no TUN or
-host route/resolver changes. Then prototype namespace support and Discord UDP,
-DNS isolation, restart behavior, and confinement compatibility before building
-the launcher. Upstream TUN `netns` and namespace `unshare` require 1.14 or later;
-rootless operation additionally depends on host user-namespace policy. Neither
-the upgrade nor compatibility is assumed verified by the initial service.
+Tunneled programs lose connectivity rather than fall back to the host
+connection. Each launch is a systemd scope bound to capture: a backend restart
+keeps capture's namespace and restores traffic in place, a capture failure stops
+the programs using it, and the last program's exit stops capture and removes its
+runtime. Electron moves its main process into a systemd scope of its own, so the
+namespace-entry helper, which outlives the program under the same PID, forwards
+the stop itself. Scopes use `--job-mode=replace` and capture has no start limit,
+because a launch right after the last exit otherwise collides with capture's
+queued stop.
+
+Namespace TUN support needs sing-box 1.14, taken from a `nixos-unstable` input
+used only for sing-box so the rest of the environment keeps its release pin.
+The initial local proxy ran 1.13.19 with no TUN or host route/resolver changes.
+
+A VPNized application is installed by the module and reached only through the
+VPN command. `dotfiles.vpnizedApps.vesktop.enable` replaces Vesktop's command,
+desktop entry and `discord://` handler with a launcher. Electron hands a second
+launch, links included, to the instance already running, and a running process
+cannot move into another namespace, so the launcher refuses when Vesktop's main
+process runs outside capture rather than let a link silently leave the tunnel.
+This is routing, not a sandbox: running the package's raw executable bypasses
+it. Vesktop runs without a tray, so closing the window ends the process and
+capture's cleanup applies. Its settings are a live-editable file in
+`configs/vesktop/`; activation seeds `state.json` once, because the first-launch
+tour would reset those settings and can write an autostart entry outside the VPN.
+
+On Ubuntu's restricted unprivileged user namespaces, capture's sing-box and
+Vesktop's Electron each need an exact-path AppArmor `userns` allowance. Home
+Manager generates them from the package paths, the explicit `apparmor` bootstrap
+phase installs them with sudo, and activation only warns when the installed
+ones no longer match. [VESKTOP-APPARMOR.md](VESKTOP-APPARMOR.md) records the
+security trade-off. Other Electron and Chromium programs abort under the VPN
+command until they receive the same treatment.
 
 Each machine uses its own WireGuard peer identity. Never share `extra` between
 simultaneously connected machines, or run the whole-host `wg-quick` client
 concurrently with sing-box using the same identity: independent clients make
-the server's peer endpoint roam between them. The local proxy selects an
-existing per-device encrypted profile; the old shared profile remains only
-for legacy use until the launcher is replaced. A separate identity is needed
+the server's peer endpoint roam between them. A separate identity is needed
 if a simultaneous whole-host tunnel is wanted.
 
 Generate the proxy configuration at service start from whole-file SOPS
 ciphertext, into a private user runtime directory. Validate it before starting
 sing-box and keep keys out of arguments, environment variables, diagnostics,
 and the Nix store. Application DNS goes through the tunnel; resolving a
-WireGuard endpoint hostname is the sole host-DNS bootstrap exception. With no
+WireGuard endpoint hostname is the sole host-DNS bootstrap exception. Capture
+copies only resolver addresses from that configuration, and each tunneled
+program gets a private resolver file in its own mount namespace, never the
+host's. With no
 profile DNS, use 1.1.1.1 through the tunnel. The explicit `user-linger` bootstrap
 phase enables startup before login; Home Manager activation stays unprivileged.
 Linger is shared by user services, so that ensure-only phase does not disable

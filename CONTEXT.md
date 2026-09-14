@@ -96,6 +96,14 @@ _Avoid_: Automated review
 The opt-in command that launches an application with its network traffic confined to a tunnel while other applications retain their ordinary connection.
 _Avoid_: Whole-host VPN, proxy setting, root command launcher
 
+**VPNized application**:
+An application the user environment installs so that every ordinary way of starting it goes through the VPN command.
+_Avoid_: Proxied app, sandboxed app
+
+**VPN identity**:
+The one tunnel peer a machine is allowed to use, never used by another machine or client at the same time.
+_Avoid_: Profile, shared key
+
 **Local proxy**:
 The user environment's tunnel entry point for applications that explicitly send connections through their proxy settings.
 _Avoid_: VPN command, whole-application tunneling
