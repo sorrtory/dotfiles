@@ -81,13 +81,24 @@
         sing-box = networkingPkgs.sing-box;
       };
 
-      homeConfigurations.z = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        extraSpecialArgs = { inherit sops-nix; };
-        modules = [
-          ./home.nix
-          { dotfiles.localProxy.package = networkingPkgs.sing-box; }
-        ];
-      };
+      homeConfigurations =
+        let
+          mkHome = extraModules: home-manager.lib.homeManagerConfiguration {
+            inherit pkgs;
+            extraSpecialArgs = { inherit sops-nix; };
+            modules = [
+              ./home.nix
+              { dotfiles.localProxy.package = networkingPkgs.sing-box; }
+            ] ++ extraModules;
+          };
+        in
+        {
+          z = mkHome [ ];
+          # The staging VM runs at the same time as the host, so it must not
+          # share the host's VPN identity. Nothing else differs.
+          staging = mkHome [
+            { dotfiles.vpn.identity = nixpkgs.lib.mkForce "desktop-ubuntu"; }
+          ];
+        };
     };
 }

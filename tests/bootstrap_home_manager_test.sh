@@ -30,6 +30,7 @@ mkdir -p "$test_home" "$mock_bin"
 cat >"$mock_bin/nix" <<'EOF'
 #!/usr/bin/env bash
 [[ "$1" == build ]] || exit 42
+printf '%s\n' "${@: -1}" >"$HOME/nix-build.log"
 shift
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -72,6 +73,24 @@ fi
 HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" install >/dev/null
 HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null ||
   fail 're-activation should capture the changed packaged source'
+
+grep -q '#homeConfigurations\.z\.activationPackage$' "$test_home/nix-build.log" ||
+  fail 'the default configuration should be z'
+if DOTFILES_HOME_CONFIGURATION=staging HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null 2>&1; then
+  fail 'selecting a different configuration must invalidate activation'
+fi
+DOTFILES_HOME_CONFIGURATION=staging HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" install >/dev/null
+grep -q '#homeConfigurations\.staging\.activationPackage$' "$test_home/nix-build.log" ||
+  fail 'install should build the selected configuration'
+HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null ||
+  fail 'the selected configuration should be remembered without the variable'
+printf '# generator after selection\n' >"$fixture_repo/scripts/bin/generator.sh"
+HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" install >/dev/null
+grep -q '#homeConfigurations\.staging\.activationPackage$' "$test_home/nix-build.log" ||
+  fail 're-activation must not revert to the default configuration'
+if DOTFILES_HOME_CONFIGURATION='z#bad' HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null 2>&1; then
+  fail 'an invalid configuration name must be rejected'
+fi
 
 printf 'stale\n' >"$test_home/.local/state/dotfiles/home-manager-source.sha256"
 if HOME="$test_home" PATH="$mock_bin:$PATH" NIX_DAEMON_PROFILE=/dev/null "$SUBJECT" status >/dev/null 2>&1; then

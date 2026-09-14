@@ -12,21 +12,24 @@ in
   options.dotfiles.localProxy = {
     enable = lib.mkEnableOption "the per-machine sing-box local proxy";
     package = lib.mkPackageOption pkgs "sing-box" { };
-    profile = lib.mkOption {
-      type = lib.types.enum [ "laptop" "desktop-ubuntu" "desktop-old" "desktop-win" "phone" ];
-      default = "laptop";
-      description = ''
-        This machine's exclusive WireGuard peer identity. Never run another
-        WireGuard client with the same identity concurrently.
-      '';
-    };
+  };
+
+  # No default: a silently shared identity makes the server's peer endpoint
+  # roam between machines, so every configuration must name its own.
+  options.dotfiles.vpn.identity = lib.mkOption {
+    type = lib.types.enum [ "laptop" "desktop-ubuntu" "desktop-old" "desktop-win" "phone" ];
+    description = ''
+      This machine's exclusive VPN identity: the encrypted profile under
+      secrets/wireguard/. Never run another client with the same identity
+      concurrently.
+    '';
   };
 
   config = lib.mkIf cfg.enable {
     home.packages = [ cfg.package generator ];
 
     sops.secrets."sing-box-wireguard" = {
-      sopsFile = ../../secrets/wireguard + "/${cfg.profile}.conf";
+      sopsFile = ../../secrets/wireguard + "/${config.dotfiles.vpn.identity}.conf";
       format = "binary";
       mode = "0600";
     };

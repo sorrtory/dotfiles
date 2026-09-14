@@ -4,8 +4,9 @@ repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 test_root=$(mktemp -d)
 trap 'rm -rf -- "$test_root"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
+subject="$repo/modules/programs/vpnized-apps/capture-config.sh"
 printf '%s\n' '{"endpoints":[{"private_key":"DO-NOT-COPY"}],"dns":{"servers":[{"type":"local","tag":"bootstrap"},{"type":"udp","tag":"tunnel-dns-0","server":"1.1.1.1","detour":"tunnel"}]}}' > "$test_root/backend.json"
-bash "$repo/scripts/bin/vpn-capture-config.sh" "$test_root/backend.json" "$test_root"
+bash "$subject" "$test_root/backend.json" "$test_root"
 [[ $(stat -c %a "$test_root/config.json") == 600 ]] || fail 'config permissions'
 jq -e --arg runtime "$test_root" '
   .network_namespaces[0].pid_file == ($runtime + "/namespace.pid") and
@@ -19,7 +20,7 @@ jq -e --arg runtime "$test_root" '
 if rg -q 'DO-NOT-COPY' "$test_root/config.json"; then fail 'copied backend key'; fi
 before=$(sha256sum "$test_root/config.json")
 printf '{}\n' > "$test_root/backend.json"
-if bash "$repo/scripts/bin/vpn-capture-config.sh" "$test_root/backend.json" "$test_root" 2>/dev/null; then
+if bash "$subject" "$test_root/backend.json" "$test_root" 2>/dev/null; then
   fail 'accepted missing DNS'
 fi
 [[ $(sha256sum "$test_root/config.json") == "$before" ]] || fail 'invalid input replaced config'

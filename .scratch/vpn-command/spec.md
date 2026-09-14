@@ -16,7 +16,17 @@ dotfiles.vpnizedApps.vesktop.enable = true;
 
 Enabling Vesktop installs its Nixpkgs package and owns the normal terminal
 command, desktop entry and applicable URL handler. Start capture on demand;
-do not autostart Vesktop at boot. "Always tunneled" covers these managed launch
+do not autostart Vesktop at boot, and do not use its tray: closing the window
+must end the process so capture's last-app cleanup applies. Vesktop settings
+live in `configs/vesktop/settings.json`, linked out of store so the UI can
+still change them; they set `tray`, `minimizeToTray`, `checkUpdates` and
+`arRPC` (unreachable from the namespace's own loopback) to false.
+
+Each configuration names its identity explicitly with `dotfiles.vpn.identity`.
+The flake's `staging` configuration differs from `z` only in identity; the
+bootstrap `home-manager` phase selects it once and remembers the choice.
+Several identities, per-app identity and protocol switching are follow-up
+work in `.scratch/vpn-followups/`. "Always tunneled" covers these managed launch
 paths, not arbitrary execution of the underlying package or a malicious app.
 Other applications keep ordinary host networking.
 
@@ -60,9 +70,14 @@ logic; simplify generic CLI dispatch and redundant delegation. Generate
 app-specific launchers from one shared implementation. Do not build an
 arbitrary-app framework before the first app works.
 
-A generic vpn <command> is optional follow-up, not a requirement of this slice.
-If later exposed, it must use this implementation and may have a user-facing
-source in scripts/bin/. No new doctor/status/cleanup CLI is required here.
+A generic `vpn <program>` is in scope for one-off use. Its user-facing source
+is `scripts/bin/vpn.sh`, and it is the shared implementation managed launchers
+call. Electron/Chromium apps beyond Vesktop need their own AppArmor allowance
+and are follow-up work. No new doctor/status/cleanup CLI is required here.
+
+AppArmor userns allowances are generated from the exact package paths and
+installed by an explicit, numbered bootstrap phase that uses sudo; activation
+only warns when installed profiles are stale.
 
 ## Behavior baseline
 
@@ -73,8 +88,8 @@ source in scripts/bin/. No new doctor/status/cleanup CLI is required here.
 - Private resolver/nsswitch mounts route app DNS through capture and the tunnel;
   never rewrite host resolver files. Keep the backend's endpoint-bootstrap DNS
   exception and encrypted-secret ownership unchanged.
-- Refuse handoff to an existing untunneled Vesktop, including the legacy native
-  installation. Do not kill it, delete singleton locks, or copy login state.
+- Refuse handoff to an existing untunneled Vesktop process, printing its PID.
+  Do not kill it, delete singleton locks, or copy login state.
 - Preserve Electron sandboxing; do not use --no-sandbox as a workaround.
 - Detect unsupported host namespace policy clearly. Normal Home Manager
   activation never invokes sudo or silently relaxes host security policy.
@@ -108,11 +123,10 @@ legacy host services require operator approval.
 
 ## Completion and retirement
 
-Ship only after tests and operator normal-use review. Preserve the legacy
-scripts/bin/vpn.sh and external legacy installation until then; they are not
-dependencies of the new implementation and are not modified by this plan update.
-Retire them deliberately after verification and approval, never as incidental
-cleanup.
+Ship only after tests and operator normal-use review. Machines are bootstrapped
+fresh rather than migrated, so there is no coexistence with the legacy launcher,
+whole-host WireGuard client or native `/opt/Vesktop`. The partial veth/NAT port
+of the legacy launcher is reference material in `.scratch/vpn-followups/`.
 
 Update canonical docs in the implementation/documentation ticket: in particular
 the old mandatory VPN command and scripts/bin source-location wording in

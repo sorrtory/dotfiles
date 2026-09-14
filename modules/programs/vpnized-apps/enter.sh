@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Private helper for the vpn command: place one already-resolved program inside
+# the capture namespace. The caller owns the program's systemd scope.
 set -euo pipefail
 umask 077
 
@@ -14,14 +16,21 @@ if [[ ${1-} == --inside ]]; then
   [[ $(readlink /proc/self/ns/net) == "$expected" ]] || die 'wrong network namespace'
   mount --bind "$private/resolv.conf" /etc/resolv.conf
   mount --bind "$private/nsswitch.conf" /etc/nsswitch.conf
+  # Host loopback proxies are unreachable from this namespace, and capture
+  # already carries all traffic, so an inherited proxy setting only breaks it.
   unset http_proxy https_proxy all_proxy ftp_proxy no_proxy
   unset HTTP_PROXY HTTPS_PROXY ALL_PROXY FTP_PROXY NO_PROXY
-  exec setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all \
+  setpriv=$(command -v setpriv)
+  # The program gets the caller's PATH, not this helper's runtime inputs.
+  PATH=$VPN_USER_PATH
+  unset VPN_USER_PATH VPN_ENTER VPN_SYSTEMD_RUN
+  exec "$setpriv" --bounding-set=-all --inh-caps=-all --ambient-caps=-all \
     --no-new-privs -- "$@"
 fi
 
 [[ $EUID != 0 ]] || die 'run this command as your ordinary desktop user'
-[[ $# -gt 0 ]] || die 'missing command'
+[[ ${1-} == /* && -f ${1-} && -x ${1-} ]] || die 'expected an absolute executable path'
+: "${VPN_USER_PATH:?vpn: the vpn command must set VPN_USER_PATH}"
 runtime=${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is required}/vpn-capture
 holder=
 for ((attempt = 0; attempt < 100; attempt++)); do
@@ -41,32 +50,6 @@ expected=$(readlink "/proc/$holder/ns/net") || die 'capture namespace disappeare
 nsenter -U --preserve-credentials --keep-caps -n -t "$holder" \
   ip link show vpn0 >/dev/null 2>&1 || die 'TUN is not ready; host user-namespace policy may forbid it'
 
-name=$1
-shift
-if [[ $name == discord ]] && ! command -v discord >/dev/null 2>&1; then
-  name=vesktop
-fi
-target=$(command -v -- "$name") || die "command not found: $name"
-[[ -f $target && -x $target ]] || die 'target must be an executable file'
-canonical=$(realpath -- "$target")
-# Preserve the invoked basename: multicall tools such as coreutils dispatch
-# through argv[0], and executing their canonical symlink target breaks that.
-case "$canonical" in
-  /snap/*|*/snap|*/flatpak) die 'Snap and Flatpak launchers are not supported yet' ;;
-esac
-
-# Electron can silently hand the request to an existing, untunneled instance.
-# Check executable paths, not command lines (which may contain private data).
-case "${canonical##*/}" in
-  vesktop|Discord|discord)
-    for process in /proc/[0-9]*; do
-      [[ $(readlink "$process/exe" 2>/dev/null || true) == "$canonical" ]] || continue
-      [[ $(readlink "$process/ns/net" 2>/dev/null || true) == "$expected" ]] ||
-        die "close the existing ${target##*/} instance (PID ${process##*/}) before VPN launch"
-    done
-    ;;
-esac
-
 private=$(mktemp -d "$runtime/payload.XXXXXXXX")
 # Capture failure may remove RuntimeDirectory before this scope finishes.
 trap 'rm -f -- "$private/resolv.conf" "$private/nsswitch.conf"; rmdir -- "$private" 2>/dev/null || [[ ! -d $private ]]' EXIT
@@ -75,4 +58,4 @@ awk '/^hosts:/ { print "hosts: files dns"; next } { print }' \
   /etc/nsswitch.conf > "$private/nsswitch.conf"
 nsenter -U --preserve-credentials --keep-caps -n -t "$holder" \
   unshare --mount --propagation private \
-  "$0" --inside "$private" "$expected" "$(id -u)" "$target" "$@"
+  "$0" --inside "$private" "$expected" "$(id -u)" "$@"

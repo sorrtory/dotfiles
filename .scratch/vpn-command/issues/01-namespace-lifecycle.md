@@ -1,6 +1,6 @@
 # 01 — Module-owned lifecycle and simplification
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 00
 
 ## Goal
@@ -36,3 +36,31 @@ tested sing-box capture implementation. Follow [the updated spec](../spec.md).
 - TCP/UDP, concurrent scopes, backend restart, capture failure and cleanup tests
   still pass after simplification.
 - Generic vpn CLI is not required or expanded in this ticket.
+
+## Answer
+
+Done. `modules/programs/vpnized-apps/` owns capture: `default.nix`, the private
+`enter.sh` and `capture-config.sh`. The provisional `dotfiles.appVpn` and its
+`scripts/bin/vpn-*` helpers are gone. Per the operator, the user-facing one-off
+command stays: `scripts/bin/vpn.sh`, provided whenever the local proxy is
+enabled; managed launchers (ticket 03) call it. Capture is on-demand, so this
+adds no running service.
+
+The command is packaged without runtime inputs and reaches `vpn-enter` and
+`systemd-run` by absolute path, so programs resolve on the caller's PATH and
+receive it unchanged; the prototype leaked helper inputs into the payload's
+PATH. The ineffective exe-path singleton check and the `discord` alias were
+removed; ticket 04 replaces the check with a namespace comparison.
+
+`dotfiles.localProxy.profile` is now `dotfiles.vpn.identity`, with no default.
+`home.nix` names `laptop`; the flake's `staging` configuration forces
+`desktop-ubuntu`. The `home-manager` bootstrap phase builds
+`DOTFILES_HOME_CONFIGURATION` (default `z`) and remembers it, so later runs on
+the VM do not revert to the host's identity.
+
+Verified on the host (restriction off): both configurations build and select
+the expected ciphertext; `tests/vpn_command_test.sh`,
+`tests/vpn_capture_config_test.sh`, `tests/bootstrap_home_manager_test.sh` and
+the phase checker pass; `tests/manual/vpn_capture.sh` passes every stage with
+the built command, including a new check that the payload keeps the caller's
+PATH without launcher variables. No activation anywhere.

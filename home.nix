@@ -10,8 +10,8 @@
     ./modules/programs/sing-box.nix
     ./modules/programs/sublime-text.nix
     ./modules/programs/tmux.nix
+    ./modules/programs/vpnized-apps
     ./modules/programs/vscode.nix
-    ./modules/programs/vpn.nix
     ./modules/programs/yazi.nix
     ./modules/programs/zsh.nix
     ./modules/secrets.nix
@@ -22,6 +22,9 @@
   home.stateVersion = "26.05";
 
   dotfiles.localProxy.enable = true;
+  # Change this to switch VPN profiles. The staging configuration in flake.nix
+  # overrides it, because the VM runs alongside this machine.
+  dotfiles.vpn.identity = "laptop";
 
   programs.home-manager.enable = true;
 }

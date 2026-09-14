@@ -11,11 +11,13 @@ current profile targets user `z` on `x86_64-linux`.
 
 ## Install on a fresh machine
 
-Select that machine's exclusive WireGuard identity before activation:
-`dotfiles.localProxy.profile` defaults to `"laptop"`; set it in `home.nix`
-for a different device. Never run two machines or clients with the same peer
-identity at once. Existing ciphertext names are listed in the
-[proxy module](modules/programs/sing-box.nix).
+Select that machine's exclusive VPN identity before activation: set
+`dotfiles.vpn.identity` in `home.nix`. Never run two machines or clients with
+the same identity at once. Existing ciphertext names are listed in the
+[proxy module](modules/programs/sing-box.nix). The staging VM runs alongside
+the main machine, so it uses the `staging` configuration, which differs only
+in identity: start its bootstrap with `DOTFILES_HOME_CONFIGURATION=staging`.
+The choice is remembered by later `home-manager` phase runs.
 
 ```bash
 git clone https://github.com/sorrtory/dotfiles.git ~/Documents/dotfiles
@@ -52,8 +54,12 @@ Use `systemctl --user status sing-box` to inspect the service and
 `systemctl --user restart sing-box` after changing its encrypted profile.
 The existing `vpn-up` whole-host alias uses the same laptop identity: stop
 sing-box before using it, and bring that interface down before restarting the
-proxy. The per-app `vpn <app>` launcher and Discord UDP support are still
-pending their namespace prototype.
+proxy.
+
+`vpn PROGRAM [ARGUMENT...]` runs one program with all of its traffic, UDP and
+DNS included, inside a namespace that reaches the network only through this
+backend. It loses networking rather than going direct when the tunnel is down.
+Electron and Chromium apps other than Vesktop are not supported yet.
 
 On the current migration host, the running legacy LXD proxy also uses the
 laptop peer. Stop its use of that identity before activating the new backend

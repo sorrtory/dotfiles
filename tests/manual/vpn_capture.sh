@@ -25,7 +25,7 @@ cleanup() {
 trap cleanup EXIT
 mkdir "$probe/config"
 printf '{"dns":{"servers":[{"type":"udp","tag":"tunnel-dns-0","server":"1.1.1.1"}]}}' > "$probe/backend.json"
-bash "$repo/scripts/bin/vpn-capture-config.sh" "$probe/backend.json" "$probe/config"
+bash "$repo/modules/programs/vpnized-apps/capture-config.sh" "$probe/backend.json" "$probe/config"
 jq --arg runtime "$XDG_RUNTIME_DIR" '.network_namespaces[0].pid_file=($runtime + "/vpn-capture/namespace.pid") | .outbounds[0].server_port=15480' "$probe/config/config.json" > "$probe/capture.json"
 printf '{"log":{"level":"warn"},"inbounds":[{"type":"mixed","listen":"127.0.0.1","listen_port":15480}],"outbounds":[{"type":"direct","tag":"echo"}],"route":{"rules":[{"action":"route","outbound":"echo","override_address":"127.0.0.1","override_port":18453}]}}' > "$probe/echo-backend.json"
 sing-box check -c "$probe/echo-backend.json"
@@ -44,6 +44,10 @@ kill -0 "$backend" "$fixture"
 "$vpn" timeout 5 "$(command -v python3)" "$repo/tests/manual/vpn_echo_client.py"
 systemctl --user is-active --quiet vpn-capture.service
 echo 'PASS: second application exit leaves first capture alive'
+payload_env=$("$vpn" env)
+grep -qxF "PATH=$PATH" <<<"$payload_env" || { echo 'FAIL: payload PATH differs from the caller'; exit 1; }
+if grep -Eq '^VPN_(USER_PATH|ENTER|SYSTEMD_RUN)=' <<<"$payload_env"; then echo 'FAIL: launcher variables leaked into payload'; exit 1; fi
+echo 'PASS: payload keeps the caller PATH without launcher variables'
 kill "$backend"
 wait "$backend" || true
 backend=

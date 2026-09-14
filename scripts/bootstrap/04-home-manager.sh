@@ -15,7 +15,25 @@ readonly NIX_DAEMON_PROFILE="${NIX_DAEMON_PROFILE:-/nix/var/nix/profiles/default
 readonly HOME_MANAGER_PROFILE="${XDG_STATE_HOME:-$HOME/.local/state}/nix/profiles/home-manager"
 readonly HOME_MANAGER_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"
 readonly HOME_MANAGER_FINGERPRINT_FILE="$HOME_MANAGER_STATE_DIR/home-manager-source.sha256"
-readonly HOME_MANAGER_FLAKE="path:$REPO_ROOT#homeConfigurations.z.activationPackage"
+readonly HOME_MANAGER_CONFIGURATION_FILE="$HOME_MANAGER_STATE_DIR/home-manager-configuration"
+
+# A machine other than the default (the staging VM) must keep its own VPN
+# identity, so a configuration chosen once through DOTFILES_HOME_CONFIGURATION
+# is remembered rather than silently reverting to z on the next run.
+selected_configuration() {
+  local name=z
+
+  if [[ -n "${DOTFILES_HOME_CONFIGURATION:-}" ]]; then
+    name="$DOTFILES_HOME_CONFIGURATION"
+  elif [[ -r "$HOME_MANAGER_CONFIGURATION_FILE" ]]; then
+    name="$(<"$HOME_MANAGER_CONFIGURATION_FILE")"
+  fi
+  if [[ ! "$name" =~ ^[A-Za-z0-9_-]+$ ]]; then
+    phase_error "invalid Home Manager configuration name: $name"
+    return 2
+  fi
+  echo "$name"
+}
 
 load_nix_profile() {
   if [[ -r "$NIX_DAEMON_PROFILE" ]]; then
@@ -37,15 +55,19 @@ configuration_fingerprint() {
     } | sort -z
   )
 
-  (
-    cd -- "$REPO_ROOT"
-    sha256sum "${source_files[@]}"
-  ) | sha256sum | awk '{ print $1 }'
+  {
+    echo "configuration $1"
+    (
+      cd -- "$REPO_ROOT"
+      sha256sum "${source_files[@]}"
+    )
+  } | sha256sum | awk '{ print $1 }'
 }
 
 check() {
-  local current_fingerprint generation recorded_fingerprint
+  local configuration current_fingerprint generation recorded_fingerprint
 
+  configuration="$(selected_configuration)" || return 2
   load_nix_profile
   if ! command -v nix >/dev/null 2>&1; then
     phase_info 'not activated: Nix is unavailable'
@@ -60,7 +82,7 @@ check() {
     return 1
   fi
 
-  current_fingerprint="$(configuration_fingerprint)" || return 2
+  current_fingerprint="$(configuration_fingerprint "$configuration")" || return 2
   recorded_fingerprint="$(<"$HOME_MANAGER_FINGERPRINT_FILE")"
   if [[ "$current_fingerprint" != "$recorded_fingerprint" ]]; then
     phase_info 'not activated from the current repository configuration'
@@ -68,18 +90,20 @@ check() {
   fi
 
   generation="$(readlink -f -- "$HOME_MANAGER_PROFILE")" || return 2
-  phase_info "activated: ${generation##*/}"
+  phase_info "activated: ${generation##*/} ($configuration)"
 }
 
 install() {
-  local activation_dir fingerprint fingerprint_tmp result
+  local activation_dir configuration configuration_tmp fingerprint fingerprint_tmp result
 
+  configuration="$(selected_configuration)" || return 2
   load_nix_profile
   require_commands nix
   activation_dir="$(mktemp -d)"
 
-  phase_info 'building the Home Manager configuration...'
-  if nix build --out-link "$activation_dir/result" "$HOME_MANAGER_FLAKE"; then
+  phase_info "building the Home Manager configuration '$configuration'..."
+  if nix build --out-link "$activation_dir/result" \
+    "path:$REPO_ROOT#homeConfigurations.$configuration.activationPackage"; then
     :
   else
     result=$?
@@ -96,7 +120,7 @@ install() {
     return "$result"
   fi
 
-  if fingerprint="$(configuration_fingerprint)"; then
+  if fingerprint="$(configuration_fingerprint "$configuration")"; then
     :
   else
     rm -rf -- "$activation_dir"
@@ -106,6 +130,9 @@ install() {
   fingerprint_tmp="$(mktemp "$HOME_MANAGER_STATE_DIR/.home-manager-source.XXXXXX")"
   echo "$fingerprint" >"$fingerprint_tmp"
   mv -- "$fingerprint_tmp" "$HOME_MANAGER_FINGERPRINT_FILE"
+  configuration_tmp="$(mktemp "$HOME_MANAGER_STATE_DIR/.home-manager-configuration.XXXXXX")"
+  echo "$configuration" >"$configuration_tmp"
+  mv -- "$configuration_tmp" "$HOME_MANAGER_CONFIGURATION_FILE"
   rm -rf -- "$activation_dir"
 }
 
