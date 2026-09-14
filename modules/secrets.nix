@@ -42,16 +42,16 @@
     #
     # Named after the file they come from, so a path says what it is without a
     # lookup. wg-quick takes the interface name from the basename, so these
-    # bring up `laptop` and `extra` rather than wg0 and wg1. A generic name
+    # bring up e.g. `laptop` and `extra` rather than wg0 and wg1. A generic name
     # would only pay off once something shared between machines refers to an
     # interface by name, and nothing does; when something does, renaming the
     # one that needs it is a line here.
     #
-    # laptop is this machine's own tunnel. extra is shared across machines and
-    # used by the legacy application launcher. The new sing-box backend uses
-    # its selected exclusive per-device identity, never this shared extra key.
-    "wireguard/laptop.conf" = {
-      sopsFile = ../secrets/wireguard/laptop.conf;
+    # The identity's file is this machine's own tunnel, for the whole-host
+    # vpn-up function; sing-box decrypts the same identity separately. extra
+    # is shared across machines by legacy use, never by the sing-box backend.
+    "wireguard/${config.dotfiles.vpn.identity}.conf" = {
+      sopsFile = ../secrets/wireguard + "/${config.dotfiles.vpn.identity}.conf";
       format = "binary";
       mode = "0600";
     };

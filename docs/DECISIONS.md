@@ -61,10 +61,11 @@ safe alias baseline and local proxy toggles. Neovim owns the single default
 editor selection through its Home Manager module.
 Runtime managers, media conversion, and integrations for deferred programs stay
 with their respective future slices. The exception is a pair of `vpn-up` and
-`vpn-down` aliases, which exist because invoking `wg-quick` by hand needs both
-an absolute path for `sudo` and a config path rather than an interface name.
-They stay aliases rather than functions: this machine decrypts one device
-configuration, so there is nothing to parameterize. They wrap an existing
+`vpn-down` functions, beside `proxy-on` and `proxy-off`, which exist because
+invoking `wg-quick` by hand needs both an absolute path for `sudo` and a config
+path rather than an interface name. They follow `dotfiles.vpn.identity`, the
+one device configuration this machine decrypts, so they take no argument, and
+`vpn-up` refuses while sing-box holds the same identity. They wrap an existing
 command rather than implementing privileged networking. They remain whole-host
 controls; the application VPN command does not replace them. The custom
 tmux and file-navigation helpers, unused Powerlevel10k setup, and zsh-lazyload
@@ -162,7 +163,7 @@ WireGuard configurations are whole-file SOPS ciphertext decrypted to a user-owne
 
 Most of these configurations are per-device identities, so a machine decrypts only its own: materializing all of them everywhere would let one compromised machine impersonate every device on the network, and would buy nothing, since a laptop has no use for the phone's key. The legacy secondary `extra` configuration remains decrypted during migration, but the shared sing-box backend uses an exclusive per-machine identity instead. Each configuration names its identity explicitly with `dotfiles.vpn.identity`, which has no default; the flake's `staging` configuration differs from `z` only in that choice, and the home-manager phase remembers which configuration a machine activated.
 
-Secrets are named after the file they come from, so `wg-quick` takes the interface name from the basename and brings up `laptop` and `extra`. A generic `wg0` would make the interface name identical across machines, which pays off only once something shared refers to an interface by name; nothing does, and renaming the one that needs it is a line of configuration when something eventually does. Until then the generic name costs a lookup every time someone reads a path and has to ask which device it means.
+Secrets are named after the file they come from, so `wg-quick` takes the interface name from the basename and brings up the identity's name, such as `laptop`, and `extra`. A generic `wg0` would make the interface name identical across machines, which pays off only once something shared refers to an interface by name; nothing does, and renaming the one that needs it is a line of configuration when something eventually does. Until then the generic name costs a lookup every time someone reads a path and has to ask which device it means.
 
 Bringing up a WireGuard interface in the host network namespace needs `CAP_NET_ADMIN`. It is an explicit runtime action rather than machine setup; the bootstrap flow does not bring up a host tunnel. `wireguard-tools` is a Home Manager package rather than a host prerequisite. The packaged `wg-quick` is a wrapper that prepends its own dependencies to `PATH`, so it runs correctly under `sudo` despite being outside the host's `secure_path`; what `sudo` cannot do is resolve the bare name, so it must be invoked as `sudo "$(command -v wg-quick)"` or through a command that has the store path baked in.
 

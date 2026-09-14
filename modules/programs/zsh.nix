@@ -1,5 +1,9 @@
-{ config, ... }:
+{ config, lib, ... }:
 
+let
+  wireguardConfig = lib.escapeShellArg
+    config.sops.secrets."wireguard/${config.dotfiles.vpn.identity}.conf".path;
+in
 {
   programs.zsh = {
     enable = true;
@@ -58,14 +62,6 @@
       path = "readlink -f";
       dps = ''docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Ports}}"'';
       dpss = ''docker ps --format "table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.RunningFor}}\t{{.Status}}\t{{.Size}}\t{{.Ports}}"'';
-
-      # sudo cannot resolve a bare name from the Nix profile, and wg-quick
-      # wants the config path rather than an interface name because the
-      # configuration does not live in /etc/wireguard. Both are easy to get
-      # wrong by hand; neither needs an argument, since this machine decrypts
-      # one device configuration.
-      vpn-up = ''sudo "$(command -v wg-quick)" up "$HOME/.config/sops-nix/secrets/wireguard/laptop.conf"'';
-      vpn-down = ''sudo "$(command -v wg-quick)" down "$HOME/.config/sops-nix/secrets/wireguard/laptop.conf"'';
     };
 
     siteFunctions = {
@@ -79,6 +75,23 @@
 
       "proxy-off" = ''
         unset http_proxy https_proxy all_proxy no_proxy NO_PROXY
+      '';
+
+      # Whole-host WireGuard on this machine's VPN identity. sudo cannot
+      # resolve a bare name from the Nix profile, and wg-quick wants the config
+      # path because the configuration does not live in /etc/wireguard. The
+      # sing-box backend uses the same identity, and two clients on one peer
+      # key make the server's endpoint roam, so vpn-up refuses while it runs.
+      "vpn-up" = ''
+        if systemctl --user is-active --quiet sing-box.service; then
+          print -u2 "vpn-up: sing-box is using the ${config.dotfiles.vpn.identity} identity; stop it first: systemctl --user stop sing-box"
+          return 1
+        fi
+        sudo "$(command -v wg-quick)" up ${wireguardConfig}
+      '';
+
+      "vpn-down" = ''
+        sudo "$(command -v wg-quick)" down ${wireguardConfig}
       '';
     };
   };

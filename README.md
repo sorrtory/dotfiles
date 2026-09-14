@@ -53,9 +53,10 @@ The shell helper's `socks5://` setting does not itself guarantee remote DNS.
 
 Use `systemctl --user status sing-box` to inspect the service and
 `systemctl --user restart sing-box` after changing its encrypted profile.
-The existing `vpn-up` whole-host alias uses the same laptop identity: stop
-sing-box before using it, and bring that interface down before restarting the
-proxy.
+`vpn-up` and `vpn-down` bring this machine's identity up and down as a
+whole-host WireGuard interface. sing-box uses the same identity, so `vpn-up`
+refuses while it runs: stop sing-box first, and run `vpn-down` before starting
+it again.
 
 `vpn PROGRAM [ARGUMENT...]` runs one program with all of its traffic, UDP and
 DNS included, inside a namespace that reaches the network only through this
