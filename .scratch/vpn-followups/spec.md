@@ -6,16 +6,26 @@ Work deliberately deferred from the vpn-command slice. That slice ships one
 identity, one managed app (Vesktop) and a generic `vpn` command for plain
 programs. Nothing here is required for it, and nothing in it should block these.
 
-## Identities and protocols
+## Profiles, egress and system-wide use
 
-Today one `dotfiles.vpn.identity` names the encrypted WireGuard profile under
-`secrets/wireguard/`. Swapping servers or keys means editing that value or
-replacing the ciphertext. The operator wants switching away from a broken VPN
-to stay that easy, and may later want several identities or a per-app identity.
+Today one `dotfiles.vpn.identity` names the encrypted WireGuard profile the
+backend uses, and `vpn-up` refuses while sing-box runs because both would use
+that key. The operator wants, kept simple:
+
+- one backend with a main profile, fallbacks and `direct`, routed globally and
+  per app;
+- key management: an inventory of profiles with owners, decrypting only this
+  machine's;
+- a system-wide VPN (kernel WireGuard or another core such as v2rayN) that does
+  not break the local proxy, whose egress can be moved to `direct` or another
+  profile;
+- no silent collisions: one key never used by two clients, and a second core
+  detected.
 
 The capture namespace and launchers already talk only to the backend's local
-SOCKS endpoint, so they are protocol-independent. A protocol change (VLESS,
-Hysteria, ...) is confined to the backend config generator.
+SOCKS endpoint, so they are independent of which profile or protocol leaves the
+machine. See [issues/01-identities.md](issues/01-identities.md), which holds the
+design and the operator's open questions.
 
 ## Any-app launcher
 
