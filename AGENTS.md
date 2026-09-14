@@ -34,6 +34,45 @@ the password is 'z'
 
 use ~/Documents/dotfiles/ as a guest repo
 
+### Ubuntu GNOME VM
+
+A second local VM runs the same desktop as the operator's machines. Use it
+whenever GNOME and Nix meet, such as dconf settings, launchers, Shell
+extensions and session environment variables. The Lubuntu VM above runs LXQt
+and cannot show any of these.
+
+```bash
+ssh z@192.168.122.242
+```
+
+the password is 'z'
+
+- Ubuntu 26.04.1 with GNOME Shell 50.1 on a Wayland session. These are the
+  same versions as the operator's desktop.
+- It is the libvirt domain `ubuntu`, and its `ssh-server` snapshot is a fresh
+  install with only the SSH server added. There is no Nix and no mirrored
+  tree, and GNOME settings are at their defaults. Restore the snapshot rather
+  than cleaning up by hand:
+  `virsh -c qemu:///system snapshot-revert ubuntu ssh-server`.
+- Bootstrap it with [docs/STAGING.md](docs/STAGING.md), substituting the
+  domain and address, with these differences:
+  - Skip the disk growth. Its disk is 40 GiB with a 40 G root on `vda2`, and
+    the snapshot keeps that size.
+  - Its `sudo` needs a password, which is also `z`, so the askpass helper
+    from step 2 works unchanged. Only the address differs.
+  - It has 4 CPUs and about 3 GiB of RAM, so large builds are slow and can
+    run out of memory. Build on the host where the check allows it.
+  - It uses the `staging` configuration and VPN identity as well. Don't run
+    that backend on both VMs at once.
+- Mirror to it with the command below, with this address in place of
+  `192.168.122.214`. Each VM is a separate mirror, so sync the one you are
+  about to test.
+- Its adapter is Virtio GPU, so the GPU limits under "What the VM cannot
+  verify" apply here too.
+- Settings a running session only reads at login need a real re-login on
+  this VM before they can be judged. That covers `environment.d`, newly
+  installed extensions and XKB options.
+
 Resetting the VM or bootstrapping it from a snapshot: follow
 [docs/STAGING.md](docs/STAGING.md). It covers disk size, sudo without a TTY,
 the operator-only recovery step and the `staging` configuration.
