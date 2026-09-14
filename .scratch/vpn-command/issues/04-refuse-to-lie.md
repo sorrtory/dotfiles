@@ -1,6 +1,6 @@
 # 04 — Prevent untunneled Vesktop instance handoff
 
-Status: ready-for-agent
+Status: claimed
 Blocked by: 03
 
 ## Goal
@@ -27,3 +27,21 @@ A managed launch must not silently hand its request to an untunneled Vesktop.
 - A running tunneled instance receives normal managed launches/URLs correctly.
 - Actual app process namespaces substantiate results; a new window is not proof.
 - No force-bypass flag or destructive singleton cleanup.
+
+## Comments — Implementation
+
+The managed launcher (`modules/programs/vpnized-apps/vesktop.sh`) scans the
+user's own processes for a Vesktop main process: argv[1] ends in
+`/opt/Vesktop/resources/app.asar` and no `--type=` argument, since Electron
+helpers carry one and sandboxed children have their own network namespaces by
+design. If its `ns/net` is not the same file as capture's holder (compared
+with bash `-ef`, no extra tools), or capture is not running, the launcher
+refuses with the PID and never calls `vpn`. It kills nothing and touches no
+singleton or session file; there is no bypass flag.
+
+The previous exe-path comparison could never match Nix's wrapped Electron.
+The native `/opt/Vesktop` case is out of scope: machines are bootstrapped
+fresh. `tests/vesktop_launcher_test.sh` covers cold start with arguments,
+ignored helpers and unrelated Electron apps, reuse inside capture, refusal
+outside it, and refusal while capture is down. Real process argv and handoff
+are verified on staging with ticket 05.
