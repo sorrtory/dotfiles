@@ -96,7 +96,27 @@ That command exists only once that module is enabled. It points
 `/run/opengl-driver` at the Nixpkgs drivers, where every Nix program looks,
 and re-running it is how you update them after a `flake.lock` bump that moves
 the driver packages. Activation checks the link and prints the command when it
-is missing or stale; it never escalates on its own.
+is missing or stale; it never escalates on its own. The link survives reboots
+because the command installs a `systemd-tmpfiles` rule under
+`/etc/tmpfiles.d/` and a Nix GC root for the drivers, not a one-off symlink.
+
+#### On a new machine: try the wrapper first
+
+The wrapper is the default because it needs no root. The fallback is a
+deliberate, remembered decision, not a failure to fix:
+
+1. After the first activation, play something with Anime4K in MPV. If the
+   picture uses the GPU and the shaders run, keep the wrapper.
+2. If it doesn't, switch to the system-wide module above and run the `sudo`
+   command once. Stop fighting the wrapper at that point: the module is the
+   supported route.
+3. Switch as well if Nix-built desktop applications turn out to need the GPU.
+   VS Code, Obsidian, Spotify and AyuGram come from Nix and are *not* covered
+   by MPV's wrapper, so sluggish rendering in them is the other trigger.
+
+Enabling `targets.genericLinux` for GNOME also enables its GPU module by
+default, so the GNOME configuration sets `targets.genericLinux.gpu.enable`
+explicitly. Switching means flipping that one value to `true`.
 
 ### Running phases individually
 

@@ -281,7 +281,7 @@ The intended flow is:
 7. let `login-shell` select the host-owned Zsh
 8. let `user-linger` enable user services before login and after logout
 9. open a new login shell
-10. run explicit privileged host setup where required
+10. run explicit privileged host setup where required, including the GPU driver choice in the README's "GPU-accelerated programs" section
 11. authenticate any remaining mutable sessions once on that machine
 
 The repository currently targets the `z` user on `x86_64-linux`; broader host/user parameterization is a later migration decision.
