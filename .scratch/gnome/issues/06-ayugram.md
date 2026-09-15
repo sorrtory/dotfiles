@@ -1,7 +1,7 @@
 # 06 — AyuGram as the Telegram client
 
 Type: task
-Status: ready-for-agent
+Status: resolved
 
 ## Goal
 
@@ -40,5 +40,28 @@ the package, not the binding.
 
 - `nix flake check` and the activation package build succeed.
 - On a GNOME VM or the new PC, `<Super>m` opens AyuGram, and it logs in.
+
+## Answer
+
+Landed in `modules/packages.nix` (`ayugram-desktop`), with an AyuGram row in
+`docs/SOFTWARE.md`. The `telegram` launcher already ran `AyuGram` since 03.
+
+Verified 2026-09-15:
+
+- **Host:** `nix flake check` passes, and the activation package builds. The
+  generation has `bin/AyuGram` and `com.ayugram.desktop.desktop`. The
+  package (6.7.8, GPL-3.0) is in the binary cache; its closure is about 2 GiB.
+- **Ubuntu GNOME VM, after re-login:** `<Super>m` starts AyuGram, and its window
+  draws the "Scan From Mobile Telegram" login screen.
+  - Qt logs `QRhiGles2: Failed to create context` and
+    `QOpenGLWidget is not supported on this platform`. The VM has no GPU and
+    Nix programs cannot use the distro's drivers (see DECISIONS.md's GPU
+    section), yet the UI still renders.
+  - On real hardware, whether AyuGram's media and animations need
+    acceleration belongs to the README's "GPU-accelerated programs"
+    checklist.
+
+Not verified: logging in, which needs the operator's phone, and normal use on
+the new PC.
 
 ## Comments

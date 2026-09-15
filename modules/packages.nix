@@ -6,6 +6,10 @@
     # attributes from the same pin give identical store paths, so activation
     # reuses what recovery downloaded; an override here would fetch them twice.
     age
+
+    # The Telegram client. Its login and session state stay machine-local.
+    ayugram-desktop
+
     bat
     cargo
     curl
