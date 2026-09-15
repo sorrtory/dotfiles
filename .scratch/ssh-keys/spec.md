@@ -2,6 +2,13 @@
 
 Status: ready-for-agent
 
+## Progress
+
+Tickets 01–04 shipped in `376ef7b`; `66c7f9a` records the host-owned SSH-agent
+decision. Rotation/removal remains ticket 05. Ticket 06 is intentionally a
+new-machine normal-use gate owned by the operator, followed by explicit legacy
+retirement and removal of this completed scratch effort.
+
 ## Why
 
 `docs/MIGRATION.md` §6. SSH material was originally classified as machine-local

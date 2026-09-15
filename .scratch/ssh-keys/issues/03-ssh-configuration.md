@@ -1,7 +1,13 @@
 # 03 — Migrate ~/.ssh configuration as repository material
 
-Status: ready-for-agent
-Blocked by: 01
+Status: resolved
+
+## Answer
+
+Commit `376ef7b` keeps the operator-independent configuration readable at
+`configs/ssh/config`, includes the decrypted host-identifying fragment, points
+`IdentityFile` at sops-nix runtime paths and exposes the two public keys. Real
+infrastructure metadata remains ciphertext and `known_hosts` remains rebuildable.
 
 ## Goal
 

@@ -1,7 +1,6 @@
 # 05 — Make key removal and rotation explicit
 
 Status: ready-for-agent
-Blocked by: 04
 
 ## Goal
 
@@ -40,3 +39,11 @@ believe they had removed it.
 - Removing one key demonstrably does not disturb the others.
 - The procedure is written where someone would look for it under pressure, not
   only in a commit message.
+
+## Planning note — 2026-09-15
+
+This is the implementation frontier. Do not infer successful cleanup from a
+missing declaration or symlink. Establish the exact current sops-nix behavior
+with disposable fixture secrets, then choose the smallest reliable procedure or
+command and test both one-of-many and last-secret removal. Never use a real SSH
+key for the removal fixture and never print decrypted fixture or real material.

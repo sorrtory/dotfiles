@@ -1,6 +1,15 @@
 # 01 — Inventory and classify the SSH material
 
-Status: ready-for-human
+Status: resolved
+
+## Answer
+
+The operator selected `id_ed25519_github` and `id_ed25519_servers` as
+reproducible operator identities. Their public halves are ordinary repository
+material. Generic SSH options are public native configuration; real host names,
+users and ports are a whole-file SOPS secret included at runtime. `known_hosts`
+is rebuilt on connection rather than migrated. Commit `376ef7b` implements the
+classification without reading private key contents.
 
 ## Goal
 

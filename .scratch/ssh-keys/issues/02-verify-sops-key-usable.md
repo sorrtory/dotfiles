@@ -1,6 +1,14 @@
 # 02 — Prove OpenSSH accepts a sops-nix key
 
-Status: ready-for-agent
+Status: resolved
+
+## Answer
+
+OpenSSH accepts an `IdentityFile` reached through the sops-nix runtime symlink
+at mode `0600`; no plaintext copy under `~/.ssh` is required. The staged setup
+offered the migrated key successfully to GitHub. Commit `376ef7b` records the
+verified path and result. The shipped mode differs from this ticket's initial
+`0400` premise and is the canonical value.
 
 ## Goal
 

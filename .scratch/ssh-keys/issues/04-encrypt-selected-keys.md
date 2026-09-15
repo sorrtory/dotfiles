@@ -1,7 +1,13 @@
 # 04 — Encrypt and declare the selected private keys
 
-Status: ready-for-agent
-Blocked by: 01, 02
+Status: resolved
+
+## Answer
+
+Commit `376ef7b` added both selected private keys as whole-file SOPS ciphertext,
+declared them at mode `0600`, confirmed byte-identical encrypted round trips by
+hash rather than content, and passed the public-secret/store gates. Existing
+working keys were deliberately not removed.
 
 ## Goal
 

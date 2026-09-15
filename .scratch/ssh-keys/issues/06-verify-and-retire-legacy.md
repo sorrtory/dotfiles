@@ -1,27 +1,28 @@
-# 06 — Verify under normal use, then retire the legacy material
+# 06 — Verify on the new machine, then retire legacy material
 
-Status: ready-for-agent
-Blocked by: 03, 04, 05
+Status: ready-for-human
+Blocked by: 05
 
 ## Goal
 
-Prove the migrated setup works for real, then retire what it replaces — in that
-order, per working rule 10.
+Close the slice only after the operator has used the migrated setup on the new
+machine, then retire what it replaces in that order, per working rule 10.
 
 ## Work
 
-1. On the staging VM, from a fresh activation: connect to at least one real host
-   with a migrated key using a non-mutating check such as `ssh -T`. Building the
-   files is not evidence that authentication works.
-2. Confirm the agent-facing invariants hold on the VM: no plaintext key on disk,
-   nothing added to the Nix store, activation still free of `sudo`.
-3. Exercise the ticket 05 procedure once more on the final configuration.
-4. Use the setup normally for a period the operator judges sufficient. Working
-   rule 10 asks for verification under normal use, which a single successful
-   connection is not.
+1. Treat commit `376ef7b`'s staging GitHub authentication and secret/store checks
+   as implementation evidence, not as the final normal-use gate.
+2. On the new machine, activate through the normal fresh-machine flow and use
+   each migrated identity for its intended real destination. Record success
+   without recording private host metadata in this public repository.
+3. Exercise ticket 05's removal procedure with disposable material, never by
+   deleting a working identity as a test.
+4. Use the migrated setup normally for a period the operator judges sufficient.
+   Working rule 10 asks for verification under normal use, which a single
+   successful connection is not.
 5. Only then retire the legacy material, and record what was retired.
-6. Update `docs/SOFTWARE.md`'s OpenSSH row and `docs/MIGRATION.md` §6 to describe
-   what shipped.
+6. Reconcile canonical documentation with the final result, then remove the
+   completed `.scratch/ssh-keys/` directory in the completion commit.
 
 ## Constraints
 
