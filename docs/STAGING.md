@@ -65,7 +65,8 @@ ssh z@192.168.122.214 'cd ~/Documents/dotfiles &&
 ## 5. Secret recovery (the operator)
 
 This phase needs a GitHub sign-in and the KeePassXC vault password, so the
-operator runs it with a terminal:
+operator runs it with a terminal and approves the printed sign-in code on the
+host:
 
 ```bash
 ssh -t z@192.168.122.214 'cd ~/Documents/dotfiles && ./scripts/bootstrap.sh install secret-recovery'
@@ -98,6 +99,4 @@ ssh z@192.168.122.214 'rm -rf ~/.staging-askpass ~/.staging-bin'
 
 ## Known issues
 
-Tracked in `.scratch/secret-recovery-ux/`: recovery's `nix run` downloads a
-large closure for a one-off step, and its GitHub sign-in prompt defaults suit
-a headless session rather than a real machine with a browser.
+None tracked for recovery.

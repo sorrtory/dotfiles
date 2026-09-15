@@ -2,6 +2,10 @@
 
 {
   home.packages = with pkgs; [
+    # age, gh and keepassxc are also the secret-recovery app's closure. Plain
+    # attributes from the same pin give identical store paths, so activation
+    # reuses what recovery downloaded; an override here would fetch them twice.
+    age
     bat
     cargo
     curl
@@ -10,6 +14,7 @@
     ffmpeg
     fzf
     gcc
+    gh
     gnumake
     go
     gnupg
@@ -17,6 +22,7 @@
     httpie
     imagemagick
     jdk21
+    keepassxc
 
     # Global rather than per-project because mason installs ten of Neovim's
     # language servers as npm packages, and they need Node at runtime, not

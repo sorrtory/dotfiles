@@ -24,6 +24,9 @@ touch "$recovery_repo/Passwords.kdbx" "$call_log"
 cat >"$mock_bin/gh" <<'EOF'
 #!/usr/bin/env bash
 printf 'gh %s\n' "$*" >>"$RECOVERY_CALL_LOG"
+if [[ "$1 $2" == 'auth login' ]]; then
+  printf 'gh prompts disabled=%s\n' "${GH_PROMPT_DISABLED:-}" >>"$RECOVERY_CALL_LOG"
+fi
 if [[ "$1 $2" == 'auth status' ]]; then
   [[ "${GH_AUTH_REQUIRED:-0}" == '0' ]]
 fi
@@ -80,6 +83,10 @@ grep -q '^keepassxc-cli attachment-export .*Encryption Keys/sops keys.txt ' "$ca
   fail 'the configured KeePassXC entry and attachment should be exported'
 grep -qx 'gh auth login --hostname github.com --git-protocol https --web' "$call_log" ||
   fail 'missing GitHub credentials should trigger browser authentication'
+grep -qx 'gh prompts disabled=1' "$call_log" ||
+  fail 'the sign-in should print the URL and code instead of asking for Enter'
+grep -q "^git -C $recovery_repo -c credential.helper= -c credential.helper=!gh auth git-credential pull --ff-only$" "$call_log" ||
+  fail 'pulling an existing vault clone should authenticate through gh'
 
 run_recovery status >/dev/null || fail 'the recovered identity should satisfy status'
 

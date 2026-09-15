@@ -35,16 +35,6 @@ _clear() {
   if command -v tput >/dev/null 2>&1; then tput clear; else printf '\033[2J\033[3J\033[H'; fi
 }
 
-# banner "Title" shows the opening frame: what this wizard does.
-banner() {
-  _clear
-  printf '\n%s%s  %s%s\n' "$BOLD" "$BLUE" "$1" "$RESET"
-  printf '%s  %s stages%s\n\n' "$DIM" "$TOTAL_STAGES" "$RESET"
-  printf '%s  Each step says what to do and waits for you. Nothing is written until\n' "$DIM"
-  printf '  every check passes, so Ctrl-C is safe and finished stages are skipped.%s\n' "$RESET"
-  pause "Press Enter to begin"
-}
-
 # stage "Name" clears the screen, then announces a stage and shows progress.
 # Clearing keeps only the current step on screen.
 stage() {
@@ -71,20 +61,6 @@ open_url() {
     elif command -v open        >/dev/null 2>&1; then open "$url"
     else warn "couldn't open a browser; visit it manually: $url"; fi
   } >/dev/null 2>&1 || warn "couldn't open a browser, so visit it manually: $url"
-}
-
-# pause "msg" waits for the human to confirm they've done the manual part.
-pause() {
-  printf '  %s%s%s ' "$DIM" "${1:-Press Enter to continue}" "$RESET"
-  read -r _ || true
-}
-
-# confirm "question" is a y/N gate; returns success on yes.
-confirm() {
-  local reply=""
-  printf '  %s? %s [y/N] ' "$YELLOW" "$1"
-  read -r reply || true
-  [[ "$reply" =~ ^[Yy] ]]
 }
 
 # _existing KEY: current value of KEY in ENV_FILE, if any.
@@ -261,19 +237,19 @@ identity_status() {
 
 ensure_github_authentication() {
   if gh auth status --hostname github.com >/dev/null 2>&1; then
-    say "GitHub CLI is already authenticated."
+    say "Already signed in to GitHub."
     return
   fi
 
   say "Sign in to GitHub to clone $RECOVERY_REPOSITORY."
 
-  if confirm "Open the sign-in page in a browser here?"; then
-    gh auth login --hostname github.com --git-protocol https --web
-    return
-  fi
-
-  note "Approve the code below elsewhere; press Enter when asked, nothing opens."
-  BROWSER=true GH_BROWSER=true \
+  # With prompts disabled gh prints the code and URL and waits for approval,
+  # leaving the operator to open it on whichever device they like. It also
+  # skips "Authenticate Git?", which would only write a ~/.gitconfig that Home
+  # Manager later moves aside: the clone and pull below pass gh's credential
+  # helper themselves.
+  note "Open the URL below on any device and enter the code."
+  GH_PROMPT_DISABLED=1 \
     gh auth login --hostname github.com --git-protocol https --web
 }
 
@@ -283,8 +259,13 @@ ensure_recovery_repository() {
   if [[ -d "$RECOVERY_REPOSITORY_DIR/.git" ]]; then
     status="$(git -C "$RECOVERY_REPOSITORY_DIR" status --porcelain)"
     [[ -z "$status" ]] || die "recovery repository has local changes: $RECOVERY_REPOSITORY_DIR"
-    say "Updating the existing recovery repository with a fast-forward pull."
-    git -C "$RECOVERY_REPOSITORY_DIR" pull --ff-only
+    say "Updating $RECOVERY_REPOSITORY_DIR."
+    # A clone made by an earlier, interrupted run has an HTTPS remote and no
+    # stored Git credential, so authenticate the pull the way gh repo clone
+    # does. A remote over SSH ignores the helper.
+    git -C "$RECOVERY_REPOSITORY_DIR" \
+      -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
+      pull --ff-only
     return
   fi
 
@@ -297,11 +278,8 @@ ensure_recovery_repository() {
 # explain_entry_path prints how keepassxc-cli resolves an entry, since a wrong
 # RECOVERY_ENTRY is the likeliest reason the export failed.
 explain_entry_path() {
-  warn "the entry path may not match this vault."
-  note "Paths omit the root group name, are case-sensitive, and must be"
-  note "complete; a bare title is searched at every depth instead."
-  note "List them with: keepassxc-cli ls -R -f $1"
-  note "Then set RECOVERY_ENTRY to the path it prints."
+  warn "RECOVERY_ENTRY may be wrong: use the full path without the root group."
+  note "List paths with: keepassxc-cli ls -R -f $1"
 }
 
 restore_identity() {
@@ -323,13 +301,12 @@ restore_identity() {
     write_metadata "$AGE_KEY_FILE" "$AGE_KEY_METADATA_FILE" "$RECOVERY_TEMP_DIR"
     rm -rf -- "$RECOVERY_TEMP_DIR"
     RECOVERY_TEMP_DIR=""
-    say "The existing age identity is valid; recovery metadata was refreshed."
+    say "The existing age identity is valid."
     return
   fi
 
   RECOVERY_TEMP_DIR="$(mktemp -d "$key_dir/.recover-age-identity.XXXXXX")"
   key_temp="$RECOVERY_TEMP_DIR/keys.txt"
-  step "Enter the password for $RECOVERY_DATABASE when KeePassXC prompts."
   if ! keepassxc-cli attachment-export \
     "$database" "$RECOVERY_ENTRY" "$RECOVERY_ATTACHMENT" "$key_temp"; then
     explain_entry_path "$database"
@@ -347,7 +324,7 @@ restore_identity() {
   write_metadata "$AGE_KEY_FILE" "$AGE_KEY_METADATA_FILE" "$RECOVERY_TEMP_DIR"
   rm -rf -- "$RECOVERY_TEMP_DIR"
   RECOVERY_TEMP_DIR=""
-  say "Installed and verified $AGE_KEY_FILE with mode 0600."
+  say "Restored $AGE_KEY_FILE."
 }
 
 case "${1:-install}" in
@@ -379,14 +356,11 @@ fi
 
 TOTAL_STAGES=2
 
-banner "Dotfiles secret recovery"
-
-stage "GitHub recovery repository"
+stage "Download the vault"
 ensure_github_authentication
 ensure_recovery_repository
 
-stage "KeePassXC age identity"
-say "Restoring $RECOVERY_ATTACHMENT from $RECOVERY_ENTRY."
+stage "Unlock the vault"
 restore_identity
 
 finish
