@@ -293,6 +293,12 @@ bumps. The `firefox-nix` effort holds the specified work at `needs-triage`
 until this is reassessed. It depends on the sing-box slice, which produces the
 PAC it wants to encrypt.
 
+Splitting the KeePassXC vault is tracked by the `vault-split` effort: a small
+recovery vault behind a long password, and a daily vault unlocked by a password
+plus a key file that sops-nix delivers. It supplies the KeePassXC native
+messaging host `firefox-nix` needs, and its Firefox password settings wait for
+that effort's declared profile.
+
 The Snap sourcing policy that effort records — `snapd` stays as host-owned
 infrastructure, and no software this repository declares comes from Snap — is
 independent of Firefox's fate and can land on its own. Kitty, Hyprland, Wofi, dunst, tmuxinator, Obsidian configuration, and the legacy VS Code snapshots were reviewed and deliberately dropped rather than deferred. The remaining candidates are selected helper scripts and the desktop applications still awaiting review.
