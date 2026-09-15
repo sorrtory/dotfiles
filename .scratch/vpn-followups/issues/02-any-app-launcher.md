@@ -1,23 +1,32 @@
-# 02 — `vpn` for sandboxed (Electron/Chromium) apps
+# 02 — Add another sandboxed VPNized application
 
 Status: needs-triage
-Blocked by: vpn-command/06
+Blocked by: 05
 
 ## Goal
 
-`vpn obsidian` (or any Electron/Chromium app) should work one-off, not only
-programs that avoid user namespaces.
+Add exact-path host policy and a managed launcher for another application only
+when it is actually adopted. Element is the current candidate. This is not the
+ticket for `vpn --egress`, which belongs to 05 and continues to support ordinary
+programs without an AppArmor allowance.
+
+The ticket remains `needs-triage` until an actual second application is chosen.
 
 ## Sketch
 
-1. Detect the userns restriction and the program's real executable chain
+1. Confirm the selected package actually creates a restricted user namespace;
+   detect its real executable chain
    (Nix wrappers exec an unwrapped Electron), and explain the failure clearly
    instead of letting Electron abort with the `chrome-sandbox` error.
 2. Reuse the vpn-command AppArmor generator and bootstrap phase to add exact-path
    allowances for a declared list of apps. Never a wildcard over `/nix/store`,
    and never `--no-sandbox`.
-3. Consider a declarative list (`dotfiles.vpn.sandboxedApps`) rather than
-   granting policy from an interactive command, since installing needs sudo.
+3. Prefer another explicit `dotfiles.vpnizedApps.<name>` adapter over a generic
+   policy-grant list. Installing policy needs sudo and remains an explicit
+   bootstrap action.
+4. Give the app its native preferences/state treatment and global-or-pinned
+   egress option through ticket 05's interface. Do not generalize from Vesktop
+   assumptions that the second app does not share.
 
 ## References
 

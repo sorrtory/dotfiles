@@ -60,3 +60,11 @@ policy) belong to host activation, which needs operator approval.
 A 60 s VM pause (`virsh suspend`/`resume`, a stand-in rather than a guest
 suspend-to-RAM) recovered HTTPS through capture 5 s after resume, with no
 sing-box restart and Vesktop still running.
+
+## Comments — Remaining recovery gate, 2026-09-15
+
+Keep this open until network/address change and real suspend-to-RAM have
+separate evidence. For each, record recovery time, whether intervention was
+needed, capture/app survival, tunneled versus direct egress, DNS confinement,
+and unchanged host routes/resolver. VM pause is not a substitute for guest
+suspend. Record unavailable coverage explicitly rather than marking it passed.

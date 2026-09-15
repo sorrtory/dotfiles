@@ -1,7 +1,7 @@
 # 06 — Document, review and gate legacy retirement
 
 Status: claimed
-Blocked by: 05
+Blocked by: 05, 07, 08, 09
 
 ## Goal
 
@@ -17,7 +17,8 @@ and evidence. Packaging begins in tickets 01/03, not after desktop verification.
    Review terminology in CONTEXT.md through the domain documentation workflow.
 2. Explain the two sing-box processes/one tunnel identity, on-demand capture,
    protocol-independent launcher, rootless prerequisites and raw-executable
-   bypass. Generic vpn remains optional follow-up using the same implementation.
+   bypass. Generic vpn for plain programs is shipped; additional sandboxed
+   application families remain follow-up work using the same implementation.
 3. Document explicit machine identity and coexistence constraints with legacy
    proxy/WireGuard and whole-host vpn-up/vpn-down aliases. Do not alter those
    aliases or running host services as incidental cleanup.
@@ -56,3 +57,10 @@ machines fresh, the old veth/NAT script was never committed, and the
 `vpn-up`/`vpn-down` whole-host aliases are unchanged. Remaining gates are the
 operator's review, ticket 05's network change and suspend-to-RAM, and host
 activation with explicit approval.
+
+## Comments — Review follow-through, 2026-09-15
+
+Review of VPN changes from 91793c9 through 1e75b0f identified current-slice
+defects tracked in 07–09. These are completion gates, not deferred profile
+features. Four targeted fixture suites passed, but did not cover the reported
+failure paths. Re-run them with new regression cases before completion.

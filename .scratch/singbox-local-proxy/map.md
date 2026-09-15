@@ -9,7 +9,7 @@ future namespace launcher. See [spec.md](spec.md).
 - [02: Firefox and VS Code](issues/02-point-clients-at-the-proxy.md) — ready-for-agent; blocked by 01.
 - [03: Shared backend boundary](issues/03-record-the-proxy-vpn-boundary.md) — resolved; decisions and glossary updated.
 - [04: Legacy retirement](issues/04-retire-the-lxd-proxy.md) — ready-for-agent; blocked by 02 and normal-use verification. Documentation only; the operator reinstalls the host.
-- [05: Transport failover](issues/05-transport-failover.md) — needs-info; waiting for a second server transport.
+- [05: Transport failover](issues/05-transport-failover.md) — wontfix; superseded by the selectable-egress milestone's protocol-adapter and automatic-strategy tickets.
 
 ## Context
 

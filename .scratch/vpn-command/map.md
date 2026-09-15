@@ -6,9 +6,10 @@ See [spec.md](spec.md). This is a revision of the same effort, not a third flow.
 
 ## Frontier
 
-[05: Everyday Vesktop and failure verification](issues/05-verify-the-launcher-families.md):
-a network change and a real suspend-to-RAM; the voice call passed. Also
-ticket 06 (documentation) can proceed in parallel.
+[07: Exclude concurrent owners of the VPN identity](issues/07-identity-exclusion.md)
+is the first unclaimed implementation task. Tickets 08 and 09 are independent
+fixes. Ticket 05 still needs a network change and real suspend-to-RAM; its
+voice call passed. Ticket 06 documentation can proceed, but completion is gated.
 
 ## Tickets
 
@@ -18,7 +19,10 @@ ticket 06 (documentation) can proceed in parallel.
 - [03: Install Vesktop and wrap managed launch paths](issues/03-run-as-the-user.md) — resolved; desktop, command and URL launches verified on staging.
 - [04: Prevent untunneled Vesktop handoff](issues/04-refuse-to-lie.md) — resolved; refusal by PID verified on staging.
 - [05: Everyday Vesktop and failure verification](issues/05-verify-the-launcher-families.md) — claimed; voice call confirmed; network change and suspend-to-RAM remain.
-- [06: Documentation, review and gated retirement](issues/06-package-and-document.md) — ready-for-agent; blocked by 05.
+- [06: Documentation, review and gated retirement](issues/06-package-and-document.md) — claimed; blocked by 05, 07, 08, 09.
+- [07: Exclude concurrent owners of the VPN identity](issues/07-identity-exclusion.md) — ready-for-agent; P1.
+- [08: Make AppArmor install/removal failure-recoverable](issues/08-apparmor-recovery.md) — ready-for-agent; P2.
+- [09: Accept relative executable paths](issues/09-relative-executables.md) — ready-for-agent; P2.
 
 Ready-for-agent means specified, not permission to skip listed dependencies.
 Ticket filenames are retained even where the old title described broader scope.

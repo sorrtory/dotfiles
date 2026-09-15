@@ -1,6 +1,16 @@
 # 05 — Transport failover for a blocked protocol
 
-Status: needs-info
+Status: wontfix
+
+## Answer
+
+Superseded by `vpn-followups/03`, `04`, `07` and `08`, which define one shared
+egress inventory and separate a real protocol adapter from automatic strategy.
+The proposal below is retained as history, not implementation direction.
+
+The old wording also overstated `urltest`: in pinned sing-box 1.14 it is latency
+selection, not ordered failover, and it does not retry the same failed request
+through another candidate.
 
 ## Goal
 
