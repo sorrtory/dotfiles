@@ -99,6 +99,8 @@ That choice forces a migration step: Git ignores `~/.config/git/config` entirely
 
 The legacy file carried delta and `merge.conflictStyle = zdiff3` commented out. That was intent never finished wiring up, so it is enabled rather than dropped. Home Manager binds delta through `pager.blame/diff/log/show` rather than a blanket `core.pager`, which is narrower than the commented block asked for and leaves everything else paging normally.
 
+VS Code's `settings.json` and `keybindings.json` are linked out of store, but the operator rarely edits them by hand: VS Code's settings UI and Settings Sync write them. Both write through the link rather than replacing it, because VS Code writes a symlinked file in place instead of by temp-file rename; the check is `canWriteFileAtomic` in both the host's 1.121 and the pinned 1.119. So Settings Sync carries settings, keybindings and extensions between machines, and Git records what it wrote whenever the operator commits. Keys that differ per machine go in `settingsSync.ignoredSettings` so Sync cannot write them into the shared file. `http.proxy` is the exception that proves the rule: it is committed, because the local proxy answers on `127.0.0.1:3128` on every machine, and ignored by Sync so a machine without that proxy never receives it. `extensions.list` is an inventory regenerated with `code --list-extensions`, not an installer.
+
 GNOME and Hyprland concerns remain separate. GNOME should use `dconf.settings` where practical; Hyprland may remain native and live-linked if that is clearer.
 
 ## Bootstrap policy

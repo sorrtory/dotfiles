@@ -204,5 +204,12 @@
     "**/.forgejo/workflows/*.yml",
     "**/.forgejo/workflows/*.yaml"
   ],
-  "dart.flutterCreatePlatforms": ["android", "linux", "web"]
+  "dart.flutterCreatePlatforms": ["android", "linux", "web"],
+  "http.proxy": "http://127.0.0.1:3128",
+  "settingsSync.ignoredSettings": [
+    "http.proxy",
+    "dart.flutterSdkPath",
+    "lldb-dap.executable-path",
+    "chat.instructionsFilesLocations"
+  ]
 }

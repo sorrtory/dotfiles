@@ -28,8 +28,11 @@ policy the PAC file already expresses, without making the proxy system-wide.
    The directory name is random, so it cannot be a static file declaration.
    Re-running must converge rather than append. This is deliberately the
    legacy approach made re-runnable; the `firefox-nix` effort replaces it.
-4. Add `"http.proxy": "socks5://127.0.0.1:1080"` to the managed VS Code
-   settings established by the `package-migration` effort.
+4. Done outside this ticket: `configs/vscode/settings.json` sets
+   `"http.proxy": "http://127.0.0.1:3128"`, the `http` inbound from ticket 01
+   and the value the operator's VS Code already works with, rather than the
+   `socks5://127.0.0.1:1080` first planned here. `settingsSync.ignoredSettings`
+   keeps Settings Sync from carrying it between machines.
 
 ## Constraints
 
