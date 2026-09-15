@@ -9,7 +9,7 @@ PC that feels like the current one. See [spec.md](spec.md).
 
 - [01: Grill the GNOME baseline](issues/01-grill-the-baseline.md) — resolved.
 - [02: Keyboard layouts, Alt+Shift and Caps Lock](issues/02-keyboard.md) — ready-for-agent.
-- [03: Launchers and keybindings](issues/03-keybindings.md) — claimed.
+- [03: Launchers and keybindings](issues/03-keybindings.md) — resolved.
 - [04: Mutter, dock and appearance](issues/04-mutter-dock-appearance.md) — needs-triage.
 - [05: Extensions and GNOME tools](issues/05-extensions-and-tools.md) — resolved.
 - [06: AyuGram as the Telegram client](issues/06-ayugram.md) — ready-for-agent.
@@ -40,6 +40,15 @@ its `home.nix` import and `targets.genericLinux`, and the others extend them.
   - The operator's machines span Ubuntu, Fedora and possibly NixOS, so GNOME
     tools come from Nixpkgs.
   - Check extensions with the session unlocked: the lock screen disables them.
+- Resolved by [03](issues/03-keybindings.md):
+  - Launchers use plain command names. The session `PATH` gets the profile's
+    `bin` through `environment.d`.
+  - Nix VS Code and Obsidian cannot start on Ubuntu without an AppArmor
+    `userns` allowance for their Electron. This is outside this effort and
+    unticketed, see 03's comments.
+  - Test workspace moves with two windows.
+  - Mutter's tiling keys on the current PC belong to Tiling Assistant, not
+    the operator; see [04](issues/04-mutter-dock-appearance.md).
 - Running this effort alongside `vpn-command`:
   - Its files don't overlap, apart from one import line in `home.nix`.
   - The staging VM is shared, and `rsync --delete` mirrors a whole tree.

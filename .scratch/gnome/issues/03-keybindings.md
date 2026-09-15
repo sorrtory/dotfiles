@@ -1,7 +1,7 @@
 # 03 — Launchers and keybindings
 
 Type: task
-Status: claimed
+Status: resolved
 
 ## Goal
 
@@ -49,6 +49,51 @@ Declare the eight launchers plus the window and Shell keybindings, replacing
 - On a GNOME VM or the new PC: every installed launcher opens from its key,
   and `custom-keybindings` has no duplicates.
 
+## Answer
+
+Landed in `modules/desktops/gnome.nix` (one launcher table generating
+`custom-keybindings` and its sections, plus the WM and Shell keybindings) and
+`modules/packages.nix` (`systemd.user.sessionVariables.PATH`). Names match the
+table: `custom0` became `gradia` and `custom1` became `telegram`. Spotify uses
+plain `spotify`, because the Nix desktop file's `Exec` is `spotify %U` and the
+profile's `bin` is on the session `PATH`.
+
+Verified 2026-09-15:
+
+- **Host:** `nix flake check` passes, and the activation package builds.
+  - The dconf INI lists all eight paths once in `custom-keybindings` and gives
+    each its own section. `toggle-message-tray=@as []`, and the other two Shell
+    keys are `['disabled']`.
+  - `10-home-manager.conf` has `PATH=/home/z/.nix-profile/bin${PATH:+:}$PATH`
+    and the `XDG_DATA_DIRS` line from 05.
+- **Ubuntu GNOME VM, after a GDM re-login:**
+  - `gsd-media-keys` runs with the profile's `bin` first on `PATH`, and
+    `custom-keybindings` has no duplicates.
+- **Launcher keys**, sent with `virsh send-key`, each checked by whether the
+  process started:
+  - `<Super>t` Sublime, `<Super>e` Nautilus, `<Super>s` Spotify and `<Super>f`
+    Firefox (snap) all start.
+  - `<Super>c` and `<Super>n` do start `code` and `obsidian`, which then abort
+    in Chromium's sandbox (see Comments). That is not a launcher defect.
+  - `<Super>m` (AyuGram) and `<Shift>F11` (Gradia through Flatpak) do nothing,
+    as expected on a fresh install until ticket 06 and Flatpak plus Gradia
+    land.
+- **Window and workspace keys:**
+  - `<Super>q` closes the focused window. It does so with Ubuntu Dock's default
+    `hot-keys=true`, whose shortcut is also `<Super>q`.
+  - `<Control><Super>Right/Left` move the focused window, and
+    `<Control><Alt>Left/Right` switch workspaces. Checked with two windows
+    through overview screenshots.
+  - A single-window test cannot show a move. The view follows the window, and
+    dynamic workspaces delete the empty one it left, so the overview looks
+    unchanged.
+- **Shell keybindings:** fresh GNOME's `focus-active-notification` (`<Super>n`),
+  `toggle-quick-settings` (`<Super>s`) and `toggle-message-tray` (`<Super>v`,
+  `<Super>m`) were the only defaults on the launcher keys. All three are
+  cleared, and no other schema (system or extension) binds Control+Super+arrow.
+
+Not verified here: the new PC under normal use.
+
 ## Comments
 
 2026-09-15, agent, from ticket 05's staging on the Ubuntu GNOME VM:
@@ -61,6 +106,19 @@ Declare the eight launchers plus the window and Shell keybindings, replacing
   machines differ, possibly in how Nix was installed. Step 2 still makes the
   entry explicit rather than relying on the installer, and should not assume
   it is currently absent.
+- Staging 03 (same VM, after re-login): `<Super>c` and `<Super>n` do spawn
+  `code` and `obsidian` from the profile. Both then abort with Chromium's
+  "SUID sandbox helper binary was found, but is not configured correctly"
+  (`chrome-sandbox` in the Nix store cannot be setuid). Running them from a
+  shell fails the same way, so the cause is not the launcher. Ubuntu has
+  `kernel.apparmor_restrict_unprivileged_userns = 1`. Its shipped `code` and
+  `obsidian` profiles attach to `/usr/share/code{/bin,}/code` and
+  `/opt/Obsidian/obsidian`, which never match Nix paths. The repository's
+  exact-path allowances (docs/VESKTOP-APPARMOR.md) cover only Vesktop and
+  sing-box, and `vpn-followups/02` would extend them only to tunneled apps. So
+  on a fresh Ubuntu, Nix VS Code and Obsidian cannot start at all. This is
+  outside 03, and needs its own ticket and an operator decision on the
+  security tradeoff.
 - The same script also appends `~/.nix-profile/share` to `XDG_DATA_DIRS` after
   Home Manager's copy. That duplicate is harmless: the Shell logs "already
   installed … will not be loaded" for the same path.
