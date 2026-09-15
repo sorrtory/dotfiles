@@ -34,6 +34,12 @@ return {
 	{
 		"mason-org/mason.nvim",
 		opts = {
+			-- api.mason-registry.dev is unreachable from here, and trying it
+			-- first stalls every install. Ask GitHub directly instead.
+			providers = {
+				"mason.providers.client",
+				"mason.providers.registry-api",
+			},
 			ui = {
 				icons = {
 					package_installed = "✓",

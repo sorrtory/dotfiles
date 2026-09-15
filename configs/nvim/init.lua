@@ -1,6 +1,10 @@
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
+-- New message UI (experimental in 0.12): no "Press ENTER" prompts, which the
+-- first-run plugin installs otherwise trigger dozens of times.
+require("vim._core.ui2").enable({})
+
 -- Editor basics
 vim.opt.number = true
 vim.opt.relativenumber = true

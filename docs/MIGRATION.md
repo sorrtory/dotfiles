@@ -186,6 +186,14 @@ coexist with owning that directory. `sideloadInitLua` hands the generated Lua
 to the wrapper instead, and since this configuration generates none, nothing is
 lost.
 
+A fresh machine is the one place lazy.nvim, mason and nvim-treesitter all
+install at once, and the first staging start surfaced two things a
+long-lived host hides. mason's default provider resolves the registry through
+`api.mason-registry.dev`, which is unreachable from this network, so the
+configuration asks GitHub first. And nvim-treesitter's 36 parallel grammar
+installs flood the message area with hit-enter prompts, which Neovim 0.12's
+experimental `ui2` message UI replaces.
+
 ### 11. tmux
 
 Let Home Manager own the tmux package and its three plugins, retiring TPM and

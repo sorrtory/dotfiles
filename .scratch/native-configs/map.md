@@ -7,9 +7,9 @@ answers the shared mechanism question; the tickets apply it. See
 
 ## Tickets
 
-- [01: Neovim](issues/01-neovim.md) — claimed; implemented and checked on the host, awaiting VM activation.
-- [02: tmux](issues/02-tmux.md) — claimed; implemented and checked on the host, awaiting VM activation.
-- [03: Yazi](issues/03-yazi.md) — claimed; implemented on the host, `Alt+y` awaiting normal use.
+- [01: Neovim](issues/01-neovim.md) — claimed; staging activation found first-run prompts and no mason installs, both fixed and reproduced clean on the VM; awaiting the operator's activation of the fix.
+- [02: tmux](issues/02-tmux.md) — claimed; operator confirmed on staging. The file's cleanup is `tmux-config-tweak`.
+- [03: Yazi](issues/03-yazi.md) — claimed; operator confirmed `Ctrl+y` on staging.
 - [04: Documentation corrections](issues/04-documentation.md) — claimed; done, minus the "shipped" lines the VM check would earn.
 - [05: Yazi clipboard and shell](issues/05-clipboard-and-shell.md) — claimed; implemented and verified by pressing the keys.
 
@@ -52,9 +52,11 @@ Nix-provided Node, `prettierd` runs, a `.ts` file attaches `ts_ls` with
 treesitter highlighting, and `:checkhealth` reports no dependency this
 configuration actually uses as missing.
 
-The remaining checks need the staging VM, and the `rsync` that puts the tree
-there was refused by the implementing session's permission layer as a
-shared-resource change. Waiting on that: a clean `bootstrap.sh install`, `:Lazy`
-read in a real terminal, continuum's save hook (which refuses to install while
-any other tmux server runs on the machine, so it cannot be seen on the
-operator's host), `Alt+y` in a running Yazi, and `snap list yazi`.
+The sandbox was headless, and its mason run never started from an empty
+registry, which is how it missed both defects the operator's staging
+activation found on 2026-09-15: dozens of hit-enter prompts from
+nvim-treesitter's first run, and mason installing nothing because
+`api.mason-registry.dev` is unreachable. Ticket 01 has the reproduction and
+the fix. tmux and Yazi (`Ctrl+y`) were confirmed by the operator. Continuum's
+save hook is left to `tmux-config-tweak`, and `snap list yazi` only means
+something on a host with snapd.

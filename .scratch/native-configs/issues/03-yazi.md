@@ -113,3 +113,11 @@ already `Ctrl+y`. What that harness proves for `Ctrl+y` — the plugin loads and
 copies the file's contents — is the same claim ticket 03 made for `Alt+y`,
 through the same plugin, so nothing is left unverified by the change. It is
 worth being exact about which key was actually pressed.
+
+## Comments — Operator activation on staging, 2026-09-15
+
+The operator activated the Lubuntu VM and confirmed Yazi works, with contents
+copied by `Ctrl+y`, the key ticket 05 settled in place of `Alt+y`. On that VM
+`yazi` resolves to `/nix/store/…-yazi-26.5.6/bin/yazi`, and `snap` is not
+installed at all, so `snap list yazi` holds only trivially there. The
+operator's Ubuntu host, which does have snapd, is where it means something.

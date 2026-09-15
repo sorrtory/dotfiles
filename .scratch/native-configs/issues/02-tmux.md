@@ -121,3 +121,10 @@ normal-use check.
 
 The VM could not be synced from this session: `rsync` to the guest was refused
 by this session's permission layer as a shared-resource change.
+
+## Comments — Operator activation on staging, 2026-09-15
+
+The operator activated the Lubuntu VM and reports tmux working. No defect was
+raised. Reviewing `tmux.conf` itself, including retiring continuum, belongs to
+the `tmux-config-tweak` effort rather than this ticket, so continuum's save
+hook is no longer a check this slice owes.

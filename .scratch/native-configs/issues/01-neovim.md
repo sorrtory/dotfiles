@@ -116,3 +116,50 @@ from this session — `rsync` to the guest was refused by this session's
 permission layer as a shared-resource change. A clean `bootstrap.sh install`
 there, and `:Lazy` read in a real terminal, still want either that permission
 or the operator.
+
+## Comments — Operator activation on staging, 2026-09-15
+
+The operator activated the Lubuntu VM and opened Neovim: every plugin
+installed, but the first start needed "Press ENTER or type command to
+continue" about fifty times. Two defects turned up, and the sandbox above hid
+both: it ran headless, so it never showed a prompt, and a fresh-machine mason
+install was never actually exercised.
+
+**The prompts are nvim-treesitter's.** `ensure_installed` starts 36 grammar
+installs at once, and each emits several progress lines. Reproduced on the VM
+in a tmux pane with fresh `XDG_DATA_HOME`, `XDG_STATE_HOME` and
+`XDG_CACHE_HOME`, pressing Enter whenever a prompt appeared: at 80×24 it took
+37 `Press ENTER` and 62 `-- More --` prompts, every one on a treesitter line.
+Nothing installs while a prompt waits: left unanswered, 0 of 36 grammars
+existed after 91 s. At 140×40 the lines fit, and only one prompt appeared.
+
+**mason installed nothing, on the operator's VM or in any reproduction.** Its
+default provider resolves the registry version through
+`api.mason-registry.dev`, which times out from the host, from the VM, and
+through the VM's sing-box proxy, while `api.github.com`, `github.com` and the
+npm registry answer. The registry never lands, so no server or formatter is
+installed, and the editor is the subtly broken one this ticket warned about.
+
+Fixes, both in `configs/nvim/`:
+
+- `init.lua` enables Neovim 0.12's experimental `ui2`, which replaces the
+  hit-enter prompt with collapsed messages (`g<` shows them). The operator
+  chose it over quietening treesitter alone.
+- `lua/plugins/lsp.lua` puts `mason.providers.client` ahead of
+  `mason.providers.registry-api`. The client provider asks `gh`, and then
+  `api.github.com`, for the latest registry release.
+
+Evidence, with the edited tree copied to the VM as `XDG_CONFIG_HOME` and the
+same fresh-directory harness at 80×24: no prompt of either kind, all 21
+plugins, all 36 grammars, and all 25 mason packages (16 servers, 9 tools)
+within 160 s. `mason.log` has two errors, neither a failure: `gh` is not
+installed, so the client provider falls through to `api.github.com` as
+designed, and PyPI metadata names no Python versions for one package.
+
+Also seen, not fixed: opening a file whose grammar is in `ensure_installed`
+starts `auto_install` for it as well, and the two installs race in one
+directory (`src/scanner.c: No such file or directory`). One of them succeeds,
+so it costs a single error on the first start only.
+
+Remaining: the operator activating the fixed tree, which the change to
+`init.lua` reaches live through the out-of-store link.
