@@ -9,15 +9,14 @@ PC that feels like the current one. See [spec.md](spec.md).
 
 - [01: Grill the GNOME baseline](issues/01-grill-the-baseline.md) — resolved.
 - [02: Keyboard layouts, Alt+Shift and Caps Lock](issues/02-keyboard.md) — ready-for-agent.
-- [03: Launchers and keybindings](issues/03-keybindings.md) — ready-for-agent.
+- [03: Launchers and keybindings](issues/03-keybindings.md) — claimed.
 - [04: Mutter, dock and appearance](issues/04-mutter-dock-appearance.md) — needs-triage.
-- [05: Extensions and GNOME tools](issues/05-extensions-and-tools.md) — ready-for-agent.
+- [05: Extensions and GNOME tools](issues/05-extensions-and-tools.md) — resolved.
 - [06: AyuGram as the Telegram client](issues/06-ayugram.md) — ready-for-agent.
 
 Launchers (03) and extensions (05) are the operator's priority. None of the
-three ready tickets blocks another. Whichever lands first creates
-`modules/desktops/gnome.nix` and the `home.nix` import, and the others extend
-it.
+ready tickets blocks another. Ticket 05 created `modules/desktops/gnome.nix`,
+its `home.nix` import and `targets.genericLinux`, and the others extend them.
 
 ## Context
 
@@ -33,6 +32,14 @@ it.
   conflicts with the MPV GPU decision. That decision's premise ("MPV is the
   only program here that needs a GPU") predates Code, Obsidian and Spotify
   coming from Nix, so it needs revisiting outside this effort.
+- Resolved by [05](issues/05-extensions-and-tools.md):
+  - Ubuntu enables its default extensions through the `ubuntu` session mode,
+    not `enabled-extensions`, and `disabled-extensions` overrides that.
+  - GNOME Shell 50 loads extensions symlinked from `~/.nix-profile/share`
+    after a re-login.
+  - The operator's machines span Ubuntu, Fedora and possibly NixOS, so GNOME
+    tools come from Nixpkgs.
+  - Check extensions with the session unlocked: the lock screen disables them.
 - Running this effort alongside `vpn-command`:
   - Its files don't overlap, apart from one import line in `home.nix`.
   - The staging VM is shared, and `rsync --delete` mirrors a whole tree.
