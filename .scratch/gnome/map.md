@@ -43,9 +43,11 @@ its `home.nix` import and `targets.genericLinux`, and the others extend them.
 - Resolved by [03](issues/03-keybindings.md):
   - Launchers use plain command names. The session `PATH` gets the profile's
     `bin` through `environment.d`.
-  - Nix VS Code and Obsidian cannot start on Ubuntu without an AppArmor
-    `userns` allowance for their Electron. This is outside this effort and
-    unticketed, see 03's comments.
+  - Nix VS Code and Obsidian could not start on Ubuntu without an AppArmor
+    `userns` allowance for their Electron. That is now fixed outside the
+    tickets: `modules/apparmor.nix` generates `dotfiles-vscode` and
+    `dotfiles-electron-43`, and both apps use the HTTP proxy rather than the
+    VPN. See docs/VESKTOP-APPARMOR.md.
   - Test workspace moves with two windows.
   - Mutter's tiling keys on the current PC belong to Tiling Assistant, not
     the operator; see [04](issues/04-mutter-dock-appearance.md).

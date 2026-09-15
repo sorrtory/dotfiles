@@ -2,11 +2,13 @@
 
 {
   imports = [
+    ./modules/apparmor.nix
     ./modules/desktops/gnome.nix
     ./modules/packages.nix
     ./modules/programs/git.nix
     ./modules/programs/mpv.nix
     ./modules/programs/neovim.nix
+    ./modules/programs/obsidian.nix
     ./modules/programs/ssh.nix
     ./modules/programs/sing-box.nix
     ./modules/programs/sublime-text.nix

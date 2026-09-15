@@ -47,28 +47,6 @@ let
         --replace-fail 'Exec=vesktop %U' 'Exec=${lib.getExe vesktopLauncher} %U'
     '';
   };
-
-  # Exact-path user-namespace allowances for Ubuntu's restriction, installed by
-  # the apparmor bootstrap phase; see docs/VESKTOP-APPARMOR.md. Vesktop reaches
-  # its real Electron binary through two wrappers, so that path is read from
-  # them here rather than pinned by hand.
-  apparmorProfiles = pkgs.runCommandLocal "dotfiles-apparmor-profiles" { } ''
-    mkdir "$out"
-    profile() {
-      if [[ ! -f $2 || $(head -c 4 "$2") != $'\x7fELF' ]]; then
-        echo "AppArmor attachment for $1 is not an ELF executable: $2" >&2
-        exit 1
-      fi
-      substitute ${./apparmor.profile} "$out/$1" \
-        --subst-var-by name "$1" --subst-var-by executable "$2"
-    }
-    profile dotfiles-sing-box ${lib.getExe proxy.package}
-    ${lib.optionalString cfg.vesktop.enable ''
-      electron=$(grep -o '/nix/store/[^"]*/bin/electron' ${lib.getExe pkgs.vesktop} | head -n 1)
-      profile dotfiles-vesktop-electron \
-        "$(grep -o '/nix/store/[^"]*/libexec/electron/electron' "$electron" | tail -n 1)"
-    ''}
-  '';
 in
 {
   options.dotfiles.vpnizedApps.vesktop.enable =
@@ -84,21 +62,12 @@ in
 
     (lib.mkIf proxy.enable {
       home.packages = [ vpn ];
-      xdg.dataFile."dotfiles/apparmor".source = apparmorProfiles;
 
-      # Never escalates: it only says when the phase needs running again, which
-      # after a flake update moving these packages is otherwise a silent abort.
-      home.activation.checkAppArmorProfiles = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-        restriction=/proc/sys/kernel/apparmor_restrict_unprivileged_userns
-        if [[ -r $restriction && $(<"$restriction") == 1 ]]; then
-          for profile in ${apparmorProfiles}/*; do
-            if ! cmp -s "$profile" "/etc/apparmor.d/''${profile##*/}"; then
-              warnEcho "AppArmor profile ''${profile##*/} is missing or stale, so tunneled programs cannot start. Run: ./scripts/bootstrap.sh install apparmor"
-              break
-            fi
-          done
-        fi
-      '';
+      # Capture creates its rootless network namespace with this binary.
+      dotfiles.apparmor.usernsAllowances.sing-box = {
+        executable = lib.getExe proxy.package;
+        usedBy = [ proxy.package ];
+      };
 
       systemd.user.services.vpn-capture = {
         Unit = {
@@ -127,6 +96,14 @@ in
 
     (lib.mkIf (proxy.enable && cfg.vesktop.enable) {
       home.packages = [ vesktop ];
+
+      # Vesktop's two wrappers exec Nixpkgs' Electron 43, whose sandbox needs a
+      # user namespace. Applications sharing that Electron share the profile,
+      # and usedBy fails the build if Vesktop moves to another Electron.
+      dotfiles.apparmor.usernsAllowances."electron-${lib.versions.major pkgs.electron_43.version}" = {
+        executable = "${pkgs.electron_43.unwrapped}/libexec/electron/electron";
+        usedBy = [ pkgs.vesktop ];
+      };
 
       # Live-editable, so changes made in Vesktop's UI land in the repository.
       xdg.configFile."vesktop/settings.json".source =

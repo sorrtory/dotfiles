@@ -14,4 +14,12 @@ in
 
   xdg.configFile."Code/User/keybindings.json".source =
     config.lib.file.mkOutOfStoreSymlink "${configRoot}/keybindings.json";
+
+  # VS Code bundles its own Electron, whose sandbox needs a user namespace on
+  # Ubuntu, or the editor aborts at startup. Its network uses the local HTTP
+  # proxy from settings.json rather than the VPN capture namespace.
+  dotfiles.apparmor.usernsAllowances.vscode = {
+    executable = "${config.programs.vscode.package}/lib/vscode/code";
+    usedBy = [ config.programs.vscode.package ];
+  };
 }

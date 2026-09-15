@@ -64,3 +64,22 @@ Review of VPN changes from 91793c9 through 1e75b0f identified current-slice
 defects tracked in 07–09. These are completion gates, not deferred profile
 features. Four targeted fixture suites passed, but did not cover the reported
 failure paths. Re-run them with new regression cases before completion.
+
+## Comments — AppArmor generator moved, 2026-09-15 (GNOME effort)
+
+VS Code and Obsidian from Nix abort on Ubuntu with the same `chrome-sandbox`
+error as Vesktop. They use the local HTTP proxy rather than capture, so they
+need only the user-namespace allowance.
+
+- The profile generator moved out of vpnized-apps into `modules/apparmor.nix`.
+  Modules register `dotfiles.apparmor.usernsAllowances.<name> = { executable;
+  usedBy; }`.
+- vpnized-apps registers `sing-box` and Vesktop's Electron. VS Code and
+  Obsidian register their own.
+- `dotfiles-vesktop-electron` is renamed `dotfiles-electron-43`, because
+  Obsidian runs the same Electron binary.
+- The wrapper grep is replaced by a closure check (`usedBy`), which still fails
+  the build if Vesktop moves to another Electron.
+- `scripts/bootstrap/09-apparmor.sh` is unchanged, so ticket 08 is unaffected.
+  The rename installs the new profile and removes the old one on the next
+  phase run.

@@ -222,12 +222,19 @@ capture's cleanup applies. Its settings are a live-editable file in
 tour would reset those settings and can write an autostart entry outside the VPN.
 
 On Ubuntu's restricted unprivileged user namespaces, capture's sing-box and
-Vesktop's Electron each need an exact-path AppArmor `userns` allowance. Home
-Manager generates them from the package paths, the explicit `apparmor` bootstrap
-phase installs them with sudo, and activation only warns when the installed
-ones no longer match. [VESKTOP-APPARMOR.md](VESKTOP-APPARMOR.md) records the
-security trade-off. Other Electron and Chromium programs abort under the VPN
-command until they receive the same treatment.
+every Nix-built Electron each need an exact-path AppArmor `userns` allowance:
+Vesktop's, and also VS Code's and Obsidian's. Those two start nowhere without it,
+VPN or not. Modules register the executables with `modules/apparmor.nix`, which
+generates one profile per executable and checks each is really used by the
+declared package. The explicit `apparmor` bootstrap phase installs them with
+sudo, and activation only warns when the installed ones no longer match.
+[VESKTOP-APPARMOR.md](VESKTOP-APPARMOR.md) records the security trade-off.
+Other Electron and Chromium programs abort, under the VPN command or not, until
+they receive the same treatment.
+
+VS Code and Obsidian are not VPNized applications. They need no UDP, so each
+uses the local HTTP proxy through its own per-process setting, `http.proxy` or
+`--proxy-server`, never a session-wide proxy variable.
 
 Each machine uses its own WireGuard peer identity. Never share `extra` between
 simultaneously connected machines, or run the whole-host `wg-quick` client

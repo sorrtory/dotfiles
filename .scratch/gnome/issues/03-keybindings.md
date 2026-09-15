@@ -119,6 +119,12 @@ Not verified here: the new PC under normal use.
   on a fresh Ubuntu, Nix VS Code and Obsidian cannot start at all. This is
   outside 03, and needs its own ticket and an operator decision on the
   security tradeoff.
+  - Follow-up, same day: the operator chose to fix it, with both apps on the
+    local HTTP proxy since they need no UDP. `modules/apparmor.nix` now
+    generates `dotfiles-vscode` and `dotfiles-electron-43`.
+  - After the `apparmor` phase, `<Super>c` and `<Super>n` open both windows
+    with Chromium's sandbox intact, and their traffic goes to
+    `127.0.0.1:3128`. Evidence is in docs/VESKTOP-APPARMOR.md.
 - The same script also appends `~/.nix-profile/share` to `XDG_DATA_DIRS` after
   Home Manager's copy. That duplicate is harmless: the Shell logs "already
   installed … will not be loaded" for the same path.

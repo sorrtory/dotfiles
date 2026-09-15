@@ -35,7 +35,6 @@
     nodejs
 
     obs-studio
-    obsidian
     pkg-config
     ripgrep
     rustc

@@ -2,7 +2,7 @@
 
 ## Why they are needed
 
-Ubuntu sets `kernel.apparmor_restrict_unprivileged_userns=1`. Two programs in
+Ubuntu sets `kernel.apparmor_restrict_unprivileged_userns=1`. These programs in
 this repository need unprivileged user namespaces and are denied without an
 allowance:
 
@@ -13,20 +13,32 @@ allowance:
   Denied, it falls back to the setuid `chrome-sandbox` helper, which cannot be
   setuid in the Nix store, and aborts with the `chrome-sandbox` error before any
   VPN is involved. Native installs avoid this only because their helper is setuid.
+- **VS Code and Obsidian** fail the same way, for the same reason, although
+  neither uses the VPN. Ubuntu ships allowances for them, but those attach to
+  `/usr/share/code` and `/opt/Obsidian` and never match a Nix store path. Both
+  reach the network through the local HTTP proxy, since they need no UDP.
 
 The legacy root-run launcher needed neither: root created its namespace, and
 the native `/opt/Vesktop` shipped the setuid helper.
 
 ## What is installed
 
-`modules/programs/vpnized-apps` generates one profile per executable from the
-template beside it, and links them to `~/.local/share/dotfiles/apparmor/`:
+`modules/apparmor.nix` generates one profile per registered executable from
+the template beside it, and links them to `~/.local/share/dotfiles/apparmor/`.
+Modules register them through
+`dotfiles.apparmor.usernsAllowances.<name> = { executable; usedBy; }`:
 
 - `dotfiles-sing-box`, attached to the exact sing-box binary capture runs.
-- `dotfiles-vesktop-electron`, attached to the exact unwrapped Electron binary,
-  only when `dotfiles.vpnizedApps.vesktop.enable` is set. Nix's Vesktop reaches
-  it through two wrapper scripts, so the build reads the path from them and
-  fails if either attachment is not an ELF executable.
+- `dotfiles-electron-43`, attached to Nixpkgs' unwrapped Electron 43. Vesktop
+  registers it when `dotfiles.vpnizedApps.vesktop.enable` is set, and Obsidian
+  registers it too. They run the same binary, so they share one profile.
+- `dotfiles-vscode`, attached to the Electron bundled as VS Code's
+  `lib/vscode/code`.
+
+The build fails if an attachment is not an ELF executable, or is missing from
+the closure of a package listed in `usedBy`. That catches an update that moves
+Vesktop or Obsidian to another Electron. Two modules registering one name with
+different executables fail evaluation.
 
 Each profile is `flags=(unconfined)` with `userns,`: it permits namespace use
 and imposes **no** filesystem or network confinement. It attaches to one store
@@ -36,10 +48,10 @@ path, never to a wrapper or a wildcard over `/nix/store`.
 
 The global restriction stays on, Electron's sandbox stays on, no setuid helper
 is installed and no host-root identity is granted. The allowances do expose
-additional kernel functionality to these two executables, which is the attack
+additional kernel functionality to these executables, which is the attack
 surface Ubuntu's restriction reduces, and anything else run with the same
 executable gets it too: the allowance is executable-scoped, not scoped to
-Vesktop's code or to one sing-box configuration. `unshare`, `nsenter` and Bash
+Vesktop's or Obsidian's code, or to one sing-box configuration. `unshare`, `nsenter` and Bash
 receive nothing.
 
 Do not substitute `--no-sandbox`, change permissions in `/nix/store`, or turn
@@ -96,6 +108,32 @@ main process shared capture's network namespace, distinct from the session's;
 a sandboxed child showed isolated namespaces, zero capabilities, no-new-privs
 and seccomp filtering. Discord HTTPS and native STUN worked through capture,
 and the operator completed a real voice call.
+
+### Staging evidence — VS Code and Obsidian, 2026-09-15
+
+On the Ubuntu GNOME VM (Ubuntu 26.04.1, restriction `1`), before the phase ran,
+both applications aborted. Obsidian logged the setuid-helper error, and the
+kernel logged `userns_create` from their executables followed by a `sys_admin`
+denial.
+
+After `./scripts/bootstrap.sh install apparmor` loaded `dotfiles-electron-43`,
+`dotfiles-sing-box` and `dotfiles-vscode`, they were started through their
+GNOME keybindings:
+
+- **Both windows appeared.** Every process of VS Code carried the
+  `dotfiles-vscode` label, and every process of Obsidian `dotfiles-electron-43`.
+- **The kernel logged no further denials for them,** while plain `unshare`
+  stayed denied.
+- **Chromium's sandbox held.** Zygotes ran in their own user namespace with
+  `NoNewPrivs: 1`. VS Code's sandboxed child and Obsidian's GPU and broker
+  processes showed `Seccomp: 2`, and utility processes started with
+  `--enable-sandbox` or `--service-sandbox-type`.
+- **Obsidian's renderer runs with `--no-sandbox`** and no seccomp filter.
+  Obsidian launches its renderer that way itself, so it is not an effect of
+  the allowance.
+- **Both used the HTTP proxy.** A stand-in listener on `127.0.0.1:3128` logged
+  VS Code's `CONNECT`s to the marketplace, its CDN and telemetry, and
+  Obsidian's to `releases.obsidian.md`.
 
 References: [Ubuntu's per-application policy explanation](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces),
 [Chromium's alternatives and their tradeoffs](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md).
