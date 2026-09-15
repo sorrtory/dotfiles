@@ -8,11 +8,11 @@ PC that feels like the current one. See [spec.md](spec.md).
 ## Tickets
 
 - [01: Grill the GNOME baseline](issues/01-grill-the-baseline.md) — resolved.
-- [02: Keyboard layouts, Alt+Shift and Caps Lock](issues/02-keyboard.md) — ready-for-agent.
+- [02: Keyboard layouts, Alt+Shift and Caps Lock](issues/02-keyboard.md) — resolved.
 - [03: Launchers and keybindings](issues/03-keybindings.md) — resolved.
-- [04: Mutter, dock and appearance](issues/04-mutter-dock-appearance.md) — needs-triage.
+- [04: Mutter, dock and appearance](issues/04-mutter-dock-appearance.md) — resolved.
 - [05: Extensions and GNOME tools](issues/05-extensions-and-tools.md) — resolved.
-- [06: AyuGram as the Telegram client](issues/06-ayugram.md) — ready-for-agent.
+- [06: AyuGram as the Telegram client](issues/06-ayugram.md) — resolved.
 
 Launchers (03) and extensions (05) are the operator's priority. None of the
 ready tickets blocks another. Ticket 05 created `modules/desktops/gnome.nix`,
@@ -49,6 +49,19 @@ its `home.nix` import and `targets.genericLinux`, and the others extend them.
   - Test workspace moves with two windows.
   - Mutter's tiling keys on the current PC belong to Tiling Assistant, not
     the operator; see [04](issues/04-mutter-dock-appearance.md).
+- Resolved by [02](issues/02-keyboard.md): the keyboard works on the VM. The
+  Alt+Shift toggle and GNOME's switcher stay in step. Turning Caps Lock on
+  with Shift+Caps Lock also sends Escape, a quirk the XKB keymap doesn't
+  explain; the operator kept the option. Test keys through `cat > file` in a
+  terminal and read the bytes back.
+- Resolved by [04](issues/04-mutter-dock-appearance.md):
+  - Read Ubuntu's effective defaults with `XDG_CURRENT_DESKTOP=ubuntu:GNOME`.
+    Over plain `ssh`, `gsettings` shows the upstream schema values instead.
+  - The dock and appearance are declared in full, so other distros match.
+    Monitor keys and Tiling Assistant's Mutter keys are not declared.
+- Resolved by [06](issues/06-ayugram.md): AyuGram installs from the binary
+  cache and renders without a GPU on the VM. Logging in is left to the
+  operator.
 - Running this effort alongside `vpn-command`:
   - Its files don't overlap, apart from one import line in `home.nix`.
   - The staging VM is shared, and `rsync --delete` mirrors a whole tree.

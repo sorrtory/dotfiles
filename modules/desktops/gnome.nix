@@ -1,7 +1,7 @@
 { lib, pkgs, ... }:
 
 let
-  inherit (lib.hm.gvariant) mkEmptyArray type;
+  inherit (lib.hm.gvariant) mkEmptyArray mkTuple type;
 
   mediaKeys = "org/gnome/settings-daemon/plugins/media-keys";
 
@@ -70,6 +70,22 @@ in
     # current PC; the entry is inert where the distro has no such extension.
     "org/gnome/shell".disabled-extensions = [ "ding@rastersoft.com" ];
 
+    # Caps Lock is Escape and Shift+Caps Lock is the real Caps Lock. Alt+Shift
+    # switches layout, alongside GNOME's own <Super>space, which stays at its
+    # default. xkb-options is replaced as a whole list, so every option to keep
+    # is named here. The console and GDM keymap in /etc/default/keyboard stay
+    # host-owned.
+    "org/gnome/desktop/input-sources" = {
+      sources = [
+        (mkTuple [ "xkb" "us" ])
+        (mkTuple [ "xkb" "ru" ])
+      ];
+      xkb-options = [
+        "grp:alt_shift_toggle"
+        "caps:escape_shifted_capslock"
+      ];
+    };
+
     # The whole list is declared, so a switch never duplicates an entry.
     ${mediaKeys}.custom-keybindings = lib.mapAttrsToList (
       name: _: "/${mediaKeys}/custom-keybindings/${name}/"
@@ -91,6 +107,52 @@ in
       focus-active-notification = [ "disabled" ];
       toggle-quick-settings = [ "disabled" ];
       toggle-message-tray = mkEmptyArray type.string;
+    };
+
+    # Both already match Ubuntu's defaults. They are declared so other distros
+    # place windows the same way. Mutter's edge-tiling and toggle-tiled-* keys
+    # are left out on purpose: Tiling Assistant sets them while it runs and
+    # restores them when disabled.
+    "org/gnome/mutter" = {
+      center-new-windows = true;
+      workspaces-only-on-primary = true;
+    };
+
+    # Ubuntu Dock (dash-to-dock) is distro-provided. These keys are inert
+    # wherever it isn't installed. The whole set is declared, not only its
+    # differences from Ubuntu's defaults, so the dock is the same wherever the
+    # extension runs. The preferred-monitor keys are machine-specific and left
+    # to each machine.
+    "org/gnome/shell/extensions/dash-to-dock" = {
+      always-center-icons = true;
+      autohide = true;
+      background-opacity = 0.0;
+      click-action = "minimize";
+      dash-max-icon-size = 48;
+      dock-fixed = false;
+      dock-position = "LEFT";
+      extend-height = true;
+      height-fraction = 0.9;
+      hot-keys = false;
+      intellihide = true;
+      intellihide-mode = "ALL_WINDOWS";
+      isolate-monitors = false;
+      isolate-workspaces = false;
+      show-show-apps-button = false;
+      show-trash = false;
+      transparency-mode = "FIXED";
+    };
+
+    # The Yaru-sage-dark themes are distro-provided and exist only on Ubuntu.
+    # Elsewhere the names fall back, while color-scheme and accent-color still
+    # apply.
+    "org/gnome/desktop/interface" = {
+      accent-color = "slate";
+      clock-show-weekday = true;
+      color-scheme = "prefer-dark";
+      gtk-enable-primary-paste = true;
+      gtk-theme = "Yaru-sage-dark";
+      icon-theme = "Yaru-sage-dark";
     };
   }
   // lib.mapAttrs' (

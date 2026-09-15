@@ -4,7 +4,7 @@
 
 Use Nix flakes, Home Manager, sops-nix, and age on generic Linux. Do not introduce chezmoi.
 
-The host environment owns the kernel, hardware integration, display manager, NetworkManager, PipeWire, distro-coupled services, privileged networking prerequisites, and other low-level integration. The user environment owns user packages, development tools, shell and application configuration, personal scripts, GNOME preferences, and reproducible user secrets.
+The host environment owns the kernel, hardware integration, display manager, NetworkManager, PipeWire, distro-coupled services, privileged networking prerequisites, and other low-level integration. The user environment owns user packages, development tools, shell and application configuration, personal scripts, GNOME preferences, and reproducible user secrets. The keyboard is split the same way: the user environment owns GNOME's input sources and XKB options, while the console and GDM keymap in `/etc/default/keyboard` stay host-owned.
 
 Normal Home Manager activation must not invoke `sudo`. Root-owned files and system integration use explicit bootstrap or deployment actions.
 
@@ -53,7 +53,7 @@ MPV is what surfaced all of this, and it also showed the second half of the prob
 
 Keep a readable native config when translating it to Nix would reduce clarity. Use `mkOutOfStoreSymlink` intentionally when immediate editability is valuable.
 
-Home Manager owns Zsh, Neovim, tmux, MPV, Yazi, Git, and the GNOME Shell extension list, and should eventually own the remaining intentional GNOME dconf settings. GNOME tools and extensions come from Nixpkgs rather than the distro, because the target machines span Ubuntu, Fedora and possibly NixOS. A distro's own session-mode extensions, such as Ubuntu Dock, stay distro-provided and are not listed. Migration may preserve selected native configuration first and translate it later.
+Home Manager owns Zsh, Neovim, tmux, MPV, Yazi, Git, and the intentional GNOME dconf settings: the Shell extension list, custom launchers and keybindings, input sources, Ubuntu Dock and appearance. Keys a GNOME component manages at runtime, such as the Mutter tiling keys Tiling Assistant overrides, are not declared, and neither are machine-specific ones such as the dock's preferred monitor. GNOME tools and extensions come from Nixpkgs rather than the distro, because the target machines span Ubuntu, Fedora and possibly NixOS. A distro's own session-mode extensions, such as Ubuntu Dock, stay distro-provided and are not listed. Migration may preserve selected native configuration first and translate it later.
 
 The Zsh module owns the shell package, generated startup files, Oh My Zsh,
 shell plugins, history policy, and zoxide integration. It preserves the small
