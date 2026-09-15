@@ -49,6 +49,9 @@ its `home.nix` import and `targets.genericLinux`, and the others extend them.
     `dotfiles-electron-43`, and both apps use the HTTP proxy rather than the
     VPN. See docs/VESKTOP-APPARMOR.md.
   - Test workspace moves with two windows.
+  - Gradia comes from Nixpkgs, and `<Shift>F11` runs
+    `gradia --screenshot=INTERACTIVE`. It is verified on the VM, and Flatpak is
+    no longer needed.
   - Mutter's tiling keys on the current PC belong to Tiling Assistant, not
     the operator; see [04](issues/04-mutter-dock-appearance.md).
 - Resolved by [02](issues/02-keyboard.md): the keyboard works on the VM. The

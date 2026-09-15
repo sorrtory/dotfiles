@@ -125,6 +125,21 @@ Not verified here: the new PC under normal use.
   - After the `apparmor` phase, `<Super>c` and `<Super>n` open both windows
     with Chromium's sandbox intact, and their traffic goes to
     `127.0.0.1:3128`. Evidence is in docs/VESKTOP-APPARMOR.md.
+
+2026-09-16, agent, Gradia follow-up (operator's request): Gradia now comes from
+Nixpkgs (1.13.0, in `modules/packages.nix`), so `<Shift>F11` works on a fresh
+install without Flatpak.
+
+- **Command:** the `gradia` launcher runs `gradia --screenshot=INTERACTIVE`,
+  which is what Gradia's own preferences suggest outside Flatpak.
+- **Verified on the VM:**
+  - `<Shift>F11` opens GNOME's screenshot UI through the portal, and Enter
+    captures.
+  - The file lands in `~/Pictures/Screenshots`, and Gradia's editor opens on
+    it.
+- **Log noise:** Gradia first logs a `No image data received from stdin`
+  traceback, then opens the saved file. The capture is not affected.
+- **Cosmetic:** its dock icon shows a generic gear.
 - The same script also appends `~/.nix-profile/share` to `XDG_DATA_DIRS` after
   Home Manager's copy. That duplicate is harmless: the Shell logs "already
   installed … will not be loaded" for the same path.

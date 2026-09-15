@@ -22,6 +22,10 @@
     gnumake
     go
     gnupg
+
+    # Screenshot annotation, opened by <Shift>F11 (see the GNOME module).
+    gradia
+
     htop
     httpie
     imagemagick

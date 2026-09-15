@@ -7,8 +7,7 @@ let
 
   # Custom launchers, keyed by their dconf path name. Commands are plain names
   # because the session PATH starts with the Home Manager profile (see
-  # modules/packages.nix). Firefox, Nautilus and Flatpak stay distro-provided,
-  # so on a machine without Flatpak and Gradia <Shift>F11 does nothing.
+  # modules/packages.nix). Firefox and Nautilus stay distro-provided.
   launchers = {
     code = {
       binding = "<Super>c";
@@ -24,7 +23,8 @@ let
     };
     gradia = {
       binding = "<Shift>F11";
-      command = "flatpak run be.alexandervanhee.gradia --screenshot=INTERACTIVE";
+      # The command Gradia's own preferences suggest outside Flatpak.
+      command = "gradia --screenshot=INTERACTIVE";
     };
     obsidian = {
       binding = "<Super>n";
