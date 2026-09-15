@@ -13,7 +13,7 @@ Apply the proposal as settled by ticket 01, in one change.
 1. Edit `configs/tmux/tmux.conf` per the settled proposal.
 2. Remove the retired plugin links from `modules/programs/tmux.nix`.
 3. Update the documentation listed under the spec's Scope, including the
-   copy-chain sentence and `native-configs` spec baseline 3.
+   copy-chain sentence and §11's note on continuum's save hook.
 
 ## Constraints
 

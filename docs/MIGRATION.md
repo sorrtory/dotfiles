@@ -194,6 +194,12 @@ configuration asks GitHub first. And nvim-treesitter's 36 parallel grammar
 installs flood the message area with hit-enter prompts, which Neovim 0.12's
 experimental `ui2` message UI replaces.
 
+Shipped on staging. A bootstrapped VM installed every plugin, and the fixed
+configuration then installed all 36 grammars and all 25 mason packages there
+with no prompt, run from a copy of `configs/nvim/` against empty data
+directories. A start from the mirrored repository itself was not seen before
+that VM was reset.
+
 ### 11. tmux
 
 Let Home Manager own the tmux package and its three plugins, retiring TPM and
@@ -211,6 +217,12 @@ names resurrect's own `save.sh` beneath a directory nothing ever created.
 `Ctrl+h/j/k/l` navigation is one feature split across this section and the
 Neovim one; the tmux `is_vim` bindings and `vim-tmux-navigator` are each half
 of it.
+
+Shipped on staging, where the operator found tmux working. `Ctrl+h/j/k/l` was
+never pressed across a real Neovim split and tmux pane: its tmux condition was
+checked on the host, and the operator closed the slice on that. Continuum's
+save hook cannot be observed while another tmux server runs, and is left to the
+review of `tmux.conf` itself.
 
 ### 12. Yazi
 
@@ -233,6 +245,10 @@ newer plugin revision buys. `!` opens a real `$SHELL` in the hovered directory,
 which Yazi's `;` and `:` command boxes are not. `xclip` joins `wl-clipboard`,
 because both the tmux copy chain and the clipboard plugin pick their tool by
 session type.
+
+Shipped and confirmed on staging, where the operator copied file contents with
+`Ctrl+y`. That VM has no snapd, so `snap list yazi` means something only on a
+host that has it.
 
 ### 13. sing-box
 

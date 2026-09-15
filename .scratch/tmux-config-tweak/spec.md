@@ -98,7 +98,7 @@ Settled by grilling, in ticket 01:
 In scope: `configs/tmux/tmux.conf`, `modules/programs/tmux.nix`, and the
 documentation rows these change — `docs/SOFTWARE.md` tmux plugins row,
 `docs/DECISIONS.md` plugin-ownership and copy-chain paragraphs,
-`docs/MIGRATION.md` §11 and §12, and `native-configs` spec baseline 3.
+and `docs/MIGRATION.md` §11 and §12.
 
 Out of scope: moving tmux onto `programs.tmux`, Neovim's side of the
 navigation feature, and the Yazi clipboard plugin, which already chooses by
