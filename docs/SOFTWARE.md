@@ -8,6 +8,13 @@ program configuration are added when that configuration is actually migrated.
 Linked implementation files remain authoritative for exact mechanics, and
 `flake.lock` remains authoritative for Nix package versions.
 
+The host virtualization stack (QEMU/KVM, libvirt, virt-manager and UEFI firmware)
+comes from distro packages through the
+[`virtualization` bootstrap phase](../scripts/bootstrap/10-virtualization.sh),
+supporting x86_64 Debian/Ubuntu, Fedora and Arch. The
+[VM setup instructions](../README.md#virtual-machines) describe its service,
+network and authorization setup.
+
 | Software                                                   | Purpose                                                                   | Installation                                                                                      | Definition                                                                                 |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | age                                                        | Encrypt and decrypt SOPS data                                             | Home Manager global user tool; the same store path is first fetched by the recovery app, which needs it before Home Manager exists | [Global packages](../modules/packages.nix) and [recovery app](../packages/recover-age-identity.nix) |

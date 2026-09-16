@@ -87,7 +87,52 @@ ssh z@192.168.122.214 'cd ~/Documents/dotfiles &&
 
 This runs the remaining phases in order, skipping satisfied ones, including
 `apparmor`, which the VM needs because Ubuntu restricts unprivileged user
-namespaces.
+namespaces, and `virtualization`, which installs a host virtualization stack
+inside the staging VM. KVM acceleration there requires nested virtualization
+from the outer host.
+
+### Virtualization verification
+
+The `virtualization` phase can be tested independently of Nix and secret
+recovery after mirroring the tree and preparing the sudo helper:
+
+```bash
+ssh z@192.168.122.214 'cd ~/Documents/dotfiles &&
+  SUDO_ASKPASS=$HOME/.staging-askpass PATH=$HOME/.staging-bin:$PATH \
+  ./scripts/bootstrap.sh install virtualization'
+ssh z@192.168.122.214 'cd ~/Documents/dotfiles &&
+  ./scripts/bootstrap.sh status virtualization &&
+  virt-host-validate qemu &&
+  virsh --readonly --connect qemu:///system net-info default'
+```
+
+Repeat installation to check that a configured machine reports
+`already satisfied; skipping`. Use a fresh login before checking write access
+through `virsh` or virt-manager after a group change.
+
+Verified on 2026-09-16 against the Ubuntu 24.04.3 staging VM:
+
+- Distro package installation completed. Ubuntu's `qemu-kvm` virtual package
+  resolves to `qemu-system-x86`, which the phase checks directly.
+- Status succeeded without sudo; repeat installation skipped without changes.
+- The default network was active with autostart. Ubuntu's package setup detected
+  the outer network's `192.168.122.0/24` subnet and selected `192.168.123.0/24`.
+- `virt-host-validate qemu` passed hardware virtualization and KVM-device access.
+  It warned about the devices cgroup controller, IOMMU and secure-guest support.
+- A transient, diskless domain with `type='kvm'`, 128 MiB RAM, one vCPU and a
+  virtio interface on the default network reached `running`, under AppArmor
+  enforcement. The test domain was destroyed afterward.
+
+This verifies installation and accelerated guest startup, not guest-OS boot,
+guest internet access, PCI passthrough or the virt-manager desktop workflow.
+The GUI still needs a normal-use check. Debian, Fedora, Arch and the modular
+daemon layout are covered by `tests/bootstrap_virtualization_test.sh` using
+command stubs, and have not been installed on real test machines.
+
+On distros that do not resolve overlapping subnets automatically, adjust the
+default network before retrying; the phase does not replace an existing network
+definition. A missing `/dev/kvm` produces a warning even when installation and
+service checks succeed, so a successful phase alone does not prove acceleration.
 
 ## 7. Clean up
 

@@ -322,8 +322,14 @@ The intended flow is:
 7. let `login-shell` select the host-owned Zsh
 8. let `user-linger` enable user services before login and after logout
 9. let `apparmor` install the user-namespace allowances where Ubuntu restricts them
-10. open a new login session
-11. run explicit privileged host setup where required, including the GPU driver choice in the README's "GPU-accelerated programs" section
-12. authenticate any remaining mutable sessions once on that machine
+10. let `virtualization` install the distro QEMU/KVM, libvirt, virt-manager and UEFI firmware, then enable local services and the default VM network
+11. open a new login session, including any new Docker or libvirt group membership
+12. run explicit privileged host setup where required, including the GPU driver choice in the README's "GPU-accelerated programs" section
+13. authenticate any remaining mutable sessions once on that machine
+
+The virtualization phase is implemented. Ubuntu 24.04 staging passed install,
+status, repeat-run and transient KVM guest startup checks. Other distro branches
+have command-flow tests only; desktop GUI and full guest-OS checks remain open.
+See [the staging verification record](STAGING.md#virtualization-verification).
 
 The repository currently targets the `z` user on `x86_64-linux`; broader host/user parameterization is a later migration decision.

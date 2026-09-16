@@ -49,6 +49,19 @@ A proprietary Nvidia driver would not work this way, because its userspace must 
 
 MPV is what surfaced all of this, and it also showed the second half of the problem: `vo=gpu-next` named alone gives mpv nothing to fall back to, so a machine it cannot reach plays audio with no picture rather than degrading. Video output is therefore a list ending in software `x11`, and `gpu-api` is `auto`, which still prefers Vulkan where it exists.
 
+The virtualization stack is host-owned: KVM comes from the host kernel, and
+QEMU, libvirt, virt-manager and UEFI firmware come from distro packages.
+Keeping the GUI with the host stack avoids introducing a second libvirt/QEMU
+installation through Home Manager. The privileged `virtualization` bootstrap
+phase is part of the default flow on supported systemd-based x86_64
+Debian/Ubuntu, Fedora and Arch hosts; NixOS requires host configuration instead.
+It preserves the existing libvirt daemon layout, enables local sockets and boot
+services, and starts the default network with autostart. Existing VM and network
+definitions remain machine-local. It uses the distro's libvirt group and polkit
+policy; membership grants privileged VM management. There is no destructive
+uninstall action. Verification coverage is recorded in
+[STAGING.md](STAGING.md#virtualization-verification).
+
 ## Configuration policy
 
 Keep a readable native config when translating it to Nix would reduce clarity. Use `mkOutOfStoreSymlink` intentionally when immediate editability is valuable.
