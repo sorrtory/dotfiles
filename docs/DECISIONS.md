@@ -192,8 +192,11 @@ Source scripts may keep `.sh`; Home Manager may expose commands without the suff
 
 A command the operator runs keeps its Bash source under `scripts/bin/`; the VPN
 command is `scripts/bin/vpn.sh`. Helpers only a module calls live beside that
-module, so they are never exposed as user tools: namespace entry and capture
-configuration sit in `modules/programs/vpnized-apps/`. Both kinds are packaged
+module, so they are never exposed as user tools: the backend's configuration
+generator sits in `modules/programs/sing-box/`, and namespace entry and capture
+configuration in `modules/programs/vpnized-apps/`. A helper reaches its module
+by store path, so keeping it off `PATH` costs nothing and keeps the installed
+command set to what the operator actually types. Both kinds are packaged
 with `writeShellApplication` from the separate source. The VPN command takes no
 runtime inputs and reaches its helpers by absolute path, because the program it
 launches must be found on, and inherit, the caller's own `PATH`. Payload

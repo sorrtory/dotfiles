@@ -14,10 +14,11 @@ current profile targets user `z` on `x86_64-linux`.
 Select that machine's exclusive VPN identity before activation: set
 `dotfiles.vpn.identity` in `home.nix`. Never run two machines or clients with
 the same identity at once. Existing ciphertext names are listed in the
-[proxy module](modules/programs/sing-box.nix). The staging VM runs alongside
-the main machine, so it uses the `staging` configuration, which differs only
-in identity: start its bootstrap with `DOTFILES_HOME_CONFIGURATION=staging`.
-The choice is remembered by later `home-manager` phase runs.
+[proxy module](modules/programs/sing-box/default.nix). The staging VM runs
+alongside the main machine, so it uses the `staging` configuration, which
+differs only in identity: start its bootstrap with
+`DOTFILES_HOME_CONFIGURATION=staging`. The choice is remembered by later
+`home-manager` phase runs.
 
 ```bash
 git clone https://github.com/sorrtory/dotfiles.git ~/Documents/dotfiles
