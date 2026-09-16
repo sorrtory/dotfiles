@@ -12,7 +12,10 @@ let
   # host's and says so plainly when a host has none.
   vault = pkgs.writeShellApplication {
     name = "vault";
-    runtimeInputs = [ pkgs.coreutils pkgs.gocryptfs ];
+    # zenity and the file manager are deliberately absent: they are looked up
+    # on the caller's PATH, so a machine without them gets a clear message
+    # rather than a store path that cannot talk to its session.
+    runtimeInputs = [ pkgs.coreutils pkgs.gnused pkgs.gocryptfs ];
     text = builtins.readFile ../scripts/bin/vault.sh;
   };
 in

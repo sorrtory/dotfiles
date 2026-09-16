@@ -26,12 +26,12 @@ trap cleanup EXIT
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 
 # init needs a terminal, because the master key is shown once and only on one.
-printf '%s\n' "$password" | "$VAULT_TEST_COMMAND" init "$mount_dir" >/dev/null 2>&1 &&
+(cd "$root" && printf '%s\n' "$password" | "$VAULT_TEST_COMMAND" init Vault) >/dev/null 2>&1 &&
   fail 'init succeeded without a terminal'
 [[ ! -e $storage ]] || fail 'init created storage without a terminal'
 
 out=$(printf '%s\n%s\n' "$password" "$password" |
-  script -qec "$VAULT_TEST_COMMAND init $mount_dir" /dev/null 2>&1)
+  script -qec "cd $root && $VAULT_TEST_COMMAND init Vault" /dev/null 2>&1)
 case $out in
   *'master key'*) : ;;
   *) fail 'init did not show the master key on a terminal' ;;
@@ -39,8 +39,14 @@ esac
 [[ -f $storage/gocryptfs.conf ]] || fail 'init created no filesystem'
 grep -q . <<<"$(ls -A "$mount_dir")" && fail 'init mounted the vault'
 
-# gocryptfs reads the password from stdin when it is not a terminal.
-opened=$(printf '%s\n' "$password" | "$VAULT_TEST_COMMAND" open "$mount_dir") ||
+# With no terminal, the password comes from the dialog gocryptfs is given.
+# This stands in for zenity and proves the desktop path without a desktop.
+askpass="$root/askpass"
+printf '#!/bin/sh\nprintf "%%s\\n" "%s"\n' "$password" >"$askpass"
+chmod +x "$askpass"
+export VAULT_ASKPASS="$askpass"
+
+opened=$("$VAULT_TEST_COMMAND" open "$mount_dir" </dev/null) ||
   fail 'open failed'
 case $opened in
   *'No graphical session'*) : ;;
@@ -69,10 +75,26 @@ pid=$(sed -n 's/^pid=//p' "$record")
 [[ -n $pid ]] || fail 'runtime record has no pid'
 tr '\0' ' ' </proc/"$pid"/cmdline | grep -q gocryptfs || fail 'runtime record names the wrong process'
 
-# A wrong password is refused, and changes nothing.
-if printf 'wrong\n' | "$VAULT_TEST_COMMAND" open "$root/Second" >/dev/null 2>&1; then
+# open never initializes, so a vault that was never created stays uncreated.
+if "$VAULT_TEST_COMMAND" open "$root/Second" </dev/null >/dev/null 2>&1; then
+  fail 'open accepted a vault that was never initialized'
+fi
+
+# notes creates Notes/ inside the mount on first use.
+"$VAULT_TEST_COMMAND" notes "$mount_dir" </dev/null >/dev/null || fail 'notes failed'
+[[ -d $mount_dir/Notes ]] || fail 'notes did not create Notes/'
+if grep -rq Notes "$storage" 2>/dev/null; then fail 'the notes directory name is readable in the storage'; fi
+
+# A wrong password is refused, and the vault stays as it was.
+wrong="$root/wrong-askpass"
+printf '#!/bin/sh\nprintf "not-the-password\\n"\n' >"$wrong"
+chmod +x "$wrong"
+mkdir -p "$root/Other"
+cp -a "$storage" "$root/.Other.encrypted"
+if VAULT_ASKPASS="$wrong" "$VAULT_TEST_COMMAND" open "$root/Other" </dev/null >/dev/null 2>&1; then
   fail 'a wrong password was accepted'
 fi
+grep -q "$root/Other " /proc/self/mountinfo && fail 'a refused unlock left a mount'
 
 cleanup
 trap - EXIT

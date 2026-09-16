@@ -12,6 +12,12 @@ let
   knowledgeDatabaseUri =
     "obsidian://open?path=" + lib.replaceStrings [ "/" ] [ "%2F" ] knowledgeDatabase;
 
+  # The private notes vault. The vault command has no default vault and takes
+  # the path it is given, so this is the one place the conventional location is
+  # written down. The vault itself is the operator's data and is not created
+  # here: until it exists, the key reports that rather than making one.
+  privateVault = "${config.home.homeDirectory}/Vault";
+
   # Custom launchers, keyed by their dconf path name. Commands are plain names
   # because the session PATH starts with the Home Manager profile (see
   # modules/packages.nix). Firefox and Nautilus stay distro-provided.
@@ -39,9 +45,12 @@ let
       binding = "<Super>k";
       command = "obsidian ${knowledgeDatabaseUri}";
     };
-    obsidian = {
+    # Unlocks the private vault if it is locked, asking for the password
+    # through a dialog, then opens its Notes/ in Obsidian. An already-unlocked
+    # vault opens without a prompt.
+    notes = {
       binding = "<Super>n";
-      command = "obsidian";
+      command = "vault notes ${privateVault}";
     };
     spotify = {
       binding = "<Super>s";

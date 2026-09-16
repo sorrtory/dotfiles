@@ -3,29 +3,34 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: vault init [--storage DIR] [MOUNT_DIR]
-       vault open [--storage DIR] [MOUNT_DIR]
+Usage: vault init [--storage DIR] NAME
+       vault open [--storage DIR] PATH
+       vault notes [--storage DIR] PATH
 
 Create or unlock a private vault.
 
-MOUNT_DIR is where the unlocked vault appears once it is opened, and defaults
-to ~/Vault. Its encrypted storage is the hidden sibling of that directory, so
-~/Vault is stored in ~/.Vault.encrypted and ~/Documents/Work is stored in
-~/Documents/.Work.encrypted. There is no registry of named vaults: a vault is
-named by the directory it mounts on.
+A vault is a directory, and there is no registry and no default one: every
+command names the vault it acts on. Its encrypted storage is the hidden
+sibling of that directory, so Vault is stored in .Vault.encrypted and
+Documents/Work in Documents/.Work.encrypted.
+
+  init   Create a vault called NAME in the current directory, with NAME
+         holding the unlocked files and .NAME.encrypted holding the
+         ciphertext. NAME is a name, not a path: cd to where the vault
+         should live. Needs a terminal, because gocryptfs shows the master
+         key once and only on one. It does not mount the vault, and it never
+         writes over storage that already exists.
+  open   Unlock the vault at PATH and show it in the file manager.
+  notes  Unlock the vault at PATH and open its Notes/ in Obsidian, creating
+         Notes/ the first time.
 
   --storage DIR  Use DIR as the encrypted storage instead of the hidden
                  sibling. This is how existing storage that does not follow
                  the sibling rule is named.
 
-  init   Create the encrypted filesystem. Needs a terminal, because gocryptfs
-         shows the master key once and only on one. It does not mount the
-         vault, and it never writes over storage that already exists.
-  open   Unlock the vault and show it in the file manager. A vault that is
-         already unlocked is reused without asking again.
-
-The password is never stored, and never passes through this command: gocryptfs
-asks for it itself.
+An already-unlocked vault is reused without asking again. The password is
+never stored, and never passes through this command: gocryptfs asks for it,
+on the terminal when there is one and through a dialog when there is not.
 USAGE
 }
 
@@ -176,16 +181,18 @@ parse_target() {
         ;;
       -*) die "unknown option: $1" ;;
       *)
-        [[ -z $mount_dir ]] || die "vault $command takes at most one mount directory"
+        [[ -z $mount_dir ]] || die "vault $command names one vault, not several"
         mount_dir=$1
         shift
         ;;
     esac
   done
 
-  mount_dir=$(realpath -m -- "${mount_dir:-$HOME/Vault}")
+  [[ -n $mount_dir ]] ||
+    die "vault $command needs the vault's path; there is no default vault"
+  mount_dir=$(realpath -m -- "$mount_dir")
   [[ $mount_dir != / && $mount_dir != "$HOME" ]] ||
-    die 'the mount directory must be a directory of its own'
+    die 'the vault must be a directory of its own'
   if [[ -n $storage ]]; then
     storage=$(realpath -m -- "$storage")
   else
@@ -198,13 +205,34 @@ parse_target() {
 }
 
 cmd_init() {
-  local mount_dir storage
+  local mount_dir storage name skip
   case ${1:-} in
     -h | --help)
       usage
       return 0
       ;;
   esac
+
+  # A vault is created where the operator is standing, under a name they
+  # choose. Taking a path here would invite a default, and there is no default
+  # vault: every other command names the one it acts on.
+  skip=0
+  for name in "$@"; do
+    if ((skip)); then
+      skip=0
+      continue
+    fi
+    case $name in
+      --storage)
+        skip=1
+        continue
+        ;;
+      -*) continue ;;
+      */*) die "vault init takes a name, not a path; cd to where the vault should live" ;;
+      . | ..) die "'$name' is not a vault name" ;;
+    esac
+  done
+
   parse_target init "$@"
   mount_dir=$TARGET_MOUNT
   storage=$TARGET_STORAGE
@@ -245,8 +273,74 @@ The vault is not mounted. Backups are not part of this command.
 INSTRUCTION
 }
 
+# Unlocking is the same work whichever command asked for it.
+ensure_unlocked() {
+  local mount_dir=$1 storage=$2
+  local -a extpass=()
+
+  if mount_is_stale "$mount_dir"; then
+    die "$mount_dir is mounted but its gocryptfs process is gone; run 'vault lock' to clear it before opening"
+  fi
+
+  # An already-unlocked vault is reused as it stands: asking for a password
+  # that would change nothing is how people learn to type it without looking.
+  if is_mounted "$mount_dir" && mount_is_gocryptfs "$mount_dir"; then
+    printf '%s is already unlocked.\n' "$mount_dir"
+    return 0
+  fi
+
+  require_initialized "$storage"
+  [[ -d $mount_dir ]] || mkdir -p -- "$mount_dir"
+  if [[ -n $(ls -A -- "$mount_dir") ]]; then
+    die "$mount_dir is not empty; mounting there would hide what is in it"
+  fi
+
+  # gocryptfs asks for the password itself and daemonizes once the mount is up,
+  # so the password never passes through this command at all. Without a
+  # terminal it cannot prompt, so it is given a dialog to ask with; -extpass
+  # repeats to build the command, and zenity writes the password to stdout.
+  # VAULT_ASKPASS replaces the dialog on a session that has something else.
+  if [[ ! -t 0 ]]; then
+    if [[ -n ${VAULT_ASKPASS:-} ]]; then
+      # A whole command of its own, which must write the password to stdout.
+      command -v "${VAULT_ASKPASS%% *}" >/dev/null ||
+        die "VAULT_ASKPASS names ${VAULT_ASKPASS%% *}, which is not installed"
+      extpass=(-extpass "$VAULT_ASKPASS")
+    else
+      command -v zenity >/dev/null ||
+        die "no terminal to ask for the password on, and zenity is not installed"
+      extpass=(
+        -extpass zenity
+        -extpass --password
+        -extpass "--title=Unlock $(basename -- "$mount_dir")"
+      )
+    fi
+  fi
+  if ! gocryptfs "${extpass[@]}" -- "$storage" "$mount_dir"; then
+    die "could not unlock $mount_dir"
+  fi
+  if ! mount_is_gocryptfs "$mount_dir"; then
+    die "gocryptfs reported success but $mount_dir is not mounted"
+  fi
+}
+
+# The record is rewritten from a fresh scan every time, so a stale one is
+# never handed on.
+record_daemon() {
+  local mount_dir=$1 storage=$2 record pid
+  record=$(runtime_record "$mount_dir")
+  mkdir -p -- "$(dirname -- "$record")"
+  if pid=$(find_daemon "$storage" "$mount_dir"); then
+    printf 'pid=%s\nstorage=%s\n' "$pid" "$storage" >"$record"
+  else
+    # Not fatal: the mount is real either way, and ticket 05 rechecks before
+    # it believes anything written here.
+    rm -f -- "$record"
+  fi
+}
+
 cmd_open() {
-  local mount_dir storage record pid
+  local mount_dir storage
   case ${1:-} in
     -h | --help)
       usage
@@ -258,40 +352,8 @@ cmd_open() {
   storage=$TARGET_STORAGE
 
   require_fuse_helper
-
-  if mount_is_stale "$mount_dir"; then
-    die "$mount_dir is mounted but its gocryptfs process is gone; run 'vault lock' to clear it before opening"
-  fi
-
-  # An already-unlocked vault is reused as it stands: asking for a password
-  # that would change nothing is how people learn to type it without looking.
-  if is_mounted "$mount_dir" && mount_is_gocryptfs "$mount_dir"; then
-    printf '%s is already unlocked.\n' "$mount_dir"
-  else
-    require_initialized "$storage"
-    [[ -d $mount_dir ]] || mkdir -p -- "$mount_dir"
-    if [[ -n $(ls -A -- "$mount_dir") ]]; then
-      die "$mount_dir is not empty; mounting there would hide what is in it"
-    fi
-    # gocryptfs asks for the password itself and daemonizes once the mount is
-    # up, so the password never passes through this command at all.
-    if ! gocryptfs -- "$storage" "$mount_dir"; then
-      die "could not unlock $mount_dir"
-    fi
-    if ! mount_is_gocryptfs "$mount_dir"; then
-      die "gocryptfs reported success but $mount_dir is not mounted"
-    fi
-  fi
-
-  record=$(runtime_record "$mount_dir")
-  mkdir -p -- "$(dirname -- "$record")"
-  if pid=$(find_daemon "$storage" "$mount_dir"); then
-    printf 'pid=%s\nstorage=%s\n' "$pid" "$storage" >"$record"
-  else
-    # Not fatal: the mount is real either way, and ticket 05 rechecks before
-    # it believes anything written here.
-    rm -f -- "$record"
-  fi
+  ensure_unlocked "$mount_dir" "$storage"
+  record_daemon "$mount_dir" "$storage"
 
   open_in_file_manager "$mount_dir"
 }
@@ -312,6 +374,42 @@ open_in_file_manager() {
   printf '%s is unlocked.\n' "$mount_dir"
 }
 
+cmd_notes() {
+  local mount_dir storage notes
+  case ${1:-} in
+    -h | --help)
+      usage
+      return 0
+      ;;
+  esac
+  parse_target notes "$@"
+  mount_dir=$TARGET_MOUNT
+  storage=$TARGET_STORAGE
+
+  require_fuse_helper
+  ensure_unlocked "$mount_dir" "$storage"
+  record_daemon "$mount_dir" "$storage"
+
+  # Created on first use rather than by init, which makes a general-purpose
+  # encrypted filesystem and not a notes layout.
+  notes="$mount_dir/Notes"
+  [[ -d $notes ]] || mkdir -p -- "$notes"
+
+  # Obsidian takes a vault as a URI and reads the query value whole, so the
+  # separators are encoded. This is a second vault beside the knowledge
+  # database, never a replacement for it.
+  if ! command -v obsidian >/dev/null; then
+    printf '%s is unlocked. Obsidian is not installed, so nothing was opened.\n' "$notes"
+    return 0
+  fi
+  setsid obsidian "obsidian://open?path=$(url_encode_path "$notes")" >/dev/null 2>&1 &
+  printf '%s is unlocked.\n' "$notes"
+}
+
+url_encode_path() {
+  printf '%s' "$1" | sed -e 's|/|%2F|g' -e 's| |%20|g'
+}
+
 main() {
   if (($# == 0)); then
     usage >&2
@@ -325,6 +423,10 @@ main() {
     open)
       shift
       cmd_open "$@"
+      ;;
+    notes)
+      shift
+      cmd_notes "$@"
       ;;
     -h | --help)
       usage

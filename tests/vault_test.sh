@@ -24,6 +24,8 @@ export GOCRYPTFS_CALLS="$TEST_ROOT/calls"
 : >"$GOCRYPTFS_CALLS"
 
 # Every case below needs a helper that exists; its absence is its own case.
+printf '#!/bin/sh\nprintf "password\\n"\n' >"$TEST_ROOT/bin/zenity"
+chmod +x "$TEST_ROOT/bin/zenity"
 printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/bin/fusermount3"
 chmod +x "$TEST_ROOT/bin/fusermount3"
 export VAULT_FUSERMOUNT="$TEST_ROOT/bin/fusermount3"
@@ -33,14 +35,25 @@ last_call() { tail -n1 "$GOCRYPTFS_CALLS"; }
 # init refuses to create storage without a terminal, because gocryptfs shows
 # the master key only on one. The success cases therefore need a pty.
 command -v script >/dev/null || fail 'this test needs script(1) from util-linux'
+# init creates the vault in the working directory, so the test cds there.
 run_init() {
-  printf 'password\npassword\n' | script -qec "bash $vault init $*" /dev/null 2>&1
+  local dir=$1
+  shift
+  printf 'password\npassword\n' | script -qec "cd $dir && bash $vault init $*" /dev/null 2>&1
 }
 
-# The default vault is ~/Vault, stored in its hidden sibling.
-output=$(run_init)
-[[ $(last_call) == "-init -- $HOME/.Vault.encrypted" ]] || fail "default storage path: $(last_call)"
-[[ -d $HOME/Vault && -d $HOME/.Vault.encrypted ]] || fail 'default directories not created'
+# A vault is created where the operator is standing, under the name given.
+output=$(run_init "$HOME" Vault)
+[[ $(last_call) == "-init -- $HOME/.Vault.encrypted" ]] || fail "storage path: $(last_call)"
+[[ -d $HOME/Vault && -d $HOME/.Vault.encrypted ]] || fail 'directories not created'
+
+# There is no default vault: every command names the one it acts on.
+for bare in init open notes; do
+  if bash "$vault" "$bare" >/dev/null 2>&1; then fail "vault $bare accepted no argument"; fi
+done
+# init takes a name, not a path, so it cannot quietly create a vault elsewhere.
+if bash "$vault" init "$HOME/Elsewhere" >/dev/null 2>&1; then fail 'init accepted a path'; fi
+if bash "$vault" init ../Escape >/dev/null 2>&1; then fail 'init accepted a relative path'; fi
 case $output in
   *KeePassXC*) : ;;
   *) fail 'recovery instruction not shown' ;;
@@ -51,36 +64,35 @@ case $output in
 esac
 [[ $(stat -c %a "$HOME/.Vault.encrypted") == 700 ]] || fail 'storage is not private'
 
-# The rule holds anywhere, not only in the home directory.
-run_init "$HOME/Documents/Work" >/dev/null
+# The rule holds wherever the operator is standing.
+mkdir -p "$HOME/Documents"
+run_init "$HOME/Documents" Work >/dev/null
 [[ $(last_call) == "-init -- $HOME/Documents/.Work.encrypted" ]] || fail "nested storage path: $(last_call)"
 
 # Existing storage that does not follow the rule is named explicitly.
-run_init --storage "$TEST_ROOT/elsewhere" "$HOME/Other" >/dev/null
+run_init "$HOME" --storage "$TEST_ROOT/elsewhere" Other >/dev/null
 [[ $(last_call) == "-init -- $TEST_ROOT/elsewhere" ]] || fail "--storage ignored: $(last_call)"
-run_init --storage="$TEST_ROOT/elsewhere2" "$HOME/Other2" >/dev/null
+run_init "$HOME" --storage="$TEST_ROOT/elsewhere2" Other2 >/dev/null
 [[ $(last_call) == "-init -- $TEST_ROOT/elsewhere2" ]] || fail '--storage=DIR ignored'
 
 # Initializing twice must never touch storage that already holds data.
 printf 'ciphertext\n' >"$HOME/.Vault.encrypted/file"
 before=$(last_call)
-if bash "$vault" init >/dev/null 2>&1; then fail 'second init accepted'; fi
+if (cd "$HOME" && bash "$vault" init Vault) >/dev/null 2>&1; then fail 'second init accepted'; fi
 [[ $(last_call) == "$before" ]] || fail 'second init reached gocryptfs'
 [[ -f $HOME/.Vault.encrypted/file ]] || fail 'second init disturbed existing storage'
 
 # A mount directory with anything in it is refused: mounting would hide it.
 mkdir -p "$HOME/Occupied"
 printf 'plaintext\n' >"$HOME/Occupied/note"
-if bash "$vault" init "$HOME/Occupied" >/dev/null 2>&1; then fail 'occupied mount directory accepted'; fi
+if (cd "$HOME" && bash "$vault" init Occupied) >/dev/null 2>&1; then fail 'occupied vault accepted'; fi
 
-for bad in / "$HOME"; do
-  if bash "$vault" init "$bad" >/dev/null 2>&1; then fail "accepted unsafe mount directory: $bad"; fi
-done
-if bash "$vault" init --storage "$HOME/Same" "$HOME/Same" >/dev/null 2>&1; then
-  fail 'accepted identical storage and mount directory'
+if (cd / && bash "$vault" init Vault) >/dev/null 2>&1; then fail 'accepted a vault at /'; fi
+if (cd "$HOME" && bash "$vault" init --storage "$HOME/Same" Same) >/dev/null 2>&1; then
+  fail 'accepted identical storage and vault directory'
 fi
-if bash "$vault" init --storage >/dev/null 2>&1; then fail '--storage without a value accepted'; fi
-if bash "$vault" init a b >/dev/null 2>&1; then fail 'two mount directories accepted'; fi
+if (cd "$HOME" && bash "$vault" init --storage) >/dev/null 2>&1; then fail '--storage without a value accepted'; fi
+if (cd "$HOME" && bash "$vault" init a b) >/dev/null 2>&1; then fail 'two names accepted'; fi
 if bash "$vault" nonsense >/dev/null 2>&1; then fail 'unknown command accepted'; fi
 if bash "$vault" open --nonsense >/dev/null 2>&1; then fail 'unknown open option accepted'; fi
 
@@ -114,17 +126,46 @@ case $dishonest in
   *'not mounted'*) : ;;
   *) fail "a mount that did not happen was reported as success: $dishonest" ;;
 esac
-[[ $(last_call) == "-- $HOME/.Quiet.encrypted $HOME/Quiet" ]] || fail "open call: $(last_call)"
+case $(last_call) in
+  *"-extpass zenity"*"-- $HOME/.Quiet.encrypted $HOME/Quiet") : ;;
+  *) fail "open call: $(last_call)" ;;
+esac
 
 # --storage names existing storage for open too.
 mkdir -p "$TEST_ROOT/loose"
 printf 'conf\n' >"$TEST_ROOT/loose/gocryptfs.conf"
 bash "$vault" open --storage "$TEST_ROOT/loose" "$HOME/Loose" >/dev/null 2>&1 || true
-[[ $(last_call) == "-- $TEST_ROOT/loose $HOME/Loose" ]] || fail "open --storage: $(last_call)"
+case $(last_call) in
+  *"-- $TEST_ROOT/loose $HOME/Loose") : ;;
+  *) fail "open --storage: $(last_call)" ;;
+esac
+
+# notes unlocks the same way and creates Notes/ on first use.
+mkdir -p "$HOME/.Noted.encrypted"
+printf 'conf\n' >"$HOME/.Noted.encrypted/gocryptfs.conf"
+bash "$vault" notes "$HOME/Noted" >/dev/null 2>&1 || true
+case $(last_call) in
+  *"-- $HOME/.Noted.encrypted $HOME/Noted") : ;;
+  *) fail "notes call: $(last_call)" ;;
+esac
+
+# With no terminal and no way to ask, it says so instead of failing obscurely.
+nodialog=$(VAULT_ASKPASS="$TEST_ROOT/no-such-dialog" bash "$vault" open "$HOME/Quiet" 2>&1 || true)
+case $nodialog in
+  *no-such-dialog*) : ;;
+  *) fail "missing dialog not reported: $nodialog" ;;
+esac
+
+# A dialog that is present is handed to gocryptfs as the password source.
+withdialog=$(VAULT_ASKPASS="$TEST_ROOT/bin/zenity" bash "$vault" open "$HOME/Quiet" 2>&1 || true)
+case $(last_call) in
+  *"-extpass $TEST_ROOT/bin/zenity"*) : ;;
+  *) fail "VAULT_ASKPASS not used: $(last_call)" ;;
+esac
 
 # Without the host's helper the vault could be created but never opened, so the
 # refusal comes first and names what is missing.
-missing=$(VAULT_FUSERMOUNT="$TEST_ROOT/absent" bash "$vault" init "$HOME/Fresh" 2>&1 || true)
+missing=$(cd "$HOME" && VAULT_FUSERMOUNT="$TEST_ROOT/absent" bash "$vault" init Fresh 2>&1 || true)
 case $missing in
   *fuse3*) : ;;
   *) fail "FUSE error does not name the package: $missing" ;;
@@ -132,7 +173,7 @@ esac
 [[ ! -e $HOME/Fresh ]] || fail 'created directories despite the missing helper'
 
 # Without a terminal the master key would be suppressed, so nothing is created.
-if bash "$vault" init "$HOME/Headless" >/dev/null 2>&1; then fail 'init accepted without a terminal'; fi
+if (cd "$HOME" && bash "$vault" init Headless) >/dev/null 2>&1; then fail 'init accepted without a terminal'; fi
 [[ ! -e $HOME/Headless ]] || fail 'created directories without a terminal'
 
 # The recovery material must never reach a file this command writes.
