@@ -5,8 +5,11 @@ REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TEST_ROOT=$(mktemp -d)
 trap 'rm -rf -- "$TEST_ROOT"' EXIT
 export HOME="$TEST_ROOT/home"
-# No test may put a window on the operator's desktop.
-unset DISPLAY WAYLAND_DISPLAY
+# A graphical session the test pretends to have, so the dialog path is the one
+# under test. Every program it could reach is stubbed below, so nothing real
+# can land on the operator's desktop.
+export DISPLAY=:99
+unset WAYLAND_DISPLAY
 mkdir -p "$HOME" "$TEST_ROOT/bin"
 vault="$REPO_ROOT/scripts/bin/vault.sh"
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
@@ -26,6 +29,10 @@ export GOCRYPTFS_CALLS="$TEST_ROOT/calls"
 # Every case below needs a helper that exists; its absence is its own case.
 printf '#!/bin/sh\nprintf "password\\n"\n' >"$TEST_ROOT/bin/zenity"
 chmod +x "$TEST_ROOT/bin/zenity"
+for gui in nautilus obsidian; do
+  printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/bin/$gui"
+  chmod +x "$TEST_ROOT/bin/$gui"
+done
 printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/bin/fusermount3"
 chmod +x "$TEST_ROOT/bin/fusermount3"
 export VAULT_FUSERMOUNT="$TEST_ROOT/bin/fusermount3"
@@ -154,6 +161,17 @@ nodialog=$(VAULT_ASKPASS="$TEST_ROOT/no-such-dialog" bash "$vault" open "$HOME/Q
 case $nodialog in
   *no-such-dialog*) : ;;
   *) fail "missing dialog not reported: $nodialog" ;;
+esac
+
+# Over ssh there is neither a terminal nor a dialog, and waiting on one that
+# can never appear is a hang, not an error.
+status=0
+headless=$(env -u DISPLAY -u WAYLAND_DISPLAY -u VAULT_ASKPASS \
+  timeout 10 bash "$vault" open "$HOME/Quiet" 2>&1) || status=$?
+[[ $status != 124 ]] || fail 'open hung waiting for a dialog with no display'
+case $headless in
+  *'no graphical session'*) : ;;
+  *) fail "headless open not reported: $headless" ;;
 esac
 
 # A dialog that is present is handed to gocryptfs as the password source.

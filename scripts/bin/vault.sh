@@ -306,7 +306,7 @@ ensure_unlocked() {
       command -v "${VAULT_ASKPASS%% *}" >/dev/null ||
         die "VAULT_ASKPASS names ${VAULT_ASKPASS%% *}, which is not installed"
       extpass=(-extpass "$VAULT_ASKPASS")
-    else
+    elif [[ -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]]; then
       command -v zenity >/dev/null ||
         die "no terminal to ask for the password on, and zenity is not installed"
       extpass=(
@@ -314,6 +314,10 @@ ensure_unlocked() {
         -extpass --password
         -extpass "--title=Unlock $(basename -- "$mount_dir")"
       )
+    else
+      # Without this, a vault command run over ssh hands gocryptfs a dialog
+      # that can never appear and waits for it forever.
+      die 'no terminal to ask for the password on, and no graphical session to ask in'
     fi
   fi
   if ! gocryptfs "${extpass[@]}" -- "$storage" "$mount_dir"; then
