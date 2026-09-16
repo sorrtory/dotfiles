@@ -12,6 +12,7 @@ Usage: vault init   [--storage DIR] [NAME]
        vault open   [--storage DIR] [--terminal|--dialog] [PATH]
        vault notes  [--storage DIR] [--terminal|--dialog] [PATH]
        vault lock   [--storage DIR] [--force] [PATH]
+       vault lock   --all [--force]
 
 A private vault is an encrypted directory. There is no registry and no global
 vault: a command acts on the path it is given, or on ./Vault when it is given
@@ -37,6 +38,8 @@ is stored in .Vault.encrypted and Documents/Work in Documents/.Work.encrypted.
   --dialog       Ask through a graphical dialog, even from a terminal.
   --force        Lock without asking, for a session ending with nobody there
                  to answer. It still reports what it had to force.
+  --all          Lock every vault this session unlocked, for the same case.
+                 Takes no path.
 
 The password is never stored and never passes through this command: gocryptfs
 asks for it, on the terminal when there is one and through a dialog when there
@@ -120,6 +123,7 @@ resolve_target() {
   shift
   ASK_MODE=auto
   FORCE=0
+  ALL=0
 
   while (($# > 0)); do
     case $1 in
@@ -142,6 +146,10 @@ resolve_target() {
         ;;
       -f | --force)
         FORCE=1
+        shift
+        ;;
+      --all)
+        ALL=1
         shift
         ;;
       -h | --help)
@@ -379,7 +387,7 @@ record_daemon() {
   record=$(runtime_record "$mount_dir")
   mkdir -p -- "$(dirname -- "$record")"
   if pid=$(find_daemon "$storage" "$mount_dir"); then
-    printf 'pid=%s\nstorage=%s\n' "$pid" "$storage" >"$record"
+    printf 'pid=%s\nmount=%s\nstorage=%s\n' "$pid" "$mount_dir" "$storage" >"$record"
   else
     rm -f -- "$record"
   fi
@@ -587,12 +595,9 @@ report_blockers() {
   printf 'Unsaved edits in those programs are lost, and a write in progress is cut off.\n' >&2
 }
 
-cmd_lock() {
-  local mount_dir storage daemon answer
+lock_one() {
+  local mount_dir=$1 storage=$2 daemon answer
   local -a blockers=()
-  resolve_target lock "$@"
-  mount_dir=$TARGET_MOUNT
-  storage=$TARGET_STORAGE
 
   if ! is_mounted "$mount_dir"; then
     say "$mount_dir is not unlocked."
@@ -643,6 +648,36 @@ cmd_lock() {
   rm -f -- "$(runtime_record "$mount_dir")"
   say "$mount_dir is locked."
   say 'This ends access through the vault. It cannot unread what a program already loaded.'
+}
+
+# Every vault this session unlocked, for a session ending with nobody there to
+# answer. The records are a cache and are checked against the kernel before
+# any of them is believed; one that names a vault nobody mounted is dropped.
+lock_all() {
+  local dir record mount storage status=0
+  dir=$(dirname -- "$(runtime_record placeholder)")
+  [[ -d $dir ]] || return 0
+  for record in "$dir"/*; do
+    [[ -f $record ]] || continue
+    mount=$(sed -n 's/^mount=//p' "$record")
+    storage=$(sed -n 's/^storage=//p' "$record")
+    if [[ -z $mount ]] || ! is_mounted "$mount"; then
+      rm -f -- "$record"
+      continue
+    fi
+    [[ -n $storage ]] || storage=$(derive_storage "$mount")
+    lock_one "$mount" "$storage" || status=1
+  done
+  return "$status"
+}
+
+cmd_lock() {
+  resolve_target lock "$@"
+  if ((ALL)); then
+    lock_all
+    return
+  fi
+  lock_one "$TARGET_MOUNT" "$TARGET_STORAGE"
 }
 
 main() {

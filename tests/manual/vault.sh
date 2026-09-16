@@ -181,6 +181,19 @@ sleep 0.5
 grep -q " $mount_dir " /proc/self/mountinfo && fail '--force left the mount'
 kill "$holder" 2>/dev/null || true
 
+# --all locks what the session unlocked, from the records it kept.
+"$VAULT_TEST_COMMAND" unlock "$mount_dir" </dev/null >/dev/null || fail 'reopen failed'
+[[ -f $record ]] || fail 'no runtime record to lock from'
+grep -q "^mount=$mount_dir$" "$record" || fail 'the record does not name its mount'
+"$VAULT_TEST_COMMAND" lock --all --force </dev/null >/dev/null || fail '--all failed'
+grep -q " $mount_dir " /proc/self/mountinfo && fail '--all left the mount'
+[[ ! -f $record ]] || fail '--all left its record'
+
+# A record naming a vault nobody mounted is dropped rather than acted on.
+printf 'pid=999999\nmount=%s\nstorage=%s\n' "$root/Ghost" "$root/.Ghost.encrypted" >"$(dirname "$record")/ghost-test"
+"$VAULT_TEST_COMMAND" lock --all --force </dev/null >/dev/null || fail '--all failed on a stale record'
+[[ ! -f $(dirname "$record")/ghost-test ]] || fail '--all kept a stale record'
+
 cleanup
 trap - EXIT
 printf 'PASS: %s\n' "$(basename "$0")"
