@@ -134,6 +134,36 @@ laptop peer. Stop its use of that identity before activating the new backend
 on this host, or select a different exclusive peer. The staging VM is tested
 with its separate desktop-ubuntu identity.
 
+### GNOME application shortcuts
+
+Application shortcuts use Run or Raise: focus an existing matching window,
+restore it if minimized, and switch to its workspace. If no window matches,
+launch the app. With several matching windows, the first press selects the
+most recently used one; pressing again while one is focused cycles through
+the others. A single matching window stays focused.
+
+This covers `Ctrl+Alt+T` (Ptyxis), `Super+F` (Firefox), `Super+E` (Files),
+`Super+C` (Code), `Super+T` (Sublime), `Super+S` (Spotify), and `Super+M`
+(AyuGram). `Super+K` selects the Knowledge-Database Obsidian vault and
+`Super+N` selects private Notes and always runs `vault notes` to check that the
+vault is unlocked, even if a window survived a forced lock. `Shift+F11` always
+starts an interactive screenshot.
+
+After activating this change, log out and back in so GNOME discovers the
+extension and releases the old launcher bindings. The bindings and window
+matches live in [the GNOME module](modules/desktops/gnome.nix), which generates
+`~/.config/run-or-raise/shortcuts.conf`. Later shortcut edits need an extension
+reload after activation, or another login:
+
+```bash
+gnome-extensions disable run-or-raise@edvard.cz
+gnome-extensions enable run-or-raise@edvard.cz
+```
+
+Obsidian matching uses its standard vault-name suffix in the window title.
+Renaming a vault or changing that title with a plugin requires updating its
+match. Additional vaults also named `Notes` are indistinguishable by title.
+
 ### GPU-accelerated programs
 
 Nothing to do. Nix-built programs cannot use a non-NixOS distro's GPU drivers,

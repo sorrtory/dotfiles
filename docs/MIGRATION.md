@@ -161,6 +161,11 @@ this slice.
 
 Specify and ticket intentional GNOME migration. Capture the current dconf state as evidence, retain deliberate preferences, and omit incidental runtime keys.
 
+Application launchers now use Run or Raise to focus matching windows across
+workspaces, with vault-specific Obsidian matches. The screenshot shortcut
+remains an action. See the README's GNOME shortcut section for behavior and
+the required re-login after first activation.
+
 ### 10. Neovim
 
 Let Home Manager own the Neovim package and expose the native Lua

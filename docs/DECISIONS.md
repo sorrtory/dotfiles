@@ -146,6 +146,20 @@ VS Code's `settings.json` and `keybindings.json` are linked out of store, but th
 
 GNOME and Hyprland concerns remain separate. GNOME should use `dconf.settings` where practical; Hyprland may remain native and live-linked if that is clearer.
 
+GNOME application shortcuts use Nixpkgs' Run or Raise extension to activate
+matching windows directly, including switching workspaces and restoring
+minimized windows. Repeated presses cycle through matching windows without
+minimizing them. This replaces command-only launchers that can leave an
+“application is ready” notification. The module's existing launcher table
+generates the extension's native configuration because launch paths depend on
+Home Manager values; the same keys are removed from media-key registrations.
+Gradia's screenshot remains a media-key action. Obsidian matches both app
+identity and the vault-name title suffix, keeping the knowledge database and
+private Notes separate. Notes uses `always-run` to retain the existing vault
+command's unlock check even if an Obsidian window survived a forced lock;
+other app commands run only when no window matches. AyuGram still launches
+through its VPN wrapper.
+
 ## Bootstrap policy
 
 This section is the single source of truth for the bootstrap phase

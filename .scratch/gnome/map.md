@@ -13,6 +13,7 @@ PC that feels like the current one. See [spec.md](spec.md).
 - [04: Mutter, dock and appearance](issues/04-mutter-dock-appearance.md) — resolved.
 - [05: Extensions and GNOME tools](issues/05-extensions-and-tools.md) — resolved.
 - [06: AyuGram as the Telegram client](issues/06-ayugram.md) — resolved.
+- [07: Focus existing windows from application shortcuts](issues/07-run-or-raise.md) — implemented and tested in isolated GNOME 50.4; needs-info for remaining VM staging checks.
 
 Launchers (03) and extensions (05) are the operator's priority. None of the
 ready tickets blocks another. Ticket 05 created `modules/desktops/gnome.nix`,

@@ -18,61 +18,92 @@ let
   # exists, the key reports that rather than making one.
   desktopVault = config.dotfiles.desktopVault;
 
-  # Custom launchers, keyed by their dconf path name. Commands are plain names
-  # because the session PATH starts with the Home Manager profile (see
+  # Run or Raise matches application identity, never a browser tab mentioning
+  # the app. Obsidian also needs the vault suffix in its window title.
+  # Commands are plain names because the session PATH starts with the profile (see
   # modules/packages.nix). Firefox, Nautilus and Ptyxis stay distro-provided.
   launchers = {
     code = {
       binding = "<Super>c";
       command = "code";
+      wmClass = "/^[Cc]ode$/";
     };
     explorer = {
       binding = "<Super>e";
-      command = "nautilus -w";
+      command = "nautilus";
+      wmClass = "/^(org\\.gnome\\.Nautilus|[Nn]autilus)$/";
     };
     firefox = {
       binding = "<Super>f";
       command = "firefox";
-    };
-    gradia = {
-      binding = "<Shift>F11";
-      # The command Gradia's own preferences suggest outside Flatpak.
-      command = "gradia --screenshot=INTERACTIVE";
+      wmClass = "/^(firefox|Firefox|org\\.mozilla\\.firefox)$/";
     };
     # The knowledge database is public-safe: it needs no vault and no unlocking,
     # which is the whole reason it has a key of its own.
     knowledge = {
       binding = "<Super>k";
       command = "obsidian ${knowledgeDatabaseUri}";
+      wmClass = "/^(obsidian|Obsidian|md\\.Obsidian)$/";
+      title = "/(^| - )Knowledge-Database - Obsidian( v?[0-9.]+)?$/";
     };
-    # Unlocks the private vault if it is locked, asking for the password
-    # through a dialog, then opens its Notes/ in Obsidian. An already-unlocked
-    # vault opens without a prompt.
+    # Always check the mount: a forced lock can leave a Notes window behind.
+    # Focus it immediately, but still unlock through the usual dialog when
+    # needed. An already-unlocked vault opens without a password prompt.
     notes = {
       binding = "<Super>n";
-      command = "vault notes ${desktopVault}";
+      mode = "always-run";
+      command = "vault notes ${lib.escapeShellArg desktopVault}";
+      wmClass = "/^(obsidian|Obsidian|md\\.Obsidian)$/";
+      title = "/(^| - )Notes - Obsidian( v?[0-9.]+)?$/";
     };
     spotify = {
       binding = "<Super>s";
       command = "spotify";
+      wmClass = "/^[Ss]potify$/";
+    };
+    # vpnized-apps/default.nix replaces this command with the launcher that
+    # always routes Vesktop through the VPN, same as telegram below.
+    vesktop = {
+      binding = "<Super>d";
+      command = "vesktop";
+      wmClass = "/^[Vv]esktop$/";
     };
     # AyuGram replaces the official client. The launcher keeps the generic
     # name, so switching back changes only the command.
     telegram = {
       binding = "<Super>m";
       command = "AyuGram";
+      wmClass = "/^(AyuGram|com\\.ayugram\\.desktop)$/";
     };
     # Ptyxis is Fedora's distro-provided terminal, kept alongside Firefox and
     # Nautilus rather than a Home Manager package.
     terminal = {
       binding = "<Control><Alt>t";
       command = "ptyxis";
+      wmClass = "/^(org\\.gnome\\.Ptyxis|ptyxis)$/";
     };
     typing = {
       binding = "<Super>t";
       command = "subl";
+      wmClass = "/^(Sublime_text|sublime_text)$/";
     };
   };
+
+  # This is an action rather than an application switch: every press captures.
+  actionLaunchers.gradia = {
+    binding = "<Shift>F11";
+    command = "gradia --screenshot=INTERACTIVE";
+  };
+
+  # Keep the paths and bindings in one table. Quote fields for the extension's
+  # comma-separated format (the vault path can contain a comma).
+  shortcutLine = _: launcher:
+    lib.concatStringsSep "," (map (field: "\"${field}\"") [
+      (launcher.binding + lib.optionalString (launcher ? mode) ":${launcher.mode}")
+      launcher.command
+      launcher.wmClass
+      (launcher.title or "")
+    ]);
 in
 {
   # GNOME Shell finds these through ~/.nix-profile/share, which reaches the
@@ -89,8 +120,14 @@ in
       { package = blur-my-shell; }
       { package = clipboard-indicator; }
       { package = hide-top-bar; }
+      { package = run-or-raise; }
     ];
   };
+
+  # Run or Raise reads this file when enabled; re-login after first install,
+  # or disable/re-enable the extension after changing the shortcut table.
+  xdg.configFile."run-or-raise/shortcuts.conf".text =
+    lib.concatStringsSep "\n" (lib.mapAttrsToList shortcutLine launchers) + "\n";
 
   dconf.settings = {
     # For the same reason, a session-mode extension can only be switched off
@@ -114,10 +151,20 @@ in
       ];
     };
 
-    # The whole list is declared, so a switch never duplicates an entry.
+    # Application keys belong exclusively to Run or Raise. Replacing this
+    # list also releases the old media-key registrations on migration.
     ${mediaKeys}.custom-keybindings = lib.mapAttrsToList (
       name: _: "/${mediaKeys}/custom-keybindings/${name}/"
-    ) launchers;
+    ) actionLaunchers;
+
+    "org/gnome/shell/extensions/run-or-raise" = {
+      isolate-workspace = false;
+      move-window-to-active-workspace = false;
+      switch-back-when-focused = false;
+      minimize-when-unfocused = false;
+      center-mouse-to-focused-window = false;
+      dbus = false;
+    };
 
     # Each replaces GNOME's default list for that action rather than adding
     # to it.
@@ -171,9 +218,9 @@ in
       transparency-mode = "FIXED";
     };
 
-    # The Yaru-sage-dark themes are distro-provided and exist only on Ubuntu.
-    # Elsewhere the names fall back, while color-scheme and accent-color still
-    # apply.
+    # Yaru-sage-dark is also declared in home.packages below, so it resolves
+    # the same way on every distro rather than only where it happens to be
+    # distro-provided.
     "org/gnome/desktop/interface" = {
       accent-color = "slate";
       clock-show-weekday = true;
@@ -186,7 +233,7 @@ in
   // lib.mapAttrs' (
     name: launcher:
     lib.nameValuePair "${mediaKeys}/custom-keybindings/${name}" (launcher // { inherit name; })
-  ) launchers;
+  ) actionLaunchers;
 
   # Nixpkgs rather than the distro, so every machine gets them the same way
   # whether it runs Ubuntu, Fedora or something else. gnome-tweaks costs about
@@ -196,5 +243,9 @@ in
     dconf-editor
     gnome-extension-manager
     gnome-tweaks
+    # Provides the Yaru-sage-dark GTK and icon themes set above, so Nautilus
+    # (and everything else reading org/gnome/desktop/interface) actually finds
+    # them instead of falling back to hicolor's unstyled generic icons.
+    yaru-theme
   ];
 }

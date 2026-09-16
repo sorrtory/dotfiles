@@ -174,6 +174,12 @@ Host state:
 
 ## Target
 
+Follow-up requirement (2026-09-16): application shortcuts must focus an
+existing matching window and switch to its workspace, launching only when
+needed. A notification alone is insufficient. This is a must-have; see
+[ticket 07](issues/07-run-or-raise.md) for vault-specific matching and GNOME
+Wayland verification requirements.
+
 The current PC is evidence only, and nothing here is switched on it. The
 slice is realised on a fresh Ubuntu install on a new PC, where it should
 reproduce the current GNOME experience.
