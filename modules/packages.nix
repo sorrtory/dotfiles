@@ -40,6 +40,14 @@
     jdk21
     keepassxc
 
+    # Patches Meslo with the glyphs Neovim's completion menu, lualine, neo-tree
+    # and Yazi's file-type icons all assume are present in whatever font the
+    # terminal actually uses. Meslo specifically because configs/vscode
+    # names "MesloLGS Nerd Font Mono" as its terminal font. Installing the
+    # family only makes it available; nothing here selects it as a terminal
+    # font (see docs/SOFTWARE.md).
+    nerd-fonts.meslo-lg
+
     # Global rather than per-project because mason installs ten of Neovim's
     # language servers as npm packages, and they need Node at runtime, not
     # only to install. Without it the editor looks subtly broken rather than
@@ -75,6 +83,12 @@
     # password from its stdout.
     zenity
   ];
+
+  # Off by default outside NixOS, so a font in home.packages above would sit in
+  # the profile unseen by fontconfig, and therefore by every non-Nix
+  # application: the terminal, Nautilus, GTK apps in general. This is what
+  # makes it discoverable system-wide instead.
+  fonts.fontconfig.enable = true;
 
   home.sessionPath = [ "$HOME/.local/bin" ];
 
