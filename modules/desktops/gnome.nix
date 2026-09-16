@@ -12,10 +12,11 @@ let
   knowledgeDatabaseUri =
     "obsidian://open?path=" + lib.replaceStrings [ "/" ] [ "%2F" ] knowledgeDatabase;
 
-  # Declared by modules/programs/vault.nix, which owns the convention. The
+  # Declared by modules/programs/vault.nix, which owns the convention. This is
+  # the vault the desktop acts on, not a default the command knows about. The
   # vault itself is the operator's data and is not created here: until it
   # exists, the key reports that rather than making one.
-  privateVault = config.dotfiles.privateVault;
+  desktopVault = config.dotfiles.desktopVault;
 
   # Custom launchers, keyed by their dconf path name. Commands are plain names
   # because the session PATH starts with the Home Manager profile (see
@@ -49,7 +50,7 @@ let
     # vault opens without a prompt.
     notes = {
       binding = "<Super>n";
-      command = "vault notes ${privateVault}";
+      command = "vault notes ${desktopVault}";
     };
     spotify = {
       binding = "<Super>s";

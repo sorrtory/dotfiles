@@ -45,7 +45,7 @@ the blocked question is now asked wherever the operator can answer it.
   escape, and Force as an extra button, which is the only one that is neither
   the default nor what the escape key does. With neither, an answer piped in
   is still honoured and end of input is a cancel, so scripts keep working.
-- **The path is declared once.** `dotfiles.privateVault` lives in the vault
+- **The path is declared once.** `dotfiles.desktopVault` lives in the vault
   module and both `<Super>n` and the desktop entry read it, rather than the
   literal appearing in two modules that can drift. That is the same mistake
   ticket 01 existed to fix.

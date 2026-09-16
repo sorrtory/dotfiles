@@ -199,8 +199,11 @@ on `./Vault` in the working directory when it is given none. The ciphertext is
 the hidden sibling of that directory, so `Vault` is stored in
 `.Vault.encrypted`; `--storage` names storage that does not follow the rule.
 `~/Vault` is only the convention the desktop uses, declared once as
-`dotfiles.privateVault` and read by both the `<Super>n` binding and the Lock
-Vault entry.
+`dotfiles.desktopVault` and read by both the `<Super>n` binding and the Lock
+Vault entry. It is not a default the command knows about: a keybinding has
+nowhere to type a path, so it has to carry one, and naming it once beats the
+same literal in two modules. It says nothing about the vault's contents, since
+`Notes/` is created by `vault notes` inside whichever vault it is given.
 
 Unlocking is always explicit. Nothing mounts a vault at login or during
 activation, and the vault's contents are the operator's data: activation never

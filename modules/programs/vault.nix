@@ -16,15 +16,23 @@ let
   };
 in
 {
-  # The vault has no default of its own: every command names the one it acts
-  # on. The session does need one, though, and this is where that convention is
-  # written down. Both the <Super>n binding and the Lock Vault entry read it,
-  # so the path exists once rather than in two modules that can drift apart.
-  options.dotfiles.privateVault = lib.mkOption {
+  # The one vault the desktop acts on, and nothing more than that.
+  #
+  # The command has no global vault and no registry: it acts on the path it is
+  # given, or ./Vault in the working directory. This option does not change
+  # that, and vault.sh never reads it. It exists because a keybinding and a
+  # desktop entry have nowhere to type a path, so they have to carry one. The
+  # alternative was the same literal in two modules, which is the drift that
+  # made the knowledge database need fixing in the first place.
+  #
+  # It says nothing about what is inside. Notes/ is created by `vault notes`
+  # within whichever vault it is handed, so pointing this elsewhere moves the
+  # notes with it.
+  options.dotfiles.desktopVault = lib.mkOption {
     type = lib.types.str;
     default = "${config.home.homeDirectory}/Vault";
     example = "/home/z/Documents/Private";
-    description = "The vault the desktop unlocks and locks.";
+    description = "The vault <Super>n opens and the Lock Vault entry closes.";
   };
 
   config = {
@@ -41,7 +49,7 @@ in
     xdg.desktopEntries.vault-lock = {
       name = "Lock Vault";
       comment = "Close the private vault and end access to it";
-      exec = "${vault}/bin/vault lock ${config.dotfiles.privateVault}";
+      exec = "${vault}/bin/vault lock ${config.dotfiles.desktopVault}";
       icon = "changes-prevent-symbolic";
       terminal = false;
       categories = [ "Utility" "Security" ];
