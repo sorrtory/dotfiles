@@ -20,7 +20,7 @@ let
 
   # Custom launchers, keyed by their dconf path name. Commands are plain names
   # because the session PATH starts with the Home Manager profile (see
-  # modules/packages.nix). Firefox and Nautilus stay distro-provided.
+  # modules/packages.nix). Firefox, Nautilus and Ptyxis stay distro-provided.
   launchers = {
     code = {
       binding = "<Super>c";
@@ -61,6 +61,12 @@ let
     telegram = {
       binding = "<Super>m";
       command = "AyuGram";
+    };
+    # Ptyxis is Fedora's distro-provided terminal, kept alongside Firefox and
+    # Nautilus rather than a Home Manager package.
+    terminal = {
+      binding = "<Control><Alt>t";
+      command = "ptyxis";
     };
     typing = {
       binding = "<Super>t";
