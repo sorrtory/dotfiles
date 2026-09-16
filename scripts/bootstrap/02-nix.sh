@@ -53,9 +53,9 @@ host_os_value() {
   . "$os_release_file"
 
   case "$key" in
-  id) printf '%s\n' "${ID:-}" ;;
-  id_like) printf '%s\n' "${ID_LIKE:-}" ;;
-  version_id) printf '%s\n' "${VERSION_ID:-}" ;;
+  id) echo "${ID:-}" ;;
+  id_like) echo "${ID_LIKE:-}" ;;
+  version_id) echo "${VERSION_ID:-}" ;;
   *) return 2 ;;
   esac
 }
@@ -66,11 +66,11 @@ is_fedora() {
 
 nix_daemon_profile_path() {
   if [[ -n "$NIX_DAEMON_PROFILE" ]]; then
-    printf '%s\n' "$NIX_DAEMON_PROFILE"
+    echo "$NIX_DAEMON_PROFILE"
   elif is_fedora; then
-    printf '%s\n' "$FEDORA_NIX_DAEMON_PROFILE"
+    echo "$FEDORA_NIX_DAEMON_PROFILE"
   else
-    printf '%s\n' "$UPSTREAM_NIX_DAEMON_PROFILE"
+    echo "$UPSTREAM_NIX_DAEMON_PROFILE"
   fi
 }
 
