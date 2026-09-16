@@ -33,6 +33,24 @@ The initial global development baseline is Go through `pkgs.go`, Rust and Cargo,
 
 Do not design around `cargo install` or `go install`. Prefer a Nix package or a project development environment.
 
+Codex and Claude Code come from the independently pinned `llm-agents.nix`
+flake rather than stable Nixpkgs. These tools release too quickly for a stable
+distribution pin, while `llm-agents.nix` updates them daily and tests them
+against its own nixpkgs-unstable revision. Its Nixpkgs input deliberately does
+not follow this repository's stable pin; that preserves the tested package set
+rather than evaluating the packages against an unsupported dependency set.
+Authentication remains machine-local mutable session state. The Numtide cache
+is not declared in the flake because multi-user Nix treats substituters and
+their public keys as restricted settings; adding it belongs to an explicit
+host-owned Nix configuration change if build cost later justifies one.
+Both commands opt into the local-proxy module's reusable wrapped-program list.
+It exposes small launchers that always set the sing-box HTTP proxy at
+`127.0.0.1:3128`; localhost remains exempt so local MCP servers and callbacks
+do not make a needless proxy round trip. Other command-line tools can opt in by
+declaring a name and package in the same list. This is an application
+preference, not a network boundary: child processes inherit it, but software
+can ignore proxy environment variables.
+
 The official stable `yt-dlp` binary is an intentional exception: bootstrap installs the verified standalone Linux release under `~/.local/bin`, and `yt-dlp -U` performs explicit updates. Home Manager owns FFmpeg and PATH, but does not install a competing `yt-dlp` package.
 
 Docker is host integration rather than a Home Manager package. Its bootstrap phase uses Docker's official stable convenience installer, previews the installer's package plan, invokes it with explicit privilege, and adds the invoking user to the `docker` group. Membership in that group grants root-level privileges and is therefore a deliberate operator choice. Its explicitly requested uninstall is a full reset: it removes the current user from the group, purges known Docker packages, removes Docker repository configuration, and deletes `/var/lib/docker` and `/var/lib/containerd`, including all local images, containers, volumes, and containerd state.
@@ -48,6 +66,18 @@ The drivers themselves are a Nixpkgs `buildEnv` in `packages/gpu-drivers.nix`, a
 A proprietary Nvidia driver would not work this way, because its userspace must match the running kernel module exactly. No machine here needs one.
 
 MPV is what surfaced all of this, and it also showed the second half of the problem: `vo=gpu-next` named alone gives mpv nothing to fall back to, so a machine it cannot reach plays audio with no picture rather than degrading. Video output is therefore a list ending in software `x11`, and `gpu-api` is `auto`, which still prefers Vulkan where it exists.
+
+The `fedora-amd-gpu` bootstrap phase is a separate concern from the Nix GPU
+wrapper above: it installs the distro-level Mesa VA-API driver stack that
+native (non-Nix) system programs and the kernel itself use, not the
+Nix-built closure `gpu-drivers.nix` hands to MPV and friends. It exists
+because of a specific AMD Phoenix APU (Ryzen 7640HS / Radeon 760M) VA-API
+hardware-decode bug reproduced on this machine, and it self-gates on
+Fedora plus a detected AMD GPU so it is safe to leave in the default
+bootstrap run on any other host. DNF and RPM Fusion are pinned to Yandex
+mirrors, matching the operator's own network across machines; that pin is
+intentionally hardcoded rather than configurable, since no other host in
+this repo needs a different mirror today.
 
 The virtualization stack is host-owned: KVM comes from the host kernel, and
 QEMU, libvirt, virt-manager and UEFI firmware come from distro packages.

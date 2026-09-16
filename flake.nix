@@ -8,6 +8,10 @@
     # Keep the rest of the user environment on its existing release.
     nixpkgs-networking.url = "github:NixOS/nixpkgs/nixos-unstable";
 
+    # Coding agents release much faster than the stable Nixpkgs branch. Keep
+    # this input's own tested nixpkgs pin so its binary cache remains usable.
+    llm-agents.url = "github:numtide/llm-agents.nix";
+
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -21,15 +25,15 @@
     };
   };
 
-  outputs = { nixpkgs, nixpkgs-networking, home-manager, sops-nix, ... }:
+  outputs = { nixpkgs, nixpkgs-networking, llm-agents, home-manager, sops-nix, ... }:
     let
       system = "x86_64-linux";
+      llmAgentPkgs = llm-agents.packages.${system};
       networkingPkgs = import nixpkgs-networking { inherit system; };
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfreePredicate = package:
           builtins.elem (nixpkgs.lib.getName package) [
-            "claude-code"
             # mpv-cut ships a custom licence nixpkgs marks unfree; it is a
             # retained script from the legacy MPV setup, not a new choice.
             "mpv-cut"
@@ -86,7 +90,7 @@
         let
           mkHome = extraModules: home-manager.lib.homeManagerConfiguration {
             inherit pkgs;
-            extraSpecialArgs = { inherit sops-nix; };
+            extraSpecialArgs = { inherit llmAgentPkgs sops-nix; };
             modules = [
               ./home.nix
               { dotfiles.localProxy.package = networkingPkgs.sing-box; }

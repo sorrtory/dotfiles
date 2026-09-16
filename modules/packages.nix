@@ -1,6 +1,17 @@
-{ config, pkgs, ... }:
+{ config, llmAgentPkgs, pkgs, ... }:
 
 {
+  dotfiles.localProxy.wrappedPrograms = [
+    {
+      name = "claude";
+      package = llmAgentPkgs.claude-code;
+    }
+    {
+      name = "codex";
+      package = llmAgentPkgs.codex;
+    }
+  ];
+
   home.packages = with pkgs; [
     # age, gh and keepassxc are also the secret-recovery app's closure. Plain
     # attributes from the same pin give identical store paths, so activation
@@ -12,8 +23,6 @@
 
     bat
     cargo
-    claude-code
-    codex
     curl
     exiftool
     fd

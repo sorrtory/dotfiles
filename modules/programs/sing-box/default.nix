@@ -2,6 +2,15 @@
 
 let
   cfg = config.dotfiles.localProxy;
+  proxyProgram = program: pkgs.writeShellScriptBin program.name ''
+    export HTTP_PROXY="http://127.0.0.1:3128"
+    export HTTPS_PROXY="$HTTP_PROXY"
+    export http_proxy="$HTTP_PROXY"
+    export https_proxy="$HTTP_PROXY"
+    export NO_PROXY="127.0.0.1,localhost"
+    export no_proxy="$NO_PROXY"
+    exec ${lib.getExe' program.package program.executable} "$@"
+  '';
   generator = pkgs.writeShellApplication {
     name = "sing-box-config";
     runtimeInputs = [ pkgs.coreutils pkgs.jq cfg.package ];
@@ -12,6 +21,30 @@ in
   options.dotfiles.localProxy = {
     enable = lib.mkEnableOption "the per-machine sing-box local proxy";
     package = lib.mkPackageOption pkgs "sing-box" { };
+    wrappedPrograms = lib.mkOption {
+      default = [ ];
+      description = ''
+        Commands that always use the local HTTP proxy. Their child processes
+        inherit the proxy environment too.
+      '';
+      type = lib.types.listOf (lib.types.submodule ({ config, ... }: {
+        options = {
+          name = lib.mkOption {
+            type = lib.types.str;
+            description = "Command name exposed in the user profile.";
+          };
+          package = lib.mkOption {
+            type = lib.types.package;
+            description = "Package containing the command to wrap.";
+          };
+          executable = lib.mkOption {
+            type = lib.types.str;
+            default = config.name;
+            description = "Executable name inside the package's bin directory.";
+          };
+        };
+      }));
+    };
   };
 
   # No default: a silently shared identity makes the server's peer endpoint
@@ -26,7 +59,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [ cfg.package ];
+    home.packages = [ cfg.package ] ++ map proxyProgram cfg.wrappedPrograms;
 
     sops.secrets."sing-box-wireguard" = {
       sopsFile = ../../../secrets/wireguard + "/${config.dotfiles.vpn.identity}.conf";
