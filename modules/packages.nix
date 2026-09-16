@@ -46,6 +46,12 @@
     spotify
     tealdeer
     tree
+
+    # Plain Vim beside Neovim, for the times the Lua configuration is the thing
+    # that is broken and for muscle memory that predates it. It reads the
+    # .vimrc the Neovim module installs.
+    vim
+
     wget
     wireguard-tools
     wl-clipboard
@@ -54,6 +60,11 @@
     # clipboard plugin pick their tool by session type, so an X session — the
     # staging VM is one — needs this to copy at all.
     xclip
+
+    # How the vault asks for a password when it is opened from a keybinding
+    # rather than a terminal: gocryptfs runs it through -extpass and reads the
+    # password from its stdout.
+    zenity
   ];
 
   home.sessionPath = [ "$HOME/.local/bin" ];

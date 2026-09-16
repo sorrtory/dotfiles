@@ -28,9 +28,9 @@ in
   xdg.configFile."nvim".source =
     config.lib.file.mkOutOfStoreSymlink configRoot;
 
-  # .vimrc is repository material rather than a configuration this machine
-  # uses: it is a self-contained drop-in the operator copies to remote servers
-  # that have Vim and nothing else. Vim itself is deliberately not declared,
-  # so this is a store copy rather than a live-editable symlink.
+  # .vimrc is a self-contained drop-in: it configures the Vim in
+  # modules/packages.nix and is also what the operator copies to remote servers
+  # that have Vim and nothing else. It stays a store copy rather than a
+  # live-editable symlink, because it is edited about as often as never.
   home.file.".vimrc".source = ../../configs/vim/.vimrc;
 }
