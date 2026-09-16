@@ -1,6 +1,15 @@
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not (vim.uv or vim.loop).fs_stat(lazypath) then
+-- Upstream checks only that the directory exists, which an interrupted clone
+-- also satisfies: it leaves a lazy.nvim/ holding nothing but .git, and every
+-- later start then skips the bootstrap and dies on require("lazy"). Check for
+-- the file that is actually required, and clear a useless directory first so
+-- git clone has somewhere to write.
+local uv = vim.uv or vim.loop
+if not uv.fs_stat(lazypath .. "/lua/lazy/init.lua") then
+	if uv.fs_stat(lazypath) then
+		vim.fn.delete(lazypath, "rf")
+	end
 	local lazyrepo = "https://github.com/folke/lazy.nvim.git"
 	local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
 	if vim.v.shell_error ~= 0 then
