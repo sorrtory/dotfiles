@@ -28,14 +28,14 @@
   home.stateVersion = "26.05";
 
   dotfiles.repositories = {
-    "Projects/Uni-Mobile" = "https://github.com/sorrtory/Uni-Mobile.git";
-    "Projects/Uni-Julia" = "https://github.com/sorrtory/Uni-Julia.git";
-    "Projects/Uni-AI" = "https://github.com/sorrtory/Uni-AI.git";
-    "Projects/Uni-Bioinformatics" = "https://github.com/sorrtory/Uni-Bioinformatics.git";
-    "Projects/freebooru" = "https://github.com/sorrtory/freebooru.git";
-    "Projects/scripts" = "https://github.com/sorrtory/scripts.git";
-    "Documents/keepass" = "https://github.com/sorrtory/keepass.git";
-    "Documents/Knowledge-Database" = "https://github.com/sorrtory/knowledge-database.git";
+    "Projects/Uni-Mobile" = "git@github.com:sorrtory/Uni-Mobile.git";
+    "Projects/Uni-Julia" = "git@github.com:sorrtory/Uni-Julia.git";
+    "Projects/Uni-AI" = "git@github.com:sorrtory/Uni-AI.git";
+    "Projects/Uni-Bioinformatics" = "git@github.com:sorrtory/Uni-Bioinformatics.git";
+    "Projects/freebooru" = "git@github.com:sorrtory/freebooru.git";
+    "Projects/scripts" = "git@github.com:sorrtory/scripts.git";
+    "Documents/keepass" = "git@github.com:sorrtory/keepass.git";
+    "Documents/Knowledge-Database" = "git@github.com:sorrtory/knowledge-database.git";
   };
 
   # A non-NixOS distro. Among other things this puts the profile's share
