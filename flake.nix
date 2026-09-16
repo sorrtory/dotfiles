@@ -8,9 +8,10 @@
     # Keep the rest of the user environment on its existing release.
     nixpkgs-networking.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    # Coding agents release much faster than the stable Nixpkgs branch. Keep
-    # this input's own tested nixpkgs pin so its binary cache remains usable.
-    llm-agents.url = "github:numtide/llm-agents.nix";
+    # Coding agents release too quickly for stable Nixpkgs. These focused
+    # flakes package the vendors' native binaries instead of compiling them.
+    claude-code-nix.url = "github:sadjow/claude-code-nix";
+    codex-cli-nix.url = "github:sadjow/codex-cli-nix";
 
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
@@ -25,11 +26,12 @@
     };
   };
 
-  outputs = { nixpkgs, nixpkgs-networking, llm-agents, home-manager, sops-nix, ... }:
+  outputs = { nixpkgs, nixpkgs-networking, claude-code-nix, codex-cli-nix, home-manager, sops-nix, ... }:
     let
       system = "x86_64-linux";
-      llmAgentPkgs = llm-agents.packages.${system};
       networkingPkgs = import nixpkgs-networking { inherit system; };
+      claudeCode = claude-code-nix.packages.${system}.default;
+      codex = codex-cli-nix.packages.${system}.default;
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfreePredicate = package:
@@ -83,6 +85,7 @@
 
       packages.${system} = {
         recover-age-identity = recoverAgeIdentity;
+        inherit claudeCode codex;
         sing-box = networkingPkgs.sing-box;
       };
 
@@ -90,7 +93,9 @@
         let
           mkHome = extraModules: home-manager.lib.homeManagerConfiguration {
             inherit pkgs;
-            extraSpecialArgs = { inherit llmAgentPkgs sops-nix; };
+            extraSpecialArgs = {
+              inherit claudeCode codex sops-nix;
+            };
             modules = [
               ./home.nix
               { dotfiles.localProxy.package = networkingPkgs.sing-box; }

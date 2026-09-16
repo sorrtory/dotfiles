@@ -33,16 +33,16 @@ The initial global development baseline is Go through `pkgs.go`, Rust and Cargo,
 
 Do not design around `cargo install` or `go install`. Prefer a Nix package or a project development environment.
 
-Codex and Claude Code come from the independently pinned `llm-agents.nix`
-flake rather than stable Nixpkgs. These tools release too quickly for a stable
-distribution pin, while `llm-agents.nix` updates them daily and tests them
-against its own nixpkgs-unstable revision. Its Nixpkgs input deliberately does
-not follow this repository's stable pin; that preserves the tested package set
-rather than evaluating the packages against an unsupported dependency set.
-Authentication remains machine-local mutable session state. The Numtide cache
-is not declared in the flake because multi-user Nix treats substituters and
-their public keys as restricted settings; adding it belongs to an explicit
-host-owned Nix configuration change if build cost later justifies one.
+Codex and Claude Code come from the independently pinned
+`sadjow/codex-cli-nix` and `sadjow/claude-code-nix` flakes rather than stable
+Nixpkgs or the aggregate `llm-agents.nix` package set. These focused providers
+track the tools' fast release cycles and package the vendors' native binaries,
+so installing Codex does not compile its large Rust workspace locally. Each
+provider keeps its own tested Nixpkgs input instead of following this
+repository's stable pin. Authentication remains machine-local mutable session
+state. Their optional Cachix caches are not declared here because multi-user
+Nix treats substituters and public keys as restricted host-owned settings; the
+native packages already avoid source compilation without those caches.
 Both commands opt into the local-proxy module's reusable wrapped-program list.
 It exposes small launchers that always set the sing-box HTTP proxy at
 `127.0.0.1:3128`; localhost remains exempt so local MCP servers and callbacks

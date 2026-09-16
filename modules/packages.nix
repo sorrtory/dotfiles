@@ -1,14 +1,14 @@
-{ config, llmAgentPkgs, pkgs, ... }:
+{ claudeCode, codex, config, pkgs, ... }:
 
 {
   dotfiles.localProxy.wrappedPrograms = [
     {
       name = "claude";
-      package = llmAgentPkgs.claude-code;
+      package = claudeCode;
     }
     {
       name = "codex";
-      package = llmAgentPkgs.codex;
+      package = codex;
     }
   ];
 
