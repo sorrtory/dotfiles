@@ -69,7 +69,7 @@ Machine-local authentication or application state created interactively and inte
 _Avoid_: Reproducible secret
 
 **Private vault**:
-The operator's encrypted collection of private notes and other personal files, made accessible together when unlocked.
+The operator's encrypted collection of private notes and other personal files, made accessible together when unlocked. It is a gocryptfs filesystem named by the directory it mounts on, holding data this repository never creates or carries.
 _Avoid_: Recovery vault, declarative secret store
 
 **Knowledge database**:

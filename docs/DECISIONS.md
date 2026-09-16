@@ -186,6 +186,64 @@ Home Manager does not create host network interfaces. It owns the unprivileged s
 
 Everything committed under `secrets/` must already be public-safe, and the staged secret gate enforces that mechanically rather than trusting the convention. Under that directory the test is inverted: elsewhere a file is rejected when it looks like a secret, but here it is rejected unless it is positively recognized as encrypted, because the likeliest way a key arrives is in a form no detection rule matches. Recognition asks `sops` itself, since marker strings can appear in a plaintext file's comments and prove nothing. Note the residual limit: SOPS permits partially encrypted documents, so this establishes that a file is a SOPS document rather than that every value in it is encrypted. Never copy a legacy secrets tree or expose plaintext through Nix expressions, logs, patches, or the Nix store.
 
+## Private vault
+
+The operator's private notes and personal files live in a gocryptfs filesystem
+rather than a LUKS image, because it is per-file encryption over an ordinary
+directory: it mounts without root, backs up file by file, and needs no fixed
+size decided in advance.
+
+A vault is named by the directory it mounts on. There is no registry, no daemon
+watching one, and no default vault: a command acts on the path it is given, or
+on `./Vault` in the working directory when it is given none. The ciphertext is
+the hidden sibling of that directory, so `Vault` is stored in
+`.Vault.encrypted`; `--storage` names storage that does not follow the rule.
+`~/Vault` is only the convention the desktop uses, declared once as
+`dotfiles.privateVault` and read by both the `<Super>n` binding and the Lock
+Vault entry.
+
+Unlocking is always explicit. Nothing mounts a vault at login or during
+activation, and the vault's contents are the operator's data: activation never
+creates one. Initialization is separate from opening and requires a terminal,
+because gocryptfs shows the master key once and only to a terminal, and a vault
+created without the operator seeing it has no recovery path. The master key is
+never written to a file, a log or this repository; it belongs in KeePassXC,
+beside the recovery vault's other material.
+
+The password never passes through the repository's own code. gocryptfs asks for
+it: on the terminal when there is one, and through a dialog given to `-extpass`
+when the command came from a keybinding. A terminal always wins when there is
+one. No password is stored anywhere, including keyrings.
+
+Locking ends access and says so only when it can prove it: the kernel must show
+no mount and the gocryptfs process must be gone. It cannot promise anything
+about plaintext an application has already read, and it says so rather than
+implying otherwise. A lazy unmount alone is not a lock — measured, not assumed:
+after `fusermount3 -uz` the daemon keeps serving a descriptor opened before it,
+and only SIGTERM ends that. So forcing does both. Blockers are found in `/proc`
+and named; forcing is confirmed per attempt, never on a timer, and the question
+is asked on the terminal or in a dialog depending on where the operator is.
+
+Shutdown needs nothing from this repository: systemd sends SIGTERM and gocryptfs
+unmounts and exits. Logout does, because `KillUserProcesses` defaults to `no`,
+lingering is enabled, and a daemon started from a launcher sits in the user
+manager's `app.slice` where no session stop reaches it. A user unit bound to
+`graphical-session.target` closes the vaults at logout; it is a oneshot that
+remains after exit, so nothing runs while the session is up and only its
+`ExecStop` acts. Screen lock and suspend leave vaults mounted, and nothing
+inhibits logout or shutdown.
+
+gocryptfs comes from Nixpkgs. Its FUSE helper cannot: a store path is never
+setuid-root, so the setuid `fusermount3` is host-owned everywhere except NixOS,
+which supplies it through `security.wrappers`. The commands check for it first
+and name the `fuse3` package when a host has none. A pristine Ubuntu 26.04
+install already has it, so it is a check rather than a bootstrap dependency.
+
+Backups are a separate milestone. Restic with Google Drive through its rclone
+backend is the selected direction, covering the vault, the archive and other
+user data. An encrypted working directory and a versioned backup repository
+serve different purposes, and gocryptfs is not a backup manager.
+
 ## Scripts and privileged networking
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.

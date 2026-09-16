@@ -1,6 +1,6 @@
 # 09 — Record the private vault in canonical documentation
 
-Status: ready-for-agent
+Status: claimed
 
 Blocked by: 01, 05, 06, 07, 08
 
@@ -38,3 +38,22 @@ repository actually keeps, and the scratch directory goes away.
   of its lock guarantee.
 - The vocabulary matches the shipped commands.
 - The scratch directory is gone and no documentation links into it.
+
+## Progress
+
+The documentation is done. `docs/DECISIONS.md` gained a Private vault section
+covering gocryptfs over a LUKS image, the path rule and the absence of a
+registry or default, explicit unlocking with no automatic mount, the terminal
+requirement for initialization and why, where the password is asked for and
+that it never passes through this repository's code, what a successful lock
+verifies and the plaintext it cannot promise anything about, why a lazy unmount
+is not a lock, logout versus shutdown, the host-owned FUSE helper, and backups
+as a separate milestone. `CONTEXT.md`'s private vault entry now says what a
+vault actually is.
+
+Remaining: removing this directory, which the tracker asks for in the
+completion commit. Held back deliberately. Two things are unverified and can
+only be judged on a machine with a GPU, because Obsidian does not start on the
+staging VM at all: whether a second vault opens while an instance runs, and
+whether `<Super>n` and `<Super>k` really put a window on screen. Until the
+operator has used this under normal conditions, the tickets are worth keeping.
