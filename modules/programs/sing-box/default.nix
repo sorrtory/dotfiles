@@ -26,7 +26,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [ cfg.package generator ];
+    home.packages = [ cfg.package ];
 
     sops.secrets."sing-box-wireguard" = {
       sopsFile = ../../../secrets/wireguard + "/${config.dotfiles.vpn.identity}.conf";
