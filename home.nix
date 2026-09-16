@@ -6,6 +6,7 @@
     ./modules/desktops/gnome.nix
     ./modules/packages.nix
     ./modules/directories.nix
+    ./modules/scripts.nix
     ./modules/programs/git.nix
     ./modules/programs/mpv.nix
     ./modules/programs/neovim.nix

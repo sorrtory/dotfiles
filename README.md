@@ -201,7 +201,7 @@ Re-activate the user environment through the same dispatcher:
 ./scripts/bootstrap.sh install home-manager
 ```
 
-## Projects
+## Projects and archives
 
 Home Manager creates `~/Projects`, `~/Documents` and `~/Archive`. It clones
 `Uni-Mobile`, `Uni-Julia`, `Uni-AI` and `freebooru` into Projects, and `keepass`
@@ -218,6 +218,21 @@ Activation clones missing projects, leaving existing paths and local changes
 untouched. It never pulls or deletes projects. A failed clone prints a warning;
 fix connectivity or Git authentication and activate again to retry.
 The `keepass` checkout created by secret recovery is reused without modification.
+
+The manual `~/.local/bin/archive` command moves a directory's contents, including
+hidden files, into `~/Archive/<name>/<date-and-time>.<unique-suffix>/`:
+
+```bash
+archive ~/Downloads
+archive                  # archive the current directory's contents
+```
+
+It keeps the source directory, preserves symlinks and hard links, and uses
+rsync to remove only successfully transferred files. Failed transfers can leave
+data split between source and destination; the printed destination remains
+available. Run it when nothing is writing to the source. Each invocation creates
+a separate archive. Archiving Archive itself, its children or its ancestors is
+rejected.
 
 ## Development
 
