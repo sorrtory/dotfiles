@@ -7,6 +7,7 @@
     ./modules/packages.nix
     ./modules/directories.nix
     ./modules/scripts.nix
+    ./modules/programs/firefox.nix
     ./modules/programs/git.nix
     ./modules/programs/mpv.nix
     ./modules/programs/neovim.nix
@@ -34,6 +35,7 @@
     "Projects/Uni-Bioinformatics" = "git@github.com:sorrtory/Uni-Bioinformatics.git";
     "Projects/freebooru" = "git@github.com:sorrtory/freebooru.git";
     "Projects/scripts" = "git@github.com:sorrtory/scripts.git";
+    "Projects/secrets" = "git@github.com:sorrtory/secrets.git";
     "Documents/keepass" = "git@github.com:sorrtory/keepass.git";
     "Documents/Knowledge-Database" = "git@github.com:sorrtory/knowledge-database.git";
   };
