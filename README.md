@@ -208,8 +208,9 @@ Re-activate the user environment through the same dispatcher:
 ## Projects and archives
 
 Home Manager creates `~/Projects`, `~/Documents` and `~/Archive`. It clones
-`Uni-Mobile`, `Uni-Julia`, `Uni-AI` and `freebooru` into Projects, and `keepass`
-and `knowledge-database` into Documents, all from the `sorrtory` GitHub account.
+`Uni-Mobile`, `Uni-Julia`, `Uni-AI`, `Uni-Bioinformatics`, `freebooru` and
+`scripts` into Projects, and `keepass` and `knowledge-database` into Documents,
+all from the `sorrtory` GitHub account.
 Select repositories in `home.nix` using home-relative paths and clone URLs:
 
 ```nix
