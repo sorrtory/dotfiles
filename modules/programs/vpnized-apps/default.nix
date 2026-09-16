@@ -47,17 +47,50 @@ let
         --replace-fail 'Exec=vesktop %U' 'Exec=${lib.getExe vesktopLauncher} %U'
     '';
   };
+
+  ayugramLauncher = pkgs.writeShellApplication {
+    name = "AyuGram";
+    runtimeEnv = {
+      VPN_COMMAND = lib.getExe vpn;
+      VPN_AYUGRAM = lib.getExe pkgs.ayugram-desktop;
+    };
+    text = builtins.readFile ./ayugram.sh;
+  };
+  # The package with its command and desktop entry replaced by the launcher,
+  # so the terminal, the icon and tg:// links all go through the VPN. A plain
+  # Qt binary, unlike Vesktop's Electron, so it needs no AppArmor userns
+  # allowance to run under the VPN command.
+  ayugram = pkgs.symlinkJoin {
+    name = "ayugram-vpn-${pkgs.ayugram-desktop.version}";
+    paths = [ pkgs.ayugram-desktop ];
+    postBuild = ''
+      rm "$out/bin/AyuGram" "$out/share/applications/com.ayugram.desktop.desktop"
+      ln -s ${lib.getExe ayugramLauncher} "$out/bin/AyuGram"
+      substitute ${pkgs.ayugram-desktop}/share/applications/com.ayugram.desktop.desktop \
+        "$out/share/applications/com.ayugram.desktop.desktop" \
+        --replace-fail 'Exec=env DESKTOPINTEGRATION=1 AyuGram -- %U' \
+          'Exec=env DESKTOPINTEGRATION=1 ${lib.getExe ayugramLauncher} -- %U'
+    '';
+  };
 in
 {
   options.dotfiles.vpnizedApps.vesktop.enable =
     lib.mkEnableOption "Vesktop, always launched through the VPN";
+  options.dotfiles.vpnizedApps.ayugram.enable =
+    lib.mkEnableOption "AyuGram, always launched through the VPN";
 
   config = lib.mkMerge [
     {
-      assertions = [{
-        assertion = cfg.vesktop.enable -> proxy.enable;
-        message = "dotfiles.vpnizedApps.vesktop requires dotfiles.localProxy.enable.";
-      }];
+      assertions = [
+        {
+          assertion = cfg.vesktop.enable -> proxy.enable;
+          message = "dotfiles.vpnizedApps.vesktop requires dotfiles.localProxy.enable.";
+        }
+        {
+          assertion = cfg.ayugram.enable -> proxy.enable;
+          message = "dotfiles.vpnizedApps.ayugram requires dotfiles.localProxy.enable.";
+        }
+      ];
     }
 
     (lib.mkIf proxy.enable {
@@ -120,6 +153,10 @@ in
           run cp --no-preserve=mode ${pkgs.writeText "vesktop-state.json" ''{ "firstLaunch": false }''} "$state"
         fi
       '';
+    })
+
+    (lib.mkIf (proxy.enable && cfg.ayugram.enable) {
+      home.packages = [ ayugram ];
     })
   ];
 }

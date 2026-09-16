@@ -115,11 +115,14 @@ DNS included, inside a namespace that reaches the network only through this
 backend. It loses networking rather than going direct when the tunnel is down.
 Electron and Chromium apps other than Vesktop are not supported yet.
 
-Vesktop is installed this way: its command, menu entry and `discord://` links
-always start it through the VPN, and a Vesktop already running outside the VPN
-is refused rather than silently reused. Its preferences live in
-`configs/vesktop/settings.json`, which Vesktop edits in place. On Ubuntu both
-need phase 09; see [docs/VESKTOP-APPARMOR.md](docs/VESKTOP-APPARMOR.md).
+Vesktop and AyuGram are installed this way: each one's command, menu entry
+and deep-link handler (`discord://`, `tg://`) always start it through the
+VPN, and a copy already running outside the VPN is refused rather than
+silently reused. Vesktop's preferences live in `configs/vesktop/settings.json`,
+which Vesktop edits in place; AyuGram keeps its own settings. Vesktop's
+Electron needs phase 09 on Ubuntu; see
+[docs/VESKTOP-APPARMOR.md](docs/VESKTOP-APPARMOR.md). AyuGram is a native Qt
+binary and needs no such allowance.
 
 VS Code and Obsidian need only TCP, so they use the HTTP proxy at
 `127.0.0.1:3128` instead of the VPN: VS Code through `http.proxy` in its

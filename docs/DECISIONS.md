@@ -339,6 +339,17 @@ sudo, and activation only warns when the installed ones no longer match.
 Other Electron and Chromium programs abort, under the VPN command or not, until
 they receive the same treatment.
 
+`dotfiles.vpnizedApps.ayugram.enable` follows the same launcher-replacement
+shape for AyuGram, needed because Telegram calls use UDP that a plain proxy
+setting cannot capture. AyuGram is a single native Qt binary, not Electron, so
+it needs no AppArmor `userns` allowance and no `usedBy` registration. Its
+already-running check also differs from Vesktop's: Electron's main process is
+identified by a fixed path substring in its own packaging
+(`/opt/Vesktop/resources/app.asar`), but AyuGram's binary lives at a Nix store
+path that changes on every rebuild, so its launcher compares each candidate
+process's resolved `/proc/PID/exe` against this build's own binary path
+instead.
+
 VS Code and Obsidian are not VPNized applications. They need no UDP, so each
 uses the local HTTP proxy through its own per-process setting, `http.proxy` or
 `--proxy-server`, never a session-wide proxy variable.
