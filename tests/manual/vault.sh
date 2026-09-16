@@ -26,12 +26,20 @@ trap cleanup EXIT
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 
 # init needs a terminal, because the master key is shown once and only on one.
-(cd "$root" && printf '%s\n' "$password" | "$VAULT_TEST_COMMAND" init Vault) >/dev/null 2>&1 &&
+(cd "$root" && printf '%s\n' "$password" | "$VAULT_TEST_COMMAND" init) >/dev/null 2>&1 &&
   fail 'init succeeded without a terminal'
 [[ ! -e $storage ]] || fail 'init created storage without a terminal'
 
+# notes on a missing vault says what to run rather than doing nothing.
+missing=$(cd "$root" && "$VAULT_TEST_COMMAND" notes </dev/null 2>&1) && fail 'notes invented a vault'
+case $missing in
+  *'vault init'*) : ;;
+  *) fail "notes on a missing vault: $missing" ;;
+esac
+
+# With no name, the vault is ./Vault in the working directory.
 out=$(printf '%s\n%s\n' "$password" "$password" |
-  script -qec "cd $root && $VAULT_TEST_COMMAND init Vault" /dev/null 2>&1)
+  script -qec "cd $root && $VAULT_TEST_COMMAND init" /dev/null 2>&1)
 case $out in
   *'master key'*) : ;;
   *) fail 'init did not show the master key on a terminal' ;;
@@ -46,6 +54,16 @@ printf '#!/bin/sh\nprintf "%%s\\n" "%s"\n' "$password" >"$askpass"
 chmod +x "$askpass"
 export VAULT_ASKPASS="$askpass"
 
+# unlock is the gocryptfs routine on its own; open is unlock plus the file
+# manager. Both take the same path.
+unlocked=$("$VAULT_TEST_COMMAND" unlock "$mount_dir" </dev/null) || fail 'unlock failed'
+case $unlocked in
+  *'is unlocked'*) : ;;
+  *) fail "unlock did not report success: $unlocked" ;;
+esac
+grep -q "fuse.gocryptfs" <(findmnt -no FSTYPE,TARGET) || fail 'unlock mounted nothing'
+"$VAULT_TEST_COMMAND" lock "$mount_dir" </dev/null >/dev/null || fail 'lock after unlock failed'
+
 opened=$("$VAULT_TEST_COMMAND" open "$mount_dir" </dev/null) ||
   fail 'open failed'
 case $opened in
@@ -57,6 +75,13 @@ printf 'secret\n' >"$mount_dir/note"
 [[ $(cat "$mount_dir/note") == secret ]] || fail 'plaintext is not readable through the mount'
 if grep -rq secret "$storage" 2>/dev/null; then fail 'plaintext is readable in the storage'; fi
 [[ $(find "$storage" -type f ! -name 'gocryptfs.*' | wc -l) -ge 1 ]] || fail 'nothing was encrypted'
+
+# A path is optional: with none, the vault is ./Vault where the command runs.
+implied=$(cd "$root" && "$VAULT_TEST_COMMAND" unlock </dev/null 2>&1) || fail "implied path failed: $implied"
+case $implied in
+  *"$mount_dir"*) : ;;
+  *) fail "an omitted path did not mean ./Vault: $implied" ;;
+esac
 
 # A second open reuses the mount rather than stacking another one.
 before=$(grep -c "$mount_dir" /proc/self/mountinfo)

@@ -7,7 +7,8 @@ requirements and the accepted interface.
 
 ## Frontier
 
-Ticket 08, with 02 open alongside it. 01 is claimed and waiting only on its VM
+Ticket 08, with 02 open alongside it. A desktop unmount action is left over
+from 07 and needs a ticket of its own. 01 is claimed and waiting only on its VM
 check. 07 is partly done: the graphical prompt and `<Super>n` landed with 04
 and 06, leaving the desktop unmount action and visible failure reporting.
 
@@ -19,7 +20,7 @@ and 06, leaving the desktop unmount action and visible failure reporting.
 - [04: `vault open` unlocks the vault and shows it](issues/04-vault-open.md) — resolved.
 - [05: `vault lock` closes access and proves it](issues/05-vault-lock.md) — resolved.
 - [06: `vault notes` opens the private notes in Obsidian](issues/06-vault-notes.md) — resolved ahead of 02; Obsidian's existing-instance behaviour is still unverified.
-- [07: The vault from the desktop, with no terminal](issues/07-desktop-actions.md) — ready-for-agent; blocked by 05 and 06.
+- [07: The vault from the desktop, with no terminal](issues/07-desktop-actions.md) — resolved, except a desktop unmount action.
 - [08: The vault closes at logout and shutdown](issues/08-session-cleanup.md) — ready-for-agent; blocked by 05.
 - [09: Record the private vault in canonical documentation](issues/09-canonical-docs.md) — ready-for-agent; blocked by 01, 05, 06, 07 and 08.
 
@@ -36,11 +37,14 @@ thing reachable from the session, and 08 ends it cleanly.
 
 ## Context
 
-- The operator replaced the vault model partway through: no default vault, no
-  global one. `init` takes a name and builds it in the working directory;
-  `open` and `notes` take a path. `~/Vault` is now only a convention, written
-  down once in the GNOME module for `<Super>n`. Vault data arrives by hand for
-  now, and by restic later.
+- The operator reshaped the interface twice. Where it landed: a path is
+  optional everywhere and means `./Vault`, never `~/Vault`; `unlock` and `lock`
+  are the gocryptfs routine, `open` is unlock plus Nautilus and `notes` is
+  unlock plus Obsidian; errors are visible from a keybinding. `~/Vault` is only
+  a convention, written down once in the GNOME module for `<Super>n`. Vault
+  data arrives by hand for now, and by restic later.
+- gocryptfs exit codes worth knowing: 12 is a wrong password and 9 is an
+  `-extpass` program that failed, which is what a cancelled dialog looks like.
 - Resolved by [04](issues/04-vault-open.md), and 02 should not re-derive these:
   - Nautilus holding the vault is the blocked-unmount case, caused by the very
     application `vault open` launches. Observed, not predicted.

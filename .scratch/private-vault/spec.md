@@ -35,9 +35,22 @@ remaining desktop actions outstanding.
 
 ## Accepted interface and access policy
 
-- `init` takes a name and creates the vault in the working directory; `open`
-  and `notes` take the vault's path. Nothing defaults to `~/Vault`, and there
-  is no persistent named-vault registry.
+- Every command takes an optional path and means `./Vault` without one: the
+  vault where the operator is standing, never one in `$HOME` by surprise.
+  `init` takes a name rather than a path, for the same reason. There is no
+  persistent named-vault registry.
+- The vocabulary is `unlock` and `lock` for the gocryptfs routine, with `open`
+  meaning unlock plus the file manager and `notes` meaning unlock plus
+  Obsidian. Each of the three reports whether it unlocked the vault or found
+  it already open.
+- Failures reach the operator wherever the command was started: the terminal
+  when there is one, and a dialog when it came from a keybinding, so a wrong
+  password says so instead of doing nothing visible. A cancelled password
+  dialog is an answer, not an error, and is not reported with a popup.
+- `notes` offers to create a missing vault. With a terminal it runs the
+  ordinary initialization, master key and all; without one it refuses and says
+  what to run, because a vault created from a keypress would have no recovery
+  material the operator ever saw.
 - Derive encrypted storage as a hidden sibling: `~/Vault` maps to
   `~/.Vault.encrypted`, and `~/Documents/Work` maps to
   `~/Documents/.Work.encrypted`. Existing storage that does not follow that

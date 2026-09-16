@@ -1,6 +1,6 @@
 # 07 — The vault from the desktop, with no terminal
 
-Status: ready-for-agent
+Status: resolved
 
 Blocked by: 05, 06
 
@@ -40,3 +40,23 @@ ever opening a terminal.
 - A wrong password and a blocked unmount both produce a visible message in the
   session, not just on a stream nobody is reading.
 - The unmount action leaves no mount and no owned process behind.
+
+## Answer
+
+Done, in pieces, as the operator asked for each part.
+
+- The graphical password dialog is gocryptfs's own `-extpass`, running zenity.
+  It is used when there is no terminal and a session to draw in, never in
+  preference to a terminal. `--terminal` and `--dialog` force either.
+- `<Super>n` runs `vault notes ~/Vault`, which is the one place that
+  convention is written down.
+- Failures are visible from a keybinding: every error goes to the terminal
+  when there is one and to a zenity error dialog when there is not. A wrong
+  password says so by name, because gocryptfs exit 12 is distinguished from
+  the rest. Cancelling the password dialog is gocryptfs exit 9, treated as an
+  answer rather than a failure and reported without a popup.
+
+Not done: a desktop action for unmounting. `vault lock` exists and works from
+a terminal, but nothing in the session invokes it, and locking is where a
+dialog matters most, since it is the case that asks a question. That wants its
+own ticket rather than being quietly folded in here.
