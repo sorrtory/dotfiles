@@ -37,8 +37,15 @@ Status: design interview in progress; implementation not started.
   no persistent named-vault registry.
 - Derive encrypted storage as a hidden sibling: `~/Vault` maps to
   `~/.Vault.encrypted`, and `~/Documents/Work` maps to
-  `~/Documents/.Work.encrypted`. Allow explicit encrypted-path overrides for
-  existing storage; their exact invocation is still to be specified.
+  `~/Documents/.Work.encrypted`. Existing storage that does not follow that
+  rule is named with `--storage DIR`, accepted by every subcommand alongside
+  the mount directory. Settled by ticket 03.
+- `vault init` requires a terminal. gocryptfs shows the master key once and
+  only when it is talking to one, so initializing without a terminal would
+  create storage whose only recovery material was silently suppressed.
+- The setuid FUSE helper is host-owned and cannot come from Nixpkgs, because a
+  store path is never setuid-root. gocryptfs finds the host's; the commands
+  check for it first and name the missing package. Settled by ticket 03.
 - `vault open [path]` mounts and opens Nautilus; `vault notes [path]` mounts
   and opens `Notes/` in Obsidian; `vault lock [path]` closes access.
 - Use a graphical password dialog for desktop actions and a hidden terminal
