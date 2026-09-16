@@ -68,6 +68,14 @@ _Avoid_: Declarative secret store, repository-managed config
 Machine-local authentication or application state created interactively and intentionally excluded from declarative provisioning.
 _Avoid_: Reproducible secret
 
+**Private vault**:
+The operator's encrypted collection of private notes and other personal files, made accessible together when unlocked.
+_Avoid_: Recovery vault, declarative secret store
+
+**Knowledge database**:
+The operator's public-safe Obsidian collection, independent of the private vault.
+_Avoid_: Private vault, recovery vault
+
 **Public-safe secret material**:
 SOPS ciphertext or non-sensitive metadata that is safe to publish in repository history.
 _Avoid_: Plaintext secret, private identity, potentially sensitive file
