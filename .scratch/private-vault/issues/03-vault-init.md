@@ -84,3 +84,12 @@ error and that no file the command writes contains the master key. All 21
 repository tests and `nix flake check` pass. No activation anywhere.
 
 Not done here: mounting, which is ticket 04.
+
+## Amendment
+
+The operator replaced the path-with-a-default interface: `vault init` now takes
+a **name** and creates the vault in the working directory, and no command
+defaults to `~/Vault`. There is no global vault. `--storage` is unchanged, and
+the hidden-sibling rule still derives the ciphertext directory from the vault
+directory. `~/Vault` survives only as a convention the GNOME module writes down
+once, so `<Super>n` knows where to look.

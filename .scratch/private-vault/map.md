@@ -7,7 +7,9 @@ requirements and the accepted interface.
 
 ## Frontier
 
-Ticket 02, then 05 and 06. 01 is claimed and waiting only on its VM check.
+Ticket 05, with 02 open alongside it. 01 is claimed and waiting only on its VM
+check. 07 is partly done: the graphical prompt and `<Super>n` landed with 04
+and 06, leaving the desktop unmount action and visible failure reporting.
 
 ## Tickets
 
@@ -16,7 +18,7 @@ Ticket 02, then 05 and 06. 01 is claimed and waiting only on its VM check.
 - [03: `vault init` creates encrypted storage](issues/03-vault-init.md) — resolved.
 - [04: `vault open` unlocks the vault and shows it](issues/04-vault-open.md) — resolved.
 - [05: `vault lock` closes access and proves it](issues/05-vault-lock.md) — ready-for-agent; blocked by 02 and 04.
-- [06: `vault notes` opens the private notes in Obsidian](issues/06-vault-notes.md) — ready-for-agent; blocked by 02 and 04.
+- [06: `vault notes` opens the private notes in Obsidian](issues/06-vault-notes.md) — resolved ahead of 02; Obsidian's existing-instance behaviour is still unverified.
 - [07: The vault from the desktop, with no terminal](issues/07-desktop-actions.md) — ready-for-agent; blocked by 05 and 06.
 - [08: The vault closes at logout and shutdown](issues/08-session-cleanup.md) — ready-for-agent; blocked by 05.
 - [09: Record the private vault in canonical documentation](issues/09-canonical-docs.md) — ready-for-agent; blocked by 01, 05, 06, 07 and 08.
@@ -34,6 +36,11 @@ thing reachable from the session, and 08 ends it cleanly.
 
 ## Context
 
+- The operator replaced the vault model partway through: no default vault, no
+  global one. `init` takes a name and builds it in the working directory;
+  `open` and `notes` take a path. `~/Vault` is now only a convention, written
+  down once in the GNOME module for `<Super>n`. Vault data arrives by hand for
+  now, and by restic later.
 - Resolved by [04](issues/04-vault-open.md), and 02 should not re-derive these:
   - Nautilus holding the vault is the blocked-unmount case, caused by the very
     application `vault open` launches. Observed, not predicted.

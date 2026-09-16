@@ -93,3 +93,11 @@ available, which is worth keeping rather than tidying away:
 Also observed: gocryptfs daemonizes by re-executing itself as
 `.gocryptfs-wrapped -fg -notifypid=PID -- STORAGE MOUNT`, which is what makes
 the daemon findable from `/proc` and is how 05 should expect to find it.
+
+## Amendment
+
+`open` takes the vault's path and has no default. It also grew the graphical
+password path early, because `<Super>n` is useless without it: with no terminal
+gocryptfs is handed `-extpass zenity`, and `VAULT_ASKPASS` replaces the dialog
+on a session with something else. The password still never passes through the
+command.

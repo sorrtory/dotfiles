@@ -1,13 +1,16 @@
 # Private vault
 
-Status: design interview in progress; implementation not started.
+Status: init, open and notes implemented; lock, session cleanup and the
+remaining desktop actions outstanding.
 
 ## Settled requirements
 
 - Use gocryptfs for the private vault rather than a LUKS image.
-- Default to exposing the unlocked private vault at `~/Vault`; private Obsidian
-  notes live in `~/Vault/Notes`, alongside other private files. Support other
-  vault locations rather than hardcoding this one.
+- There is no default and no global vault. `vault init` creates a vault in the
+  current directory under a name the operator gives, and every other command
+  names the vault it acts on. `~/Vault` is only a convention, written down once
+  in the GNOME module so `<Super>n` knows where the notes are, and it holds
+  `Notes/` alongside other private files.
 - The public-safe knowledge database lives at
   `~/Documents/Knowledge-Database` and does not require unlocking.
 - Provide explicit unlock-and-open actions for Nautilus and Obsidian, plus
@@ -21,9 +24,8 @@ Status: design interview in progress; implementation not started.
 - Select restic for backups with Google Drive as the destination. Its rclone
   backend supplies Drive transport; gocryptfs itself is not a backup manager.
 - Prefer gocryptfs from Nixpkgs, consistent with repository package policy.
-- Do not maintain named-vault registrations. Select vaults by path, with
-  `~/Vault` as the default; prompt for paths where needed. The relationship
-  between encrypted storage and mount paths is still to be settled.
+- Do not maintain named-vault registrations. Select vaults by path. Superseded
+  in part: there is no default path either.
 - Lock should close access gracefully when possible. There is no timeout or
   automatic escalation. If completion needs a potentially destructive action,
   explain the blockers and risk and obtain explicit confirmation first.
@@ -33,8 +35,9 @@ Status: design interview in progress; implementation not started.
 
 ## Accepted interface and access policy
 
-- Commands accept a mount-directory path and default to `~/Vault`; there is
-  no persistent named-vault registry.
+- `init` takes a name and creates the vault in the working directory; `open`
+  and `notes` take the vault's path. Nothing defaults to `~/Vault`, and there
+  is no persistent named-vault registry.
 - Derive encrypted storage as a hidden sibling: `~/Vault` maps to
   `~/.Vault.encrypted`, and `~/Documents/Work` maps to
   `~/Documents/.Work.encrypted`. Existing storage that does not follow that
@@ -50,7 +53,10 @@ Status: design interview in progress; implementation not started.
   and opens `Notes/` in Obsidian; `vault lock [path]` closes access.
 - Use a graphical password dialog for desktop actions and a hidden terminal
   prompt for terminal actions. Do not persist passwords. Reuse an existing
-  verified mount without asking again.
+  verified mount without asking again. Settled by ticket 04: gocryptfs asks
+  for the password itself either way, prompting on a terminal and running
+  zenity through `-extpass` when there is none, so the password never passes
+  through the command. `VAULT_ASKPASS` replaces the dialog.
 - Lock attempts graceful application closure and clean unmounting, completing
   automatically when those succeed. Let application save/close dialogs remain
   interactive; do not impose a timer.

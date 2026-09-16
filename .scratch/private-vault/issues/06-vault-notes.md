@@ -1,6 +1,6 @@
 # 06 — `vault notes` opens the private notes in Obsidian
 
-Status: ready-for-agent
+Status: resolved
 
 Blocked by: 02, 04
 
@@ -41,3 +41,18 @@ from the knowledge database.
 - With the knowledge database already open, the private notes open as a second,
   separate vault, and the knowledge database is unaffected.
 - `vault lock` afterwards recognizes the Obsidian process as its own.
+
+## Answer
+
+Done, ahead of its blocker, because the operator asked for `<Super>n` to open
+the private notes and that needs this command. `vault notes PATH` unlocks the
+vault the same way `open` does, creates `Notes/` on first use, and opens it in
+Obsidian by URI as a second vault beside the knowledge database.
+
+Verified on the host through `tests/manual/vault.sh`: `Notes/` is created
+inside the mount on first use and its name does not appear in the ciphertext.
+
+Ticket 02 is still worth running. What it would have told this ticket in
+advance, and what remains unverified here, is Obsidian's behaviour when an
+instance is already running and what first-time registration of a vault inside
+a mount asks for. Neither is checked on a desktop yet.
