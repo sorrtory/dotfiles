@@ -50,8 +50,8 @@ Client configuration and legacy retirement remain separate tickets.
 
 ## Answer
 
-Implemented in `modules/programs/sing-box.nix`, with the private runtime
-generator in `scripts/bin/sing-box-config.sh` and the explicit ensure-only
+Implemented in `modules/programs/sing-box/`, with the private runtime
+generator in `generate-config.sh` beside it and the explicit ensure-only
 `08-user-linger` bootstrap phase. The Home Manager source fingerprint now
 includes packaged scripts, covered by an isolated regression fixture.
 
