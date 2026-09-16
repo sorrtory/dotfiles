@@ -60,7 +60,6 @@
     rustc
     sops
     spotify
-    tealdeer
     tree
     uv
 

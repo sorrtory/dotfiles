@@ -15,6 +15,7 @@
     ./modules/programs/ssh.nix
     ./modules/programs/sing-box
     ./modules/programs/sublime-text.nix
+    ./modules/programs/tealdeer.nix
     ./modules/programs/tmux.nix
     ./modules/programs/vault.nix
     ./modules/programs/vpnized-apps
