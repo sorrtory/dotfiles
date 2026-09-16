@@ -7,7 +7,7 @@ requirements and the accepted interface.
 
 ## Frontier
 
-Ticket 05, with 02 open alongside it. 01 is claimed and waiting only on its VM
+Ticket 08, with 02 open alongside it. 01 is claimed and waiting only on its VM
 check. 07 is partly done: the graphical prompt and `<Super>n` landed with 04
 and 06, leaving the desktop unmount action and visible failure reporting.
 
@@ -17,7 +17,7 @@ and 06, leaving the desktop unmount action and visible failure reporting.
 - [02: Prototype the gocryptfs and Obsidian lifecycle on the VM](issues/02-lifecycle-prototype.md) — ready-for-agent; prototype.
 - [03: `vault init` creates encrypted storage](issues/03-vault-init.md) — resolved.
 - [04: `vault open` unlocks the vault and shows it](issues/04-vault-open.md) — resolved.
-- [05: `vault lock` closes access and proves it](issues/05-vault-lock.md) — ready-for-agent; blocked by 02 and 04.
+- [05: `vault lock` closes access and proves it](issues/05-vault-lock.md) — resolved.
 - [06: `vault notes` opens the private notes in Obsidian](issues/06-vault-notes.md) — resolved ahead of 02; Obsidian's existing-instance behaviour is still unverified.
 - [07: The vault from the desktop, with no terminal](issues/07-desktop-actions.md) — ready-for-agent; blocked by 05 and 06.
 - [08: The vault closes at logout and shutdown](issues/08-session-cleanup.md) — ready-for-agent; blocked by 05.

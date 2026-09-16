@@ -1,6 +1,6 @@
 # 05 — `vault lock` closes access and proves it
 
-Status: ready-for-agent
+Status: resolved
 
 Blocked by: 02, 04
 
@@ -50,3 +50,33 @@ the way before anything risky happens.
   does nothing destructive until force is confirmed for that attempt.
 - Cancelling reports the vault as still unlocked, and it really is.
 - A lock that cannot be verified exits non-zero and says which check failed.
+
+## Answer
+
+Done. `vault lock [--force] PATH` ends access and proves it.
+
+- **Graceful first.** A clean `fusermount3 -u`; gocryptfs exits by itself once
+  its mount is gone. Nothing is asked of the operator when nothing is wrong.
+- **Blocked is reported, not guessed at.** Blockers come from `/proc`: a
+  working directory, root, executable or open descriptor under the mount. Each
+  is printed with its pid and command, followed by what forcing costs. A
+  process that merely read a file and let go is not listed, and cannot be.
+- **Retry, cancel or force**, answered per attempt, with no timer and no
+  automatic escalation. Cancelling leaves the vault unlocked and says so.
+- **Forcing is lazy unmount plus SIGTERM to the daemon**, which is the pair the
+  ticket-04 accident showed to be necessary: the lazy unmount alone left the
+  daemon serving the holder's open file. The daemon is asked to stop and given
+  five seconds; it is never SIGKILLed on a timer. If it will not go,
+  verification says so rather than reporting a lock that did not happen.
+- **Success means the kernel shows no mount and the daemon is gone.** Both are
+  checked. The closing line says plainly that this ends access through the
+  mount and cannot unread what a program already loaded.
+- `--force` skips the question for a session ending with nobody there to
+  answer, which is what ticket 08 needs.
+
+Verified on the host in `tests/manual/vault.sh` against real gocryptfs: a clean
+lock leaves no mount, no daemon and no runtime record; locking an already
+locked vault is not an error; with a process holding the mount the blocker is
+named, cancelling leaves the vault usable with its plaintext intact, and
+forcing ends access anyway. `tests/vault_test.sh` covers the unmounted case,
+the stale record and the argument errors. 21 tests and `nix flake check` pass.

@@ -96,6 +96,66 @@ if VAULT_ASKPASS="$wrong" "$VAULT_TEST_COMMAND" open "$root/Other" </dev/null >/
 fi
 grep -q "$root/Other " /proc/self/mountinfo && fail 'a refused unlock left a mount'
 
+# --- locking ---------------------------------------------------------------
+
+# Nothing is holding the vault, so it closes on its own.
+"$VAULT_TEST_COMMAND" open "$mount_dir" </dev/null >/dev/null || fail 'reopen failed'
+locked=$("$VAULT_TEST_COMMAND" lock "$mount_dir" </dev/null 2>&1) || fail "lock failed: $locked"
+case $locked in
+  *'is locked'*) : ;;
+  *) fail "lock did not report success: $locked" ;;
+esac
+grep -q " $mount_dir " /proc/self/mountinfo && fail 'lock left the mount'
+pgrep -f "gocryptfs.*$mount_dir" >/dev/null && fail 'lock left the daemon running'
+[[ ! -f $record ]] || fail 'lock left its runtime record'
+[[ -z $(ls -A "$mount_dir") ]] || fail 'the plaintext is still visible'
+
+# Locking a vault that is not unlocked is not an error.
+again=$("$VAULT_TEST_COMMAND" lock "$mount_dir" </dev/null 2>&1) || fail 'lock on a locked vault failed'
+case $again in
+  *'not unlocked'*) : ;;
+  *) fail "lock on a locked vault: $again" ;;
+esac
+
+# Now the case that matters: something holding the vault open.
+"$VAULT_TEST_COMMAND" open "$mount_dir" </dev/null >/dev/null || fail 'reopen failed'
+sleep 0.2
+holder_out="$root/holder.out"
+setsid sh -c "cd '$mount_dir' && exec sleep 300" >"$holder_out" 2>&1 &
+holder=$!
+sleep 0.5
+blocked=$(printf 'c\n' | "$VAULT_TEST_COMMAND" lock "$mount_dir" 2>&1) && fail 'lock claimed success while blocked'
+case $blocked in
+  *'Still holding it'*) : ;;
+  *) fail "blockers not named: $blocked" ;;
+esac
+case $blocked in
+  *'Unsaved edits'*) : ;;
+  *) fail "the cost of forcing was not explained: $blocked" ;;
+esac
+case $blocked in
+  *'still unlocked'*) : ;;
+  *) fail "cancelling did not report the vault as unlocked: $blocked" ;;
+esac
+grep -q " $mount_dir " /proc/self/mountinfo || fail 'cancelling unmounted the vault anyway'
+[[ $(cat "$mount_dir/note") == secret ]] || fail 'cancelling broke the mount'
+
+# Forcing, confirmed for this attempt, ends access despite the holder.
+forced=$(printf 'f\n' | "$VAULT_TEST_COMMAND" lock "$mount_dir" 2>&1) || fail "force failed: $forced"
+grep -q " $mount_dir " /proc/self/mountinfo && fail 'force left the mount'
+pgrep -f "gocryptfs.*$mount_dir" >/dev/null && fail 'force left the daemon serving the holder'
+kill "$holder" 2>/dev/null || true
+
+# --force locks without asking, for a session ending with nobody there.
+"$VAULT_TEST_COMMAND" open "$mount_dir" </dev/null >/dev/null || fail 'reopen failed'
+sleep 0.2
+setsid sh -c "cd '$mount_dir' && exec sleep 300" >/dev/null 2>&1 &
+holder=$!
+sleep 0.5
+"$VAULT_TEST_COMMAND" lock --force "$mount_dir" </dev/null >/dev/null || fail '--force failed'
+grep -q " $mount_dir " /proc/self/mountinfo && fail '--force left the mount'
+kill "$holder" 2>/dev/null || true
+
 cleanup
 trap - EXIT
 printf 'PASS: %s\n' "$(basename "$0")"

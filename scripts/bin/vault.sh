@@ -4,8 +4,9 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 Usage: vault init [--storage DIR] NAME
-       vault open [--storage DIR] PATH
-       vault notes [--storage DIR] PATH
+       vault open [--storage DIR] [--terminal|--dialog] PATH
+       vault notes [--storage DIR] [--terminal|--dialog] PATH
+       vault lock [--storage DIR] [--force] PATH
 
 Create or unlock a private vault.
 
@@ -23,14 +24,25 @@ Documents/Work in Documents/.Work.encrypted.
   open   Unlock the vault at PATH and show it in the file manager.
   notes  Unlock the vault at PATH and open its Notes/ in Obsidian, creating
          Notes/ the first time.
+  lock   End access to the vault at PATH. It closes cleanly on its own when
+         nothing is holding it. When something is, it names what, explains
+         what forcing costs, and waits for an answer.
 
   --storage DIR  Use DIR as the encrypted storage instead of the hidden
                  sibling. This is how existing storage that does not follow
                  the sibling rule is named.
+  --terminal     Ask for the password on the terminal, even from a desktop
+                 launcher. Fails if there is no terminal to ask on.
+  --dialog       Ask through the graphical dialog, even from a terminal.
+  --force        Lock without asking, for a session ending with nobody there
+                 to answer. It still reports what it had to force.
 
 An already-unlocked vault is reused without asking again. The password is
 never stored, and never passes through this command: gocryptfs asks for it,
 on the terminal when there is one and through a dialog when there is not.
+
+Locking ends access through the mount. It cannot unread what a program has
+already loaded, and it does not pretend to.
 USAGE
 }
 
@@ -167,9 +179,18 @@ require_initialized() {
 parse_target() {
   local command=$1 mount_dir='' storage=''
   shift
+  ASK_MODE=auto
 
   while (($# > 0)); do
     case $1 in
+      --terminal)
+        ASK_MODE=terminal
+        shift
+        ;;
+      --dialog)
+        ASK_MODE=dialog
+        shift
+        ;;
       --storage)
         (($# >= 2)) || die 'option --storage needs a directory'
         storage=$2
@@ -273,6 +294,26 @@ The vault is not mounted. Backups are not part of this command.
 INSTRUCTION
 }
 
+# --terminal from a context whose stdin is not the terminal: gocryptfs reads
+# the password from stdin, so give it the controlling terminal to read.
+exec_with_tty() {
+  [[ -e /dev/tty ]] || return 1
+  exec </dev/tty || return 1
+  [[ -t 0 ]]
+}
+
+dialog_extpass() {
+  local mount_dir=$1
+  if [[ -n ${VAULT_ASKPASS:-} ]]; then
+    command -v "${VAULT_ASKPASS%% *}" >/dev/null || return 1
+    printf '%s\n' "-extpass" "$VAULT_ASKPASS"
+    return 0
+  fi
+  command -v zenity >/dev/null || return 1
+  printf '%s\n' "-extpass" "zenity" "-extpass" "--password" \
+    "-extpass" "--title=Unlock $(basename -- "$mount_dir")"
+}
+
 # Unlocking is the same work whichever command asked for it.
 ensure_unlocked() {
   local mount_dir=$1 storage=$2
@@ -300,26 +341,41 @@ ensure_unlocked() {
   # terminal it cannot prompt, so it is given a dialog to ask with; -extpass
   # repeats to build the command, and zenity writes the password to stdout.
   # VAULT_ASKPASS replaces the dialog on a session that has something else.
-  if [[ ! -t 0 ]]; then
-    if [[ -n ${VAULT_ASKPASS:-} ]]; then
-      # A whole command of its own, which must write the password to stdout.
-      command -v "${VAULT_ASKPASS%% *}" >/dev/null ||
-        die "VAULT_ASKPASS names ${VAULT_ASKPASS%% *}, which is not installed"
-      extpass=(-extpass "$VAULT_ASKPASS")
-    elif [[ -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]]; then
-      command -v zenity >/dev/null ||
-        die "no terminal to ask for the password on, and zenity is not installed"
-      extpass=(
-        -extpass zenity
-        -extpass --password
-        -extpass "--title=Unlock $(basename -- "$mount_dir")"
-      )
-    else
-      # Without this, a vault command run over ssh hands gocryptfs a dialog
-      # that can never appear and waits for it forever.
-      die 'no terminal to ask for the password on, and no graphical session to ask in'
-    fi
-  fi
+  # The terminal always wins when there is one, and --terminal insists on one
+  # even from a desktop launcher: a dialog is what happens when no terminal is
+  # available, never a preference imposed on someone who has one.
+  case $ASK_MODE in
+    terminal)
+      [[ -t 0 ]] || exec_with_tty || die 'no terminal to ask for the password on'
+      ;;
+    dialog)
+      mapfile -t extpass < <(dialog_extpass "$mount_dir")
+      ((${#extpass[@]} > 0)) ||
+        die 'no dialog available to ask for the password'
+      ;;
+    *)
+      if [[ ! -t 0 ]]; then
+        if [[ -n ${VAULT_ASKPASS:-} ]]; then
+          # A whole command of its own, writing the password to stdout.
+          command -v "${VAULT_ASKPASS%% *}" >/dev/null ||
+            die "VAULT_ASKPASS names ${VAULT_ASKPASS%% *}, which is not installed"
+          extpass=(-extpass "$VAULT_ASKPASS")
+        elif [[ -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]]; then
+          command -v zenity >/dev/null ||
+            die "no terminal to ask for the password on, and zenity is not installed"
+          extpass=(
+            -extpass zenity
+            -extpass --password
+            -extpass "--title=Unlock $(basename -- "$mount_dir")"
+          )
+        else
+          # Without this, a vault command run over ssh hands gocryptfs a dialog
+          # that can never appear and waits for it forever.
+          die 'no terminal to ask for the password on, and no graphical session to ask in'
+        fi
+      fi
+      ;;
+  esac
   if ! gocryptfs "${extpass[@]}" -- "$storage" "$mount_dir"; then
     die "could not unlock $mount_dir"
   fi
@@ -378,6 +434,63 @@ open_in_file_manager() {
   printf '%s is unlocked.\n' "$mount_dir"
 }
 
+# Everything still holding the vault, named so the operator can decide. Only
+# what the kernel shows: an open file, a working directory, or a mapping. A
+# program that merely read a file and let go is not here, and never can be.
+find_blockers() {
+  local mount_dir=$1 pid link target self=$$
+  for pid in /proc/[0-9]*; do
+    pid=${pid#/proc/}
+    [[ $pid != "$self" ]] || continue
+    for link in cwd root exe; do
+      target=$(readlink "/proc/$pid/$link" 2>/dev/null) || continue
+      case $target in
+        "$mount_dir" | "$mount_dir"/*)
+          printf '%s\n' "$pid"
+          continue 3
+          ;;
+      esac
+    done
+    for link in /proc/"$pid"/fd/*; do
+      target=$(readlink "$link" 2>/dev/null) || continue
+      case $target in
+        "$mount_dir" | "$mount_dir"/*)
+          printf '%s\n' "$pid"
+          continue 3
+          ;;
+      esac
+    done
+  done
+}
+
+process_name() {
+  local pid=$1 name
+  name=$(tr '\0' ' ' </proc/"$pid"/cmdline 2>/dev/null) || name=''
+  [[ -n ${name// /} ]] || name=$(cat /proc/"$pid"/comm 2>/dev/null) || name='(gone)'
+  printf '%.60s' "$name"
+}
+
+daemon_alive() {
+  local pid=$1
+  [[ -n $pid && -d /proc/$pid ]] || return 1
+  tr '\0' ' ' </proc/"$pid"/cmdline 2>/dev/null | grep -q gocryptfs
+}
+
+# Success means the kernel no longer shows the mount and the process that
+# decrypted it is gone. Anything less is reported as the failure it is.
+verify_locked() {
+  local mount_dir=$1 daemon=$2
+  if is_mounted "$mount_dir"; then
+    printf 'vault: %s is still mounted.\n' "$mount_dir" >&2
+    return 1
+  fi
+  if daemon_alive "$daemon"; then
+    printf 'vault: the gocryptfs process %s is still running.\n' "$daemon" >&2
+    return 1
+  fi
+  return 0
+}
+
 cmd_notes() {
   local mount_dir storage notes
   case ${1:-} in
@@ -414,6 +527,125 @@ url_encode_path() {
   printf '%s' "$1" | sed -e 's|/|%2F|g' -e 's| |%20|g'
 }
 
+# A clean unmount. gocryptfs exits by itself once its mount is gone.
+unmount_cleanly() {
+  local mount_dir=$1 helper
+  helper=$(fuse_helper) || return 1
+  "$helper" -u -- "$mount_dir" 2>/dev/null
+}
+
+# Only ever after the operator has confirmed this exact attempt. The lazy
+# unmount detaches the mount, but a process holding a file keeps the daemon
+# serving it, so the daemon is stopped too: that is what actually ends access.
+force_unlock() {
+  local mount_dir=$1 daemon=$2 helper waited=0
+  helper=$(fuse_helper) || return 1
+  "$helper" -uz -- "$mount_dir" 2>/dev/null || true
+  if daemon_alive "$daemon"; then
+    kill -TERM "$daemon" 2>/dev/null || true
+    # It is asked to stop, then given a few seconds. It is never escalated to
+    # SIGKILL on a timer: if it will not go, verification says so.
+    while daemon_alive "$daemon" && ((waited < 10)); do
+      sleep 0.5
+      waited=$((waited + 1))
+    done
+  fi
+}
+
+report_blockers() {
+  local mount_dir=$1 pid
+  shift
+  printf '%s cannot be unmounted yet. Still holding it:\n' "$mount_dir" >&2
+  for pid in "$@"; do
+    printf '  %s  %s\n' "$pid" "$(process_name "$pid")" >&2
+  done
+  printf '\nForcing detaches the vault anyway and stops the process that decrypts it.\n' >&2
+  printf 'Unsaved edits in those programs are lost, and a write in progress is cut off.\n' >&2
+}
+
+cmd_lock() {
+  local mount_dir storage daemon force=0 answer
+  local -a args=() blockers=()
+
+  while (($# > 0)); do
+    case $1 in
+      -h | --help)
+        usage
+        return 0
+        ;;
+      -f | --force)
+        force=1
+        shift
+        ;;
+      *)
+        args+=("$1")
+        shift
+        ;;
+    esac
+  done
+  parse_target lock "${args[@]}"
+  mount_dir=$TARGET_MOUNT
+  storage=$TARGET_STORAGE
+
+  if ! is_mounted "$mount_dir"; then
+    printf '%s is not unlocked.\n' "$mount_dir"
+    rm -f -- "$(runtime_record "$mount_dir")"
+    return 0
+  fi
+
+  daemon=$(find_daemon "$storage" "$mount_dir") || daemon=''
+
+  while :; do
+    if unmount_cleanly "$mount_dir"; then
+      break
+    fi
+
+    mapfile -t blockers < <(find_blockers "$mount_dir")
+    if ((${#blockers[@]} == 0)); then
+      # Nothing nameable holds it, which is its own answer: the operator is
+      # not being asked to close something that cannot be found.
+      printf '%s cannot be unmounted, and nothing holding it could be identified.\n' "$mount_dir" >&2
+    else
+      report_blockers "$mount_dir" "${blockers[@]}"
+    fi
+
+    if ((force)); then
+      break
+    fi
+
+    # No timer and no automatic escalation: this waits for an answer for as
+    # long as it takes, and the answer covers this attempt only.
+    printf '\n[r]etry after closing them, [c]ancel, or [f]orce? ' >&2
+    if ! read -r answer; then
+      printf '\n'
+      answer=c
+    fi
+    case $answer in
+      r | retry) continue ;;
+      f | force)
+        force=1
+        break
+        ;;
+      *)
+        printf '%s is still unlocked.\n' "$mount_dir"
+        return 1
+        ;;
+    esac
+  done
+
+  if ((force)) && is_mounted "$mount_dir"; then
+    force_unlock "$mount_dir" "$daemon"
+  fi
+
+  if ! verify_locked "$mount_dir" "$daemon"; then
+    die "$mount_dir was not locked"
+  fi
+
+  rm -f -- "$(runtime_record "$mount_dir")"
+  printf '%s is locked.\n' "$mount_dir"
+  printf 'This ends access through the vault. It cannot unread what a program already loaded.\n'
+}
+
 main() {
   if (($# == 0)); then
     usage >&2
@@ -431,6 +663,10 @@ main() {
     notes)
       shift
       cmd_notes "$@"
+      ;;
+    lock)
+      shift
+      cmd_lock "$@"
       ;;
     -h | --help)
       usage

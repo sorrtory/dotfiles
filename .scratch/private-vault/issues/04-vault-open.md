@@ -101,3 +101,9 @@ password path early, because `<Super>n` is useless without it: with no terminal
 gocryptfs is handed `-extpass zenity`, and `VAULT_ASKPASS` replaces the dialog
 on a session with something else. The password still never passes through the
 command.
+
+`--terminal` and `--dialog` were added later, on the operator's request: the
+terminal prompt must be available rather than implied. The terminal already
+won whenever there was one; `--terminal` insists on one even from a desktop
+launcher, attaching gocryptfs to the controlling terminal and failing clearly
+when there is none, and `--dialog` forces the dialog from a terminal.

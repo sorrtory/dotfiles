@@ -194,6 +194,35 @@ esac
 if (cd "$HOME" && bash "$vault" init Headless) >/dev/null 2>&1; then fail 'init accepted without a terminal'; fi
 [[ ! -e $HOME/Headless ]] || fail 'created directories without a terminal'
 
+# lock on a vault that is not mounted says so and clears any stale record.
+record="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/vault/$(printf '%s' "$HOME/Quiet" | tr '/' '_')"
+mkdir -p "$(dirname "$record")"
+printf 'pid=999999\nstorage=%s\n' "$HOME/.Quiet.encrypted" >"$record"
+notmounted=$(bash "$vault" lock "$HOME/Quiet" 2>&1) || fail "lock on an unmounted vault failed: $notmounted"
+case $notmounted in
+  *'not unlocked'*) : ;;
+  *) fail "lock on an unmounted vault: $notmounted" ;;
+esac
+[[ ! -f $record ]] || fail 'lock kept a record for a vault that is not mounted'
+
+if bash "$vault" lock >/dev/null 2>&1; then fail 'lock accepted no argument'; fi
+if bash "$vault" lock --nonsense "$HOME/Quiet" >/dev/null 2>&1; then fail 'lock accepted an unknown option'; fi
+
+# --terminal refuses rather than silently falling back to a dialog.
+noterm=$(env -u DISPLAY -u WAYLAND_DISPLAY VAULT_ASKPASS="$TEST_ROOT/bin/zenity" \
+  timeout 10 bash "$vault" open --terminal "$HOME/Quiet" </dev/null 2>&1) || true
+case $noterm in
+  *'no terminal'*) : ;;
+  *) fail "--terminal did not insist on a terminal: $noterm" ;;
+esac
+
+# --dialog takes the dialog even though DISPLAY is set and a stub is present.
+bash "$vault" open --dialog "$HOME/Quiet" </dev/null >/dev/null 2>&1 || true
+case $(last_call) in
+  *"-extpass zenity"*) : ;;
+  *) fail "--dialog did not use the dialog: $(last_call)" ;;
+esac
+
 # The recovery material must never reach a file this command writes.
 if grep -rq 'stub master key' "$HOME" 2>/dev/null; then fail 'recovery material written to disk'; fi
 
