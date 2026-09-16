@@ -31,6 +31,17 @@ sudo -A resize2fs /dev/vda1
 sudo. Write `virsh -c qemu:///system` out in full: zsh does not word-split an
 unquoted variable holding the command.
 
+A revert also restores the clock the snapshot was taken with, and `apt` rejects
+repository metadata that is not valid yet, so `host-deps` fails on a snapshot
+older than a day with `Release file ... is not valid yet`. `timedatectl set-ntp`
+reports the clock as synchronized without stepping it, and the image has no
+`hwclock`, so set it from the host before the first phase:
+
+```bash
+now=$(date -u '+%Y-%m-%d %H:%M:%S')
+ssh z@192.168.122.214 "SUDO_ASKPASS=\$HOME/.staging-askpass /usr/bin/sudo -A date -u -s '$now'"
+```
+
 ## 2. Allow sudo without a terminal (VM only)
 
 Non-interactive `ssh` has no TTY, so phases that call `sudo` cannot prompt.
