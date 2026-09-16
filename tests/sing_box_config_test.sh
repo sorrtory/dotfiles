@@ -30,7 +30,7 @@ PersistentKeepalive = 10
 EOF
 
 generate() {
-  bash "$REPO_ROOT/scripts/bin/sing-box-config.sh" \
+  bash "$REPO_ROOT/modules/programs/sing-box/generate-config.sh" \
     "$TEST_ROOT/profile.conf" "$TEST_ROOT/config.json"
 }
 

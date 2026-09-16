@@ -5,7 +5,7 @@ let
   generator = pkgs.writeShellApplication {
     name = "sing-box-config";
     runtimeInputs = [ pkgs.coreutils pkgs.jq cfg.package ];
-    text = builtins.readFile ../../scripts/bin/sing-box-config.sh;
+    text = builtins.readFile ./generate-config.sh;
   };
 in
 {
@@ -29,7 +29,7 @@ in
     home.packages = [ cfg.package generator ];
 
     sops.secrets."sing-box-wireguard" = {
-      sopsFile = ../../secrets/wireguard + "/${config.dotfiles.vpn.identity}.conf";
+      sopsFile = ../../../secrets/wireguard + "/${config.dotfiles.vpn.identity}.conf";
       format = "binary";
       mode = "0600";
     };
@@ -45,7 +45,7 @@ in
         RuntimeDirectory = "sing-box";
         RuntimeDirectoryMode = "0700";
         UMask = "0077";
-        ExecStartPre = "${generator}/bin/sing-box-config ${config.sops.secrets."sing-box-wireguard".path} %t/sing-box/config.json";
+        ExecStartPre = "${lib.getExe generator} ${config.sops.secrets."sing-box-wireguard".path} %t/sing-box/config.json";
         ExecStart = "${cfg.package}/bin/sing-box run -c %t/sing-box/config.json";
         Restart = "on-failure";
         RestartSec = 5;

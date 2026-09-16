@@ -12,7 +12,7 @@
     ./modules/programs/neovim.nix
     ./modules/programs/obsidian.nix
     ./modules/programs/ssh.nix
-    ./modules/programs/sing-box.nix
+    ./modules/programs/sing-box
     ./modules/programs/sublime-text.nix
     ./modules/programs/tmux.nix
     ./modules/programs/vpnized-apps
