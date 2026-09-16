@@ -12,11 +12,10 @@ let
   knowledgeDatabaseUri =
     "obsidian://open?path=" + lib.replaceStrings [ "/" ] [ "%2F" ] knowledgeDatabase;
 
-  # The private notes vault. The vault command has no default vault and takes
-  # the path it is given, so this is the one place the conventional location is
-  # written down. The vault itself is the operator's data and is not created
-  # here: until it exists, the key reports that rather than making one.
-  privateVault = "${config.home.homeDirectory}/Vault";
+  # Declared by modules/programs/vault.nix, which owns the convention. The
+  # vault itself is the operator's data and is not created here: until it
+  # exists, the key reports that rather than making one.
+  privateVault = config.dotfiles.privateVault;
 
   # Custom launchers, keyed by their dconf path name. Commands are plain names
   # because the session PATH starts with the Home Manager profile (see

@@ -1,6 +1,6 @@
 # 01 — The knowledge database at its real path, on its own key
 
-Status: claimed
+Status: resolved
 
 Blocked by: None (can start immediately)
 
@@ -59,3 +59,20 @@ reads the query value whole.
 Remaining: the acceptance asks that the binding be seen opening the knowledge
 database on the Ubuntu GNOME VM. Mirroring the tree to the VM was refused by
 the sandbox as a shared-resource change, so that check has not run.
+
+## Answer
+
+Resolved as far as the VM allows.
+
+The path is corrected and the launcher is declared. On the VM the generated
+dconf carries
+`command='obsidian obsidian://open?path=%2Fhome%2Fz%2FDocuments%2FKnowledge-Database'`
+on `<Super>k`, and `~/Documents/Knowledge-Database` appears in Obsidian's own
+vault registry, so the URI form is right.
+
+What cannot be shown there is the window opening: Obsidian does not start on
+the VM at all, because the guest has no usable GPU. See
+[02](issues/02-lifecycle-prototype.md) for the evidence. That is a property of
+the staging VM, not of this change, and the same limit applies to `<Super>n`.
+
+Confirming that the key opens a window belongs on a machine with a GPU.

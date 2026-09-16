@@ -191,6 +191,17 @@ case $notmounted in
 esac
 [[ ! -f $record ]] || fail 'lock kept a record for a vault that is not mounted'
 
+# With no terminal and no dialog, a blocked lock cancels rather than forcing.
+# Nothing here is mounted, so this checks the choice, not the unmount.
+cat >"$TEST_ROOT/bin/zenity" <<'STUB'
+#!/bin/sh
+case " $* " in
+  *--question*) printf 'Force\n'; exit 1 ;;
+  *) printf 'password\n' ;;
+esac
+STUB
+chmod +x "$TEST_ROOT/bin/zenity"
+
 # --- the FUSE helper --------------------------------------------------------
 
 missing=$(cd "$TEST_ROOT/somewhere" && VAULT_FUSERMOUNT="$TEST_ROOT/absent" bash "$vault" init Fresh 2>&1 || true)

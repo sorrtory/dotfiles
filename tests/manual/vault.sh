@@ -181,6 +181,37 @@ sleep 0.5
 grep -q " $mount_dir " /proc/self/mountinfo && fail '--force left the mount'
 kill "$holder" 2>/dev/null || true
 
+# The blocked question can be answered without a terminal. A stub dialog says
+# Force, the way the Lock Vault entry's would when the operator clicks it.
+"$VAULT_TEST_COMMAND" unlock "$mount_dir" </dev/null >/dev/null || fail 'reopen failed'
+sleep 0.2
+setsid sh -c "cd '$mount_dir' && exec sleep 300" >/dev/null 2>&1 &
+holder=$!
+sleep 0.5
+dialog="$root/forcing-dialog"
+printf '#!/bin/sh\nprintf "Force\\n"\nexit 1\n' >"$dialog"
+chmod +x "$dialog"
+mkdir -p "$root/fakebin"
+cp "$dialog" "$root/fakebin/zenity"
+DISPLAY=:99 PATH="$root/fakebin:$PATH" "$VAULT_TEST_COMMAND" lock "$mount_dir" </dev/null >/dev/null 2>&1 ||
+  fail 'a dialog answer of Force did not lock'
+grep -q " $mount_dir " /proc/self/mountinfo && fail 'the dialog force left the mount'
+kill "$holder" 2>/dev/null || true
+
+# A dialog that cancels leaves the vault alone.
+"$VAULT_TEST_COMMAND" unlock "$mount_dir" </dev/null >/dev/null || fail 'reopen failed'
+sleep 0.2
+setsid sh -c "cd '$mount_dir' && exec sleep 300" >/dev/null 2>&1 &
+holder=$!
+sleep 0.5
+printf '#!/bin/sh\nexit 1\n' >"$root/fakebin/zenity"
+DISPLAY=:99 PATH="$root/fakebin:$PATH" "$VAULT_TEST_COMMAND" lock "$mount_dir" </dev/null >/dev/null 2>&1 &&
+  fail 'a cancelled dialog reported a lock'
+grep -q " $mount_dir " /proc/self/mountinfo || fail 'a cancelled dialog unmounted the vault anyway'
+[[ $(cat "$mount_dir/note") == secret ]] || fail 'a cancelled dialog broke the mount'
+kill "$holder" 2>/dev/null || true
+"$VAULT_TEST_COMMAND" lock --force "$mount_dir" </dev/null >/dev/null || fail 'cleanup lock failed'
+
 # --all locks what the session unlocked, from the records it kept.
 "$VAULT_TEST_COMMAND" unlock "$mount_dir" </dev/null >/dev/null || fail 'reopen failed'
 [[ -f $record ]] || fail 'no runtime record to lock from'

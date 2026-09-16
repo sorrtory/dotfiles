@@ -7,21 +7,21 @@ requirements and the accepted interface.
 
 ## Frontier
 
-Ticket 09, once 02 has run. A desktop unmount action is left over from 07 and
-needs a ticket of its own. 01 is claimed and waiting only on its VM
+Ticket 09, which is last: it removes this directory. 01 is claimed and waiting only on its VM
 check. 07 is partly done: the graphical prompt and `<Super>n` landed with 04
 and 06, leaving the desktop unmount action and visible failure reporting.
 
 ## Tickets
 
-- [01: The knowledge database at its real path, on its own key](issues/01-knowledge-database-path.md) — claimed; host work done, VM check outstanding.
-- [02: Prototype the gocryptfs and Obsidian lifecycle on the VM](issues/02-lifecycle-prototype.md) — ready-for-agent; prototype.
+- [01: The knowledge database at its real path, on its own key](issues/01-knowledge-database-path.md) — resolved; the window itself cannot be shown on the VM.
+- [02: Prototype the gocryptfs and Obsidian lifecycle on the VM](issues/02-lifecycle-prototype.md) — resolved; Obsidian's half is unanswerable there.
 - [03: `vault init` creates encrypted storage](issues/03-vault-init.md) — resolved.
 - [04: `vault open` unlocks the vault and shows it](issues/04-vault-open.md) — resolved.
 - [05: `vault lock` closes access and proves it](issues/05-vault-lock.md) — resolved.
-- [06: `vault notes` opens the private notes in Obsidian](issues/06-vault-notes.md) — resolved ahead of 02; Obsidian's existing-instance behaviour is still unverified.
+- [06: `vault notes` opens the private notes in Obsidian](issues/06-vault-notes.md) — resolved; Obsidian's existing-instance behaviour needs a machine with a GPU.
 - [07: The vault from the desktop, with no terminal](issues/07-desktop-actions.md) — resolved, except a desktop unmount action.
 - [08: The vault closes at logout and shutdown](issues/08-session-cleanup.md) — resolved; a real logout is still unexercised.
+- [10: Locking from the desktop](issues/10-desktop-lock-action.md) — resolved.
 - [09: Record the private vault in canonical documentation](issues/09-canonical-docs.md) — ready-for-agent; blocked by 01, 05, 06, 07 and 08.
 
 ## Order
@@ -48,6 +48,9 @@ thing reachable from the session, and 08 ends it cleanly.
 - gocryptfs unmounts and exits on SIGTERM, so shutdown needs nothing from this
   repository. Logout does: `KillUserProcesses=no`, lingering on, and a daemon
   in `app.slice` that no session stop reaches.
+- Obsidian cannot run on the staging VM at all: no usable GPU, and no combination
+  of software-rendering flags gets Electron past it. Anything about Obsidian's
+  windows has to be judged on a real machine. See [02](issues/02-lifecycle-prototype.md).
 - Resolved by [04](issues/04-vault-open.md), and 02 should not re-derive these:
   - Nautilus holding the vault is the blocked-unmount case, caused by the very
     application `vault open` launches. Observed, not predicted.

@@ -595,6 +595,59 @@ report_blockers() {
   printf 'Unsaved edits in those programs are lost, and a write in progress is cut off.\n' >&2
 }
 
+# Retry, cancel or force, asked where the operator can answer: the terminal
+# when there is one, a dialog when the command came from the session. Cancel is
+# the default in both, because forcing is the answer that costs something.
+ask_blocked() {
+  local mount_dir=$1 answer pid text status
+  shift
+
+  if [[ -t 0 ]]; then
+    printf '\n[r]etry after closing them, [c]ancel, or [f]orce? ' >&2
+    read -r answer || answer=c
+    printf '%s\n' "$answer"
+    return 0
+  fi
+
+  # No terminal and no session to draw in: an answer piped in is still an
+  # answer, and end of input is a cancel. This is the path a script takes.
+  if [[ -z ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]] || ! command -v zenity >/dev/null; then
+    read -r answer || answer=c
+    printf '%s\n' "$answer"
+    return 0
+  fi
+
+  text="$mount_dir cannot be locked yet.\n\nStill holding it:"
+  for pid in "$@"; do
+    text="$text\n    $pid  $(process_name "$pid")"
+  done
+  text="$text\n\nForcing detaches the vault anyway and stops the process that"
+  text="$text\ndecrypts it. Unsaved edits in those programs are lost, and a"
+  text="$text\nwrite in progress is cut off."
+
+  # --extra-button is the only one that is neither the default nor the escape
+  # key, which is where forcing belongs.
+  status=0
+  answer=$(zenity --question --title='Lock vault' --no-wrap \
+    --text="$(printf '%b' "$text")" \
+    --ok-label='Retry' --cancel-label='Leave unlocked' \
+    --extra-button='Force' 2>/dev/null) || status=$?
+  # An extra button prints its label and exits non-zero, so it is checked
+  # before the status. Otherwise zenity exits 0 for the default button and
+  # non-zero for cancel or the window being closed, printing nothing either way.
+  case $answer in
+    Force)
+      printf 'f\n'
+      return 0
+      ;;
+  esac
+  if ((status == 0)); then
+    printf 'r\n'
+  else
+    printf 'c\n'
+  fi
+}
+
 lock_one() {
   local mount_dir=$1 storage=$2 daemon answer
   local -a blockers=()
@@ -622,11 +675,7 @@ lock_one() {
 
     # No timer and no automatic escalation: this waits for an answer for as
     # long as it takes, and the answer covers this attempt only.
-    printf '\n[r]etry after closing them, [c]ancel, or [f]orce? ' >&2
-    if ! read -r answer; then
-      printf '\n' >&2
-      answer=c
-    fi
+    answer=$(ask_blocked "$mount_dir" "${blockers[@]}") || answer=c
     case $answer in
       r | retry) continue ;;
       f | force)
