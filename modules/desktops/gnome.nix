@@ -1,9 +1,16 @@
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   inherit (lib.hm.gvariant) mkEmptyArray mkTuple type;
 
   mediaKeys = "org/gnome/settings-daemon/plugins/media-keys";
+
+  # Where home.nix clones the knowledge database. Obsidian takes a vault as a
+  # URI rather than an argument, and reads the query value whole, so the path's
+  # separators are encoded.
+  knowledgeDatabase = "${config.home.homeDirectory}/Documents/Knowledge-Database";
+  knowledgeDatabaseUri =
+    "obsidian://open?path=" + lib.replaceStrings [ "/" ] [ "%2F" ] knowledgeDatabase;
 
   # Custom launchers, keyed by their dconf path name. Commands are plain names
   # because the session PATH starts with the Home Manager profile (see
@@ -25,6 +32,12 @@ let
       binding = "<Shift>F11";
       # The command Gradia's own preferences suggest outside Flatpak.
       command = "gradia --screenshot=INTERACTIVE";
+    };
+    # The knowledge database is public-safe: it needs no vault and no unlocking,
+    # which is the whole reason it has a key of its own.
+    knowledge = {
+      binding = "<Super>k";
+      command = "obsidian ${knowledgeDatabaseUri}";
     };
     obsidian = {
       binding = "<Super>n";

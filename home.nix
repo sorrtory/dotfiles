@@ -32,7 +32,7 @@
     "Projects/Uni-AI" = "https://github.com/sorrtory/Uni-AI.git";
     "Projects/freebooru" = "https://github.com/sorrtory/freebooru.git";
     "Documents/keepass" = "https://github.com/sorrtory/keepass.git";
-    "Documents/knowledge-database" = "https://github.com/sorrtory/knowledge-database.git";
+    "Documents/Knowledge-Database" = "https://github.com/sorrtory/knowledge-database.git";
   };
 
   # A non-NixOS distro. Among other things this puts the profile's share
