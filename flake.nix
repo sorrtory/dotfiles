@@ -29,6 +29,7 @@
         inherit system;
         config.allowUnfreePredicate = package:
           builtins.elem (nixpkgs.lib.getName package) [
+            "claude-code"
             # mpv-cut ships a custom licence nixpkgs marks unfree; it is a
             # retained script from the legacy MPV setup, not a new choice.
             "mpv-cut"

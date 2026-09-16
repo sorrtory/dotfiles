@@ -12,6 +12,8 @@
 
     bat
     cargo
+    claude-code
+    codex
     curl
     exiftool
     fd
@@ -46,6 +48,7 @@
     spotify
     tealdeer
     tree
+    uv
 
     # Plain Vim beside Neovim, for the times the Lua configuration is the thing
     # that is broken and for muscle memory that predates it. It reads the
