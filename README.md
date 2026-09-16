@@ -201,6 +201,24 @@ Re-activate the user environment through the same dispatcher:
 ./scripts/bootstrap.sh install home-manager
 ```
 
+## Projects
+
+Home Manager creates `~/Projects`, `~/Documents` and `~/Archive`. It clones
+`Uni-Mobile`, `Uni-Julia`, `Uni-AI` and `freebooru` into Projects, and `keepass`
+and `knowledge-database` into Documents, all from the `sorrtory` GitHub account.
+Select repositories in `home.nix` using home-relative paths and clone URLs:
+
+```nix
+dotfiles.repositories = {
+  "Projects/example" = "https://github.com/owner/example.git";
+};
+```
+
+Activation clones missing projects, leaving existing paths and local changes
+untouched. It never pulls or deletes projects. A failed clone prints a warning;
+fix connectivity or Git authentication and activate again to retry.
+The `keepass` checkout created by secret recovery is reused without modification.
+
 ## Development
 
 Enable the tracked pre-commit hook once after cloning — it is required:

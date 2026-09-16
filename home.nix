@@ -5,6 +5,7 @@
     ./modules/apparmor.nix
     ./modules/desktops/gnome.nix
     ./modules/packages.nix
+    ./modules/directories.nix
     ./modules/programs/git.nix
     ./modules/programs/mpv.nix
     ./modules/programs/neovim.nix
@@ -23,6 +24,15 @@
   home.username = "z";
   home.homeDirectory = "/home/z";
   home.stateVersion = "26.05";
+
+  dotfiles.repositories = {
+    "Projects/Uni-Mobile" = "https://github.com/sorrtory/Uni-Mobile.git";
+    "Projects/Uni-Julia" = "https://github.com/sorrtory/Uni-Julia.git";
+    "Projects/Uni-AI" = "https://github.com/sorrtory/Uni-AI.git";
+    "Projects/freebooru" = "https://github.com/sorrtory/freebooru.git";
+    "Documents/keepass" = "https://github.com/sorrtory/keepass.git";
+    "Documents/knowledge-database" = "https://github.com/sorrtory/knowledge-database.git";
+  };
 
   # A non-NixOS distro. Among other things this puts the profile's share
   # directory into the login session's XDG_DATA_DIRS, which is how GNOME finds
