@@ -64,7 +64,7 @@ selected installation mechanism and its implementation when one exists.
 The first reviewed batch includes:
 
 - standalone CLI tools selected from `curl`, `wget`, GnuPG, `tree`, `fzf`, `htop`, `bat`, `httpie`, `ripgrep`, `fd`, `wl-clipboard`, ImageMagick, ExifTool, and `tealdeer`
-- global development tools: Go, Rust/Cargo, JDK 21, GCC/G++, Make, and `pkg-config`
+- global development tools: Go, Rust/Cargo, JDK 21, GCC/G++, and Make; `pkg-config` was reviewed here but later moved to the host with Clang, see [decisions](DECISIONS.md)
 - program-owned packages as their modules are introduced: Zsh, Git, tmux, Neovim, MPV, and Yazi
 - a small `yt-dlp` bootstrap phase installing the official stable binary for explicit self-updates
 - an explicit privileged Docker bootstrap phase using the official stable convenience installer, establishing target-user group membership, and providing an explicitly destructive full-reset uninstall

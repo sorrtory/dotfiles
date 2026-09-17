@@ -33,12 +33,12 @@ in
     bat
     cargo
 
-    # clangd for Neovim, plus clang-format and clang-tidy. Deliberately not the
-    # `clang` package: its wrapper ships cc, c++ and cpp, which collide with the
-    # same names from gcc above and make the profile's default C compiler a
-    # matter of which derivation won. The tools carry no compiler of their own
-    # and overlap with nothing. clangd reads compile_commands.json, which CMake
-    # writes with CMAKE_EXPORT_COMPILE_COMMANDS=ON.
+    # clangd for Neovim, plus clang-format and clang-tidy. The package carries
+    # no compiler of its own and overlaps with nothing, which is what lets it
+    # sit here while the `clang++` that compiles against the host's own
+    # libraries comes from the native-toolchain bootstrap phase. clangd reads
+    # compile_commands.json, which CMake writes with
+    # CMAKE_EXPORT_COMPILE_COMMANDS=ON.
     clang-tools
 
     cmake
@@ -83,7 +83,14 @@ in
     nodejs
 
     obs-studio
-    pkg-config
+
+    # pkg-config is deliberately absent: the Nixpkgs binary searches only its
+    # own store path, so first on PATH it hides the host's .pc files and a
+    # build against system GTK fails at pkg_check_modules with the development
+    # package installed. The host's own pkg-config comes from the
+    # native-toolchain phase; a Nix development shell brings its own, with a
+    # store-only search path that no longer leaks into it.
+
     ripgrep
     rustc
     sops
