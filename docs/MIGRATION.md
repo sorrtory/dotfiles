@@ -146,7 +146,9 @@ single `show-text ${filename}` binding, which `input.conf` now does directly.
 upstream by the commit that stops the thumbnailer subprocess being spawned
 with a stripped environment on Linux, so the module overrides its source to
 upstream head. `mpv.conf` is otherwise migrated verbatim apart from three settings that all
-concern reaching an unknown machine's GPU: `hwdec` becomes `auto-safe`, video
+concern reaching an unknown machine's GPU: `hwdec` becomes `auto-safe` (since
+turned off outright, after Vulkan decode on the host's Phoenix iGPU took the
+whole device down), video
 output becomes a list ending in software `x11` so a machine MPV cannot
 accelerate still shows a picture, and `gpu-api` becomes `auto`. The drivers
 themselves come from Nixpkgs through the MPV wrapper, because a Nix program
