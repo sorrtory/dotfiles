@@ -31,6 +31,8 @@ A program module owns the package it configures. Standalone tools belong in `mod
 
 The initial global development baseline is Go through `pkgs.go`, Rust and Cargo, JDK 21, GCC/G++, Make, and `pkg-config`. JDK 21 includes the Java runtime, so a separate JRE is unnecessary. The exact versions are pinned by `flake.lock`; project development shells override them only when a project needs another version or dependency set.
 
+CMake, Ninja, GDB and `clang-tools` joined that baseline later. Ninja rather than Make alone, because a project shipping a `CMakePresets.json` that names the Ninja generator fails outright instead of falling back to the Make beside it. `clang-tools` rather than `clang`, because the compiler wrapper ships `cc`, `c++` and `cpp` — the same three names GCC already puts in the profile — so installing it would make the profile's default C compiler a property of which derivation won the collision rather than a decision. The tools carry no compiler of their own, and they supply the `clangd` the editor was otherwise missing for C and C++, reading the `compile_commands.json` CMake writes.
+
 Do not design around `cargo install` or `go install`. Prefer a Nix package or a project development environment.
 
 Codex and Claude Code come from the independently pinned

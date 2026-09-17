@@ -20,12 +20,23 @@
 
     bat
     cargo
+
+    # clangd for Neovim, plus clang-format and clang-tidy. Deliberately not the
+    # `clang` package: its wrapper ships cc, c++ and cpp, which collide with the
+    # same names from gcc above and make the profile's default C compiler a
+    # matter of which derivation won. The tools carry no compiler of their own
+    # and overlap with nothing. clangd reads compile_commands.json, which CMake
+    # writes with CMAKE_EXPORT_COMPILE_COMMANDS=ON.
+    clang-tools
+
+    cmake
     curl
     exiftool
     fd
     ffmpeg
     fzf
     gcc
+    gdb
     gh
     gnumake
     go
@@ -47,6 +58,11 @@
     # family only makes it available; nothing here selects it as a terminal
     # font (see docs/SOFTWARE.md).
     nerd-fonts.meslo-lg
+
+    # CMake's default generator in most projects that ship a CMakePresets.json.
+    # A preset naming Ninja fails outright without it rather than falling back
+    # to the Make beside it.
+    ninja
 
     # Global rather than per-project because mason installs ten of Neovim's
     # language servers as npm packages, and they need Node at runtime, not
