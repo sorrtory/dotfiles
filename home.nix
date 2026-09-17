@@ -7,6 +7,7 @@
     ./modules/packages.nix
     ./modules/directories.nix
     ./modules/scripts.nix
+    ./modules/programs/direnv.nix
     ./modules/programs/firefox.nix
     ./modules/programs/git.nix
     ./modules/programs/mpv.nix
