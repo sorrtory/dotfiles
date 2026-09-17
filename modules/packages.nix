@@ -1,5 +1,17 @@
 { claudeCode, codex, config, pkgs, ... }:
 
+let
+  # Toolchains that install and update themselves under $HOME rather than
+  # through Nix: juliaup manages the Julia versions it puts in .juliaup/bin,
+  # and the Flutter SDK is a git checkout whose bin/ carries both `flutter`
+  # and the `dart` it bundles, so Dart needs no directory of its own. Named
+  # literally because no derivation here produces them.
+  selfManagedToolchainPaths = [
+    "${config.home.homeDirectory}/.local/share/flutter/bin"
+    "${config.home.homeDirectory}/.juliaup/bin"
+  ];
+in
+
 {
   dotfiles.localProxy.wrappedPrograms = [
     {
@@ -105,12 +117,21 @@
   # makes it discoverable system-wide instead.
   fonts.fontconfig.enable = true;
 
-  home.sessionPath = [ "$HOME/.local/bin" ];
+  home.sessionPath = [ "$HOME/.local/bin" ] ++ selfManagedToolchainPaths;
 
   # Desktop launchers and keybinding commands run in the systemd user manager's
   # environment, which never reads hm-session-vars.sh. Put the profile's bin
   # there too, ahead of the distro's directories, so a plain command name finds
   # the Nix program. A distro's Nix installer may already add it, but not every
   # login path does. Read at login.
-  systemd.user.sessionVariables.PATH = "${config.home.profileDirectory}/bin\${PATH:+:}$PATH";
+  #
+  # The toolchain directories are repeated here for the same reason: Android
+  # Studio is started from the desktop, not from a shell, so home.sessionPath
+  # alone leaves its Flutter and Dart plugins unable to find the SDK. They go
+  # after the profile so a Nix-provided command still wins.
+  systemd.user.sessionVariables.PATH =
+    builtins.concatStringsSep ":" (
+      [ "${config.home.profileDirectory}/bin" ] ++ selfManagedToolchainPaths
+    )
+    + "\${PATH:+:}$PATH";
 }

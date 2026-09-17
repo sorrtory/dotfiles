@@ -130,6 +130,20 @@ The tmux plugins are linked under their upstream repository names rather than th
 
 Where a retained plugin manager assumes something is already on `PATH`, Nix supplies it. That is why Node is a global user tool rather than a per-project one: mason installs ten of Neovim's language servers as npm packages, and they need Node to run, not only to install. Without it those servers fail to start and the editor looks subtly broken rather than obviously broken. The `fnm` shim the legacy `init.lua` carried is deleted rather than migrated, because a Nix-provided Node has no shell-dependent `PATH` to lose in a GUI or session launch.
 
+Two toolchains are the deliberate exception to that, and they show what the
+`fnm` shim got wrong rather than excusing it. `juliaup` and the Flutter SDK are
+self-updating installations under `$HOME`, so Nix does not own the versions
+they manage; their `bin` directories are named literally in `modules/packages.nix`.
+The cost is that a directory on `PATH` is only as good as the launch path that
+sets it, which is why they are declared twice: `home.sessionPath` for shells,
+and `systemd.user.sessionVariables.PATH` for the desktop. Android Studio is the
+consumer that makes the second one necessary — it is started from a launcher,
+never a shell, and its Flutter and Dart plugins look for the SDK on the `PATH`
+they inherit. Dart gets no entry of its own because the `dart` it would use
+ships inside Flutter's `bin`. Being an `environment.d` file, the desktop half
+is read at login, so a fresh install of either toolchain is visible to GUI
+programs only after the next one.
+
 Two Home Manager modules generate the very file a native configuration must occupy, and they are resolved differently. `programs.neovim` writes its generated `init.lua` into the directory this repository links whole, so `sideloadInitLua` hands that Lua to the wrapper instead of to a file; nothing is lost, because this configuration generates none. `programs.tmux` generates `tmux.conf` with no comparable hatch, so the tmux module declares the package with `home.packages` and links the plugins itself, keeping ownership of the package it configures without also owning a file the operator edits.
 
 "Copy" in a file manager is three operations, and Yazi's own keymap gives two of them away cheaply while hiding the third. The path is `c c`, a preset. The file itself and the file's contents are not the same thing: one belongs on the system clipboard as `text/uri-list`, which is what makes a GUI application paste an attachment instead of a path string, and the other is text for an editor or a chat window. They get `y` and `Ctrl+y`, with `Alt+Shift+Y` for the same contents behind each file's path in a code fence. `y` runs `yank` before the clipboard plugin, so Yazi's own `p` keeps working; nothing is taken away by the override. The legacy `Alt+y` is retired rather than aliased, because three similar keys for three different operations is the point.
