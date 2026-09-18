@@ -18,7 +18,7 @@ let
     # Rewaita's transparency toggle uses its built-in translucent surfaces;
     # the local package override sets those GTK surfaces to 90% opacity.
     transparency = true;
-    window = true;
+    window = false;
     sharp = false;
     firefox-theme = true;
     accent-fg = false;
