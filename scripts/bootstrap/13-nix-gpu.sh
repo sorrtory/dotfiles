@@ -22,14 +22,14 @@ expected_rule() {
   local setup
 
   setup="$(readlink -f -- "$SETUP")"
-  printf '%s\n' "${setup%/bin/*}/lib/tmpfiles.d/non-nixos-gpu.conf"
+  echo "${setup%/bin/*}/lib/tmpfiles.d/non-nixos-gpu.conf"
 }
 
 expected_drivers() {
   local -a fields
 
   read -ra fields < <(grep -m 1 -- '/run/opengl-driver' "$(expected_rule)")
-  printf '%s\n' "${fields[-1]}"
+  echo "${fields[-1]}"
 }
 
 check() {
