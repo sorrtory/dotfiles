@@ -27,6 +27,13 @@ printf '#!/bin/sh\nprintf "password\\n"\n' >"$TEST_ROOT/bin/zenity"
 for gui in nautilus obsidian; do
   printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/bin/$gui"
 done
+cat >"$TEST_ROOT/bin/notify-send" <<'STUB'
+#!/bin/sh
+printf '%s\n' "$*" >>"$NOTIFICATIONS"
+STUB
+export NOTIFICATIONS="$TEST_ROOT/notifications"
+: >"$NOTIFICATIONS"
+unset VAULT_DESKTOP_ENTRY
 printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/bin/fusermount3"
 chmod +x "$TEST_ROOT"/bin/*
 export PATH="$TEST_ROOT/bin:$PATH"
@@ -201,6 +208,37 @@ case " $* " in
 esac
 STUB
 chmod +x "$TEST_ROOT/bin/zenity"
+
+# Nothing was locked above, so nothing may have claimed it was.
+[[ ! -s $NOTIFICATIONS ]] || fail "a notification without a lock: $(cat "$NOTIFICATIONS")"
+
+# --- the desktop entry ------------------------------------------------------
+
+entry="$HOME/.local/share/applications/vault.desktop"
+bash "$vault" entry
+[[ ! -e $entry ]] || fail 'an entry was written without VAULT_DESKTOP_ENTRY'
+
+export VAULT_DESKTOP_ENTRY="$HOME/Quiet"
+bash "$vault" entry
+[[ -f $entry ]] || fail 'entry not written'
+grep -qx 'Name=Unlock Vault' "$entry" || fail "a locked vault's entry does not offer to unlock: $(cat "$entry")"
+grep -qx 'Icon=changes-prevent-symbolic' "$entry" || fail 'a locked vault does not show a closed padlock'
+grep -qx "Exec=\"$vault\" toggle \"$HOME/Quiet\"" "$entry" || fail "entry does not toggle the vault: $(grep Exec "$entry")"
+
+# Any lock refreshes it too, not only the entry command.
+rm -f "$entry"
+bash "$vault" lock "$HOME/Quiet" >/dev/null 2>&1
+[[ -f $entry ]] || fail 'lock did not refresh the entry'
+
+# Toggling a locked vault opens it, asking through the dialog.
+: >"$GOCRYPTFS_CALLS"
+bash "$vault" toggle "$HOME/Quiet" </dev/null >/dev/null 2>&1 || true
+case $(last_call) in
+  *"-extpass zenity"*"-- $HOME/.Quiet.encrypted $HOME/Quiet") : ;;
+  *) fail "toggle on a locked vault did not unlock it: $(last_call)" ;;
+esac
+if bash "$vault" toggle --all >/dev/null 2>&1; then fail 'toggle accepted --all'; fi
+unset VAULT_DESKTOP_ENTRY
 
 # --- the FUSE helper --------------------------------------------------------
 

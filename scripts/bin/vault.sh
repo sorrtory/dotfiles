@@ -13,6 +13,8 @@ Usage: vault init   [--storage DIR] [NAME]
        vault notes  [--storage DIR] [--terminal|--dialog] [PATH]
        vault lock   [--storage DIR] [--force] [PATH]
        vault lock   --all [--force]
+       vault toggle [--storage DIR] [PATH]
+       vault entry
 
 A private vault is an encrypted directory. There is no registry and no global
 vault: a command acts on the path it is given, or on ./Vault when it is given
@@ -30,6 +32,10 @@ is stored in .Vault.encrypted and Documents/Work in Documents/.Work.encrypted.
   lock    End access. It closes cleanly on its own when nothing is holding the
           vault; when something is, it names what, says what forcing costs,
           and waits for an answer.
+  toggle  Lock the vault if it is unlocked, otherwise open it. What a single
+          launcher does, decided by what is mounted now.
+  entry   Rewrite the desktop entry for VAULT_DESKTOP_ENTRY from the vault's
+          current state. Every lock and unlock does this already.
 
   --storage DIR  Use DIR as the encrypted storage instead of the hidden
                  sibling, for storage that does not follow the rule.
@@ -48,7 +54,8 @@ has already loaded, and does not pretend to.
 
 VAULT_ASKPASS replaces the dialog with a command that prints the password.
 VAULT_FUSERMOUNT names the FUSE helper when the host keeps it somewhere
-unusual.
+unusual. VAULT_DESKTOP_ENTRY names the one vault whose state the desktop
+entry shows; without it no entry is written.
 USAGE
 }
 
@@ -73,6 +80,16 @@ die() {
 
 say() {
   printf '%s\n' "$1"
+}
+
+# Success from a launcher has nowhere to be printed either. A notification,
+# not a dialog, because there is nothing to answer.
+notify() {
+  [[ ! -t 1 ]] || return 0
+  [[ -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]] || return 0
+  command -v notify-send >/dev/null || return 0
+  notify-send --app-name=Vault --icon=changes-prevent-symbolic "$1" "$2" \
+    >/dev/null 2>&1 || true
 }
 
 # --- the host's FUSE helper --------------------------------------------------
@@ -363,7 +380,9 @@ do_unlock() {
   fi
 
   choose_prompt "$mount_dir"
-  gocryptfs "${EXTPASS[@]}" -- "$storage" "$mount_dir" || status=$?
+  # fd 9 is toggle's lock. The daemon outlives this command and must not
+  # inherit it, or no later click would ever get the lock.
+  gocryptfs "${EXTPASS[@]}" -- "$storage" "$mount_dir" 9>&- || status=$?
   case $status in
     0) ;;
     12) die "that password does not open $mount_dir" ;;
@@ -466,6 +485,52 @@ verify_locked() {
   return 0
 }
 
+# --- the desktop entry -------------------------------------------------------
+
+# A desktop entry is a static file: the shell cannot work out a name or an icon
+# from the vault's state. So every change of state rewrites it, in the user's
+# own applications directory, which is writable and outranks the Nix profile.
+# The icon shows the state and the name the action, as a padlock usually does.
+#
+# Only this command's own locks and unlocks move it. A daemon that dies on its
+# own leaves a stale mount, which still reads as unlocked, and clicking locks
+# it, which is what clears it anyway.
+update_entry() {
+  local target=${VAULT_DESKTOP_ENTRY:-} dir tmp self name icon comment
+  [[ -n $target ]] || return 0
+  target=$(realpath -m -- "$target")
+  self=$(realpath -- "$0") || return 0
+  dir=${XDG_DATA_HOME:-$HOME/.local/share}/applications
+
+  if is_mounted "$target"; then
+    name='Lock Vault'
+    icon=changes-allow-symbolic
+    comment="Close $target and end access to it"
+  else
+    name='Unlock Vault'
+    icon=changes-prevent-symbolic
+    comment="Unlock $target and show it in the file manager"
+  fi
+
+  mkdir -p -- "$dir" 2>/dev/null || return 0
+  tmp=$(mktemp -- "$dir/.vault.desktop.XXXXXX" 2>/dev/null) || return 0
+  # Written aside and renamed over, so the shell never reads half an entry.
+  if printf '%s\n' \
+    '[Desktop Entry]' \
+    'Type=Application' \
+    "Name=$name" \
+    "Comment=$comment" \
+    "Exec=\"$self\" toggle \"$target\"" \
+    "Icon=$icon" \
+    'Terminal=false' \
+    'Categories=Utility;Security;' \
+    'Keywords=vault;lock;unlock;encrypted;private;' >"$tmp" &&
+    chmod 644 -- "$tmp" && mv -f -- "$tmp" "$dir/vault.desktop"; then
+    return 0
+  fi
+  rm -f -- "$tmp"
+}
+
 # --- opening things ----------------------------------------------------------
 
 # Launched detached, so the vault stays open when the terminal that unlocked it
@@ -484,7 +549,7 @@ launch() {
     say "$what $state. $1 is not installed, so nothing was opened."
     return 0
   fi
-  setsid "$@" >/dev/null 2>&1 &
+  setsid "$@" >/dev/null 2>&1 9>&- &
   say "$what $state."
 }
 
@@ -534,6 +599,7 @@ cmd_unlock() {
   require_fuse_helper
   do_unlock "$mount_dir" "$storage"
   record_daemon "$mount_dir" "$storage"
+  update_entry
   if ((UNLOCK_REUSED)); then
     say "$mount_dir is already unlocked."
   else
@@ -551,6 +617,7 @@ cmd_open() {
   require_fuse_helper
   do_unlock "$mount_dir" "$storage"
   record_daemon "$mount_dir" "$storage"
+  update_entry
   launch "$mount_dir" nautilus -w -- "$mount_dir"
 }
 
@@ -572,6 +639,7 @@ cmd_notes() {
 
   do_unlock "$mount_dir" "$storage"
   record_daemon "$mount_dir" "$storage"
+  update_entry
 
   # Created on first use rather than by init, which makes a general-purpose
   # encrypted filesystem and not a notes layout.
@@ -655,6 +723,7 @@ lock_one() {
   if ! is_mounted "$mount_dir"; then
     say "$mount_dir is not unlocked."
     rm -f -- "$(runtime_record "$mount_dir")"
+    update_entry
     return 0
   fi
 
@@ -695,8 +764,13 @@ lock_one() {
   verify_locked "$mount_dir" "$daemon" || die "$mount_dir was not locked"
 
   rm -f -- "$(runtime_record "$mount_dir")"
+  update_entry
   say "$mount_dir is locked."
   say 'This ends access through the vault. It cannot unread what a program already loaded.'
+  # Not at session end: there is nobody left to see it, and the notification
+  # server may already be gone.
+  ((ALL)) || notify "$(basename -- "$mount_dir") is locked" \
+    'Access through the vault has ended.'
 }
 
 # Every vault this session unlocked, for a session ending with nobody there to
@@ -729,6 +803,25 @@ cmd_lock() {
   lock_one "$TARGET_MOUNT" "$TARGET_STORAGE"
 }
 
+cmd_toggle() {
+  local lock
+  resolve_target toggle "$@"
+  ((!ALL)) || die 'toggle acts on one vault, not --all'
+
+  # A second click while the first is still asking for the password would ask
+  # again and then fail on a mount point the first one filled. It is dropped.
+  lock="$(dirname -- "$(runtime_record placeholder)")/toggle.lock"
+  mkdir -p -- "$(dirname -- "$lock")"
+  exec 9>"$lock"
+  flock -n 9 || exit 0
+
+  if is_mounted "$TARGET_MOUNT"; then
+    lock_one "$TARGET_MOUNT" "$TARGET_STORAGE"
+  else
+    cmd_open "$@"
+  fi
+}
+
 main() {
   local command
   if (($# == 0)); then
@@ -743,6 +836,8 @@ main() {
     open) cmd_open "$@" ;;
     notes) cmd_notes "$@" ;;
     lock) cmd_lock "$@" ;;
+    toggle) cmd_toggle "$@" ;;
+    entry) update_entry ;;
     -h | --help | help) usage ;;
     *)
       printf 'vault: unknown command: %s\n' "$command" >&2
