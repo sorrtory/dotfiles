@@ -60,8 +60,12 @@ run jpg URL >/dev/null
   fail "jpg should convert through gallery-dl's exec: $(recorded)"
 
 run file URL >/dev/null
-[[ $(recorded) == 'aria2c --all-proxy http://p:3128 -x8 -s8 --continue URL '* ]] ||
+[[ $(recorded) == 'aria2c --all-proxy http://p:3128 -x8 -s8 --continue --force-sequential=true URL '* ]] ||
   fail "file should reach aria2c with real parallelism: $(recorded)"
+
+run file URL1 URL2 >/dev/null
+[[ $(recorded) == *'--force-sequential=true URL1 URL2 '* ]] ||
+  fail "multiple file URLs must be separate downloads, not mirrors: $(recorded)"
 
 # --- the conversion snippets --------------------------------------------
 
@@ -105,6 +109,15 @@ run mp3 'spotify:track:abc' >/dev/null
 
 run mp3 saved >/dev/null
 [[ $(recorded) == 'spotdl '* ]] || fail "'saved' means liked songs, which only spotdl reads"
+
+run mp3 --user-auth saved >/dev/null
+[[ $(recorded) == 'spotdl '* ]] ||
+  fail "a valueless option before 'saved' must not hide the spotdl query"
+
+output=$(run audio 'https://open.spotify.com/track/abc' 2>&1 || true)
+[[ $output == *'choose mp3'* ]] ||
+  fail "Spotify audio should require an explicit output format: $output"
+[[ ! -s $root/recording ]] || fail 'formatless Spotify audio must not reach spotdl'
 
 run mp3 'https://youtube.com/watch?v=x' >/dev/null
 [[ $(recorded) == 'yt-dlp '* ]] ||
@@ -233,6 +246,21 @@ compgen -G "$frames/anim-*.jpg" >/dev/null &&
 run_snippet still.webp || fail 'a still webp should convert'
 [[ -f $frames/still.jpg ]] || fail 'a still webp should become a jpg'
 [[ ! -e $frames/still.webp ]] || fail 'a converted still should have its original removed'
+
+magick -size 20x20 xc:navy "$frames/collision.webp"
+magick -size 20x20 xc:red "$frames/collision.jpg"
+collision_hash=$(sha256sum "$frames/collision.jpg")
+run_snippet collision.webp 2>/dev/null && fail 'an existing conversion target should be refused'
+[[ -f $frames/collision.webp ]] || fail 'a collision must keep the downloaded source'
+[[ $(sha256sum "$frames/collision.jpg") == "$collision_hash" ]] ||
+  fail 'a collision must not overwrite the existing target'
+
+printf 'not an image' >"$frames/broken.webp"
+run_snippet broken.webp 2>/dev/null && fail 'a failed conversion should report failure'
+[[ -f $frames/broken.webp ]] || fail 'a failed conversion must keep its source'
+[[ ! -e $frames/broken.jpg ]] || fail 'a failed conversion must not publish a target'
+compgen -G "$frames/*.tmp.*" >/dev/null &&
+  fail 'conversion temporary files must be cleaned up'
 
 # --- yt-dlp comes from bootstrap, not Nix --------------------------------
 

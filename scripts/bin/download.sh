@@ -28,8 +28,9 @@ Files land in the current directory. Use the backend's own option to put them
 elsewhere: -P for yt-dlp, -D for gallery-dl, -d for aria2c.
 
 Spotify links and the query 'saved' always go to spotdl, because nothing else
-reads them. --spotify-meta sends a YouTube link there too, to get Spotify's
-tags on a track that is only on YouTube.
+reads them. Spotify has no untouched source format, so use an explicit audio
+extension for it. --spotify-meta sends a YouTube link there too, to get
+Spotify's tags on a track that is only on YouTube.
 
 Downloads go through the local proxy in $PROXY. For a direct run:
 
@@ -51,13 +52,14 @@ die() {
 # own documented answer.
 #
 # The original is removed only after a conversion that both succeeded and wrote
-# a non-empty file, because the alternative to keeping a stray source is losing
-# the image. A failure warns and returns non-zero, which gallery-dl treats as a
-# warning, so one bad file does not end the run. Formats outside the list are
-# left alone. So is anything holding more than one frame: webp, avif, heic and
-# tiff all can, and ImageMagick exits 0 while writing name-0, name-1 and so on,
-# leaving the single name promised absent and strays gallery-dl knows nothing
-# about beside it. Extension alone cannot tell, so the frame count is read.
+# a non-empty file. Conversion goes to a sibling temporary file, and an atomic
+# hard-link claims the final name without replacing anything already there. A
+# failure warns and returns non-zero, which gallery-dl treats as a warning, so
+# one bad file does not end the run. Formats outside the list are left alone. So
+# is anything holding more than one frame: webp, avif, heic and tiff all can,
+# and ImageMagick exits 0 while writing name-0, name-1 and so on, leaving the
+# single name promised absent and strays gallery-dl knows nothing about beside
+# it. Extension alone cannot tell, so the frame count is read.
 #
 # Single quotes throughout: every expansion belongs to the shell gallery-dl
 # starts, not to this one.
@@ -83,12 +85,28 @@ converter() {
   esac
 
   target_path="${source_path%.*}.'"$target"'"
-  if magick "$source_path"'"$quality"' "$target_path" && [ -s "$target_path" ]
+  if [ -e "$target_path" ] || [ -L "$target_path" ]; then
+    printf "download: kept %s, target already exists: %s\n" \
+      "$source_path" "$target_path" >&2
+    exit 1
+  fi
+
+  temp_path=$(mktemp -- "$target_path.tmp.XXXXXX.'"$target"'") || exit 1
+  trap '\''rm -f -- "$temp_path"'\'' EXIT HUP INT TERM
+  if magick "$source_path"'"$quality"' "$temp_path" && [ -s "$temp_path" ]
   then
-    rm -f -- "$source_path"
+    chmod --reference="$source_path" "$temp_path" || exit 1
+    if ln -- "$temp_path" "$target_path"; then
+      rm -f -- "$temp_path"
+      trap - EXIT HUP INT TERM
+      rm -f -- "$source_path"
+    else
+      printf "download: kept %s, target already exists: %s\n" \
+        "$source_path" "$target_path" >&2
+      exit 1
+    fi
   else
     printf "download: kept %s, conversion failed\n" "$source_path" >&2
-    rm -f -- "$target_path"
     exit 1
   fi
 '
@@ -142,26 +160,25 @@ esac
 # Spotify is the one thing a URL has to be inspected for, because yt-dlp has no
 # extractor for it at all.
 spotify=$spotify_meta
-previous=''
 for argument in "$@"; do
   case $argument in
   https://open.spotify.com/* | http://open.spotify.com/* | spotify:*)
     spotify=1
     ;;
-  saved)
-    # Only a positional 'saved' means liked songs. As the value of an option,
-    # as in --output saved, it belongs to that option.
-    [[ $previous == -* ]] || spotify=1
-    ;;
   esac
-  previous=$argument
 done
+
+# Backend options precede their source in this command's documented syntax.
+# Restrict spotDL's bare `saved` query to the final argument so an option value
+# such as `--output saved URL` cannot change the backend.
+[[ ${!#} == saved ]] && spotify=1
 
 if ((spotify)); then
   [[ $kind == audio ]] ||
     die "Spotify carries audio only; ask for an audio type or extension"
   case $format in
-  '' | mp3 | flac | ogg | opus | m4a | wav) ;;
+  '') die "Spotify has no untouched audio source; choose mp3, flac, ogg, opus, m4a or wav" ;;
+  mp3 | flac | ogg | opus | m4a | wav) ;;
   *) die "Spotify cannot give you $format; it supports mp3, flac, ogg, opus, m4a and wav" ;;
   esac
   backend=spotdl
@@ -268,8 +285,10 @@ gallery-dl)
   ;;
 aria2c)
   # aria2's own default is one connection per server, which would make it no
-  # better than wget. An empty --all-proxy overrides a proxy, as documented.
-  command=(aria2c --all-proxy "$proxy" -x8 -s8 --continue)
+  # better than wget. Without force-sequential it also treats command-line URLs
+  # as mirrors of one file rather than independent downloads. An empty
+  # --all-proxy overrides a proxy, as documented.
+  command=(aria2c --all-proxy "$proxy" -x8 -s8 --continue --force-sequential=true)
   ;;
 spotdl)
   command=(spotdl)
