@@ -1,0 +1,107 @@
+/* Autumn Glass: the palette of configs/ayugram/autumn-glass for Obsidian.
+   Warm espresso surfaces, parchment text, copper/maple accents and a muted
+   teal secondary.
+
+   Solid colors only. Obsidian's window can be see-through on Linux, but
+   Chromium redraws it with glitches on GNOME Wayland while the window moves,
+   and a wallpaper behind the panels was too busy for writing. */
+
+.theme-dark {
+  --accent-h: 17;
+  --accent-s: 57%;
+  --accent-l: 50%;
+
+  /* The editor sits a shade deeper than the sidebars, as AyuGram's chat area
+     does against its chat list. */
+  --background-primary: #251815;
+  --background-primary-alt: #2D1E1A;
+  --background-secondary: #2D1E1A;
+  --background-secondary-alt: #35231E;
+  --background-modifier-hover: #4C342B;
+  --background-modifier-active-hover: #6C3C28;
+  --background-modifier-border: #412D27;
+  --background-modifier-border-hover: #5E4236;
+  --background-modifier-border-focus: #DE7C45;
+  --background-modifier-form-field: #35231E;
+  --background-modifier-message: #2E201B;
+  --background-modifier-error: #E96B58;
+  --background-modifier-success: #6FC5B7;
+  --background-modifier-cover: rgba(15, 9, 7, 0.65);
+  --divider-color: #412D27;
+
+  --titlebar-background: #2D1E1A;
+  --titlebar-background-focused: #2D1E1A;
+  --tab-container-background: #2D1E1A;
+  --ribbon-background: #2D1E1A;
+  --ribbon-background-collapsed: #251815;
+  --status-bar-background: #2D1E1A;
+
+  --text-normal: #F6E9DA;
+  --text-muted: #BDA18E;
+  --text-faint: #957C6E;
+  --text-on-accent: #FFF8EE;
+  --text-accent: #E9A15E;
+  --text-accent-hover: #F4B878;
+  --text-error: #F08067;
+  --text-success: #6FC5B7;
+  --text-warning: #E9A15E;
+  --text-selection: rgba(200, 97, 56, 0.40);
+  --text-highlight-bg: rgba(233, 161, 94, 0.30);
+
+  --interactive-normal: #3D2922;
+  --interactive-hover: #4C342B;
+  --interactive-accent: #C86138;
+  --interactive-accent-hover: #D87546;
+
+  --nav-item-background-active: rgba(200, 97, 56, 0.35);
+  --nav-item-color-active: #FFF8EE;
+
+  --link-color: #E9A15E;
+  --link-color-hover: #F4B878;
+  --link-external-color: #6FC5B7;
+  --link-external-color-hover: #8AD6CA;
+  --link-unresolved-color: #C8AD98;
+
+  --h1-color: #F9EBDD;
+  --h2-color: #EFB27E;
+  --h3-color: #E9A15E;
+  --h4-color: #DE7C45;
+  --h5-color: #6FC5B7;
+  --h6-color: #BDA18E;
+
+  --blockquote-border-color: #D46E40;
+  --blockquote-background-color: #2F1F1A;
+  --hr-color: #4C342B;
+
+  --code-background: #1F1410;
+  --code-normal: #EEDBC8;
+  --code-comment: #957C6E;
+  --code-keyword: #DE7C45;
+  --code-function: #E9A15E;
+  --code-string: #9CC5A1;
+  --code-value: #6FC5B7;
+  --code-property: #EFB27E;
+  --code-tag: #F08067;
+  --code-operator: #D6BAA2;
+  --code-punctuation: #BDA18E;
+  --code-important: #F08067;
+
+  --checkbox-color: #C86138;
+  --checkbox-color-hover: #D87546;
+  --checkbox-border-color: #B6907A;
+  --checklist-done-color: #957C6E;
+
+  --tag-color: #F4D7BD;
+  --tag-background: rgba(200, 97, 56, 0.25);
+  --tag-background-hover: rgba(200, 97, 56, 0.38);
+
+  --modal-background: #2E201B;
+  --modal-border-color: #5E4236;
+  --prompt-border-color: #5E4236;
+  --menu-background: #2E201B;
+  --menu-border-color: #4C342B;
+
+  --scrollbar-bg: transparent;
+  --scrollbar-thumb-bg: rgba(232, 200, 166, 0.22);
+  --scrollbar-active-thumb-bg: rgba(244, 217, 185, 0.40);
+}
