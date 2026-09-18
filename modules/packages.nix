@@ -44,6 +44,11 @@ in
     # reuses what recovery downloaded; an override here would fetch them twice.
     age
 
+    # Also a runtime input of `download`, which reaches it only through
+    # `download file`. Here as well so `aria2c` works on its own, for a
+    # torrent, a metalink or a resumed partial file. Same pin, same store path.
+    aria2
+
     bat
     cargo
 
@@ -75,6 +80,7 @@ in
     httpie
     imagemagick
     jdk21
+    jq
     keepassxc
 
     # Patches Meslo with the glyphs Neovim's completion menu, lualine, neo-tree
@@ -107,6 +113,12 @@ in
 
     ripgrep
     rustc
+
+    # For bash-language-server, which Neovim's bashls runs and which reports
+    # diagnostics only when shellcheck is on PATH, and for checking scripts by
+    # hand before writeShellApplication rejects them at build time.
+    shellcheck
+
     sops
     spotify
     tree
@@ -125,6 +137,8 @@ in
     # clipboard plugin pick their tool by session type, so an X session — the
     # staging VM is one — needs this to copy at all.
     xclip
+
+    yq
 
     # How the vault asks for a password when it is opened from a keybinding
     # rather than a terminal: gocryptfs runs it through -extpass and reads the
