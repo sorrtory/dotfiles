@@ -338,12 +338,14 @@ in
 
       # Spotify's window has no alpha channel, even with Chromium's
       # --enable-transparent-visuals, so its CSS cannot make it see-through the
-      # way Rewaita does for GTK and Firefox. Blur my Shell fades the whole
-      # window instead, text included, and blurs what is behind it. Opacity is
-      # out of 255; dynamic opacity would make the focused window opaque again.
+      # way Rewaita does for GTK and Firefox. Sublime Text has no opacity
+      # setting at all. Blur my Shell fades the whole window instead, text
+      # included, and blurs what is behind it. Opacity is out of 255; dynamic
+      # opacity would make the focused window opaque again. Sublime's WM class
+      # varies in case between builds, as in its launcher above.
       "org/gnome/shell/extensions/blur-my-shell/applications" = {
         blur = true;
-        whitelist = [ "Spotify" ];
+        whitelist = [ "Spotify" "Sublime_text" "sublime_text" ];
         opacity = 230;
         dynamic-opacity = false;
       };

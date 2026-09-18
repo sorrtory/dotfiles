@@ -9,8 +9,50 @@
     "command": "select_lines",
     "args": { "forward": true }
   },
+  // VS Code's terminal panel. The first press starts the shell in the current
+  // file's directory, or the project folder for an unsaved view; later
+  // presses show or hide that same shell, as VS Code does.
   {
     "keys": ["ctrl+j"],
-    "command": "toggle_terminus_panel"
+    "command": "toggle_terminus_panel",
+    "args": { "hide_active": true, "cwd": "${file_path:${folder}}" }
+  },
+  // A new terminal, always in the current file's directory.
+  {
+    "keys": ["ctrl+shift+`"],
+    "command": "terminus_open",
+    "args": { "show_in_panel": true, "cwd": "${file_path:${folder}}" }
+  },
+  // VS Code's side bar key; Sublime's own is Ctrl+K Ctrl+B, and Ctrl+B builds
+  // (F7 still does).
+  {
+    "keys": ["ctrl+b"],
+    "command": "toggle_side_bar"
+  },
+  // The rest are VS Code keys. They stay out of the terminal, where Ctrl+M is
+  // Enter and Alt+F and Alt+Z go to the shell. Terminus sets terminus_view
+  // only on its own views, so the test is "not true" rather than "false".
+  {
+    "keys": ["alt+f"],
+    "command": "reveal_in_side_bar",
+    "context": [{ "key": "terminus_view", "operator": "not_equal", "operand": true }]
+  },
+  {
+    "keys": ["ctrl+m"],
+    "command": "toggle_minimap",
+    "context": [{ "key": "terminus_view", "operator": "not_equal", "operand": true }]
+  },
+  {
+    "keys": ["alt+z"],
+    "command": "toggle_setting",
+    "args": { "setting": "word_wrap" },
+    "context": [{ "key": "terminus_view", "operator": "not_equal", "operand": true }]
+  },
+  // Ctrl+M was Sublime's jump to the matching bracket; this is VS Code's key
+  // for it.
+  {
+    "keys": ["ctrl+shift+\\"],
+    "command": "move_to",
+    "args": { "to": "brackets" }
   }
 ]

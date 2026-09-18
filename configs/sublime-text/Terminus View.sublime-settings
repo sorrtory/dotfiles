@@ -1,0 +1,4 @@
+{
+  // The shell prompt draws Nerd Font glyphs, as in WezTerm.
+  "font_face": "MesloLGS Nerd Font Mono"
+}

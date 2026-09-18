@@ -1,7 +1,29 @@
 {
   "theme": "Adaptive.sublime-theme",
-  "font_size": 12,
+  "color_scheme": "Gruvbox Rewaita.sublime-color-scheme",
+  "font_size": 14,
   "ignored_packages": ["Vintage"],
-  "color_scheme": "Mariana.sublime-color-scheme",
-  "index_files": true
+  "index_files": true,
+
+  // Editing, as in configs/vscode/settings.json.
+  "tab_size": 4,
+  "translate_tabs_to_spaces": true,
+  "rulers": [80, 120],
+  // Sublime's default wraps prose syntaxes such as Markdown. Long lines stay
+  // unwrapped everywhere, as in VS Code; Alt+Z toggles wrapping per file.
+  "word_wrap": false,
+  // Sublime has no save-after-delay; saving when focus leaves the file is
+  // the closest to VS Code's files.autoSave.
+  "save_on_focus_lost": true,
+
+  // IDE-style chrome: the current line, its number and the active indent
+  // guide stand out, modified tabs are marked, and the status bar shows the
+  // encoding and line endings.
+  "highlight_line": true,
+  "highlight_line_number": true,
+  "highlight_modified_tabs": true,
+  "indent_guide_options": ["draw_normal", "draw_active"],
+  "show_encoding": true,
+  "show_line_endings": true,
+  "open_files_in_new_window": "never",
 }

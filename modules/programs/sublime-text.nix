@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   configRoot =
@@ -34,15 +34,18 @@ in
 {
   home.packages = [ sublime4 ];
 
-  xdg.configFile."sublime-text/Packages/User/Preferences.sublime-settings".source =
-    config.lib.file.mkOutOfStoreSymlink "${configRoot}/Preferences.sublime-settings";
-
-  xdg.configFile."sublime-text/Packages/User/Default (Linux).sublime-keymap".source =
-    config.lib.file.mkOutOfStoreSymlink "${configRoot}/Default (Linux).sublime-keymap";
-
-  xdg.configFile."sublime-text/Packages/User/Package Control.sublime-settings".source =
-    config.lib.file.mkOutOfStoreSymlink "${configRoot}/Package Control.sublime-settings";
-
-  xdg.configFile."sublime-text/Installed Packages/Package Control.sublime-package".source =
-    packageControl;
+  xdg.configFile = lib.genAttrs (map (name: "sublime-text/Packages/User/${name}") [
+    "Preferences.sublime-settings"
+    "Gruvbox Rewaita.sublime-color-scheme"
+    "Default (Linux).sublime-keymap"
+    "Package Control.sublime-settings"
+    "Terminus.sublime-settings"
+    "Terminus View.sublime-settings"
+  ]) (target: {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${configRoot}/${baseNameOf target}";
+  }) // {
+    "sublime-text/Installed Packages/Package Control.sublime-package".source =
+      packageControl;
+  };
 }
