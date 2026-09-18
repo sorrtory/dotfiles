@@ -22,127 +22,17 @@ Use the default five-role triage vocabulary. See `docs/agents/triage-labels.md`.
 
 This is a single-context repository. See `docs/agents/domain.md`.
 
-## Staging
+## Local validation
 
-You are allowed to test the flow on the local VM.
-
-```bash
-ssh z@192.168.122.214
-```
-
-the password is 'z'
-
-use ~/Documents/dotfiles/ as a guest repo
-
-### Ubuntu GNOME VM
-
-A second local VM runs the same desktop as the operator's machines. Use it
-whenever GNOME and Nix meet, such as dconf settings, launchers, Shell
-extensions and session environment variables. The Lubuntu VM above runs LXQt
-and cannot show any of these.
-
-```bash
-ssh z@192.168.122.242
-```
-
-the password is 'z'
-
-- Ubuntu 26.04.1 with GNOME Shell 50.1 on a Wayland session. These are the
-  same versions as the operator's desktop.
-- It is the libvirt domain `ubuntu`, and its `ssh-server` snapshot is a fresh
-  install with only the SSH server added. There is no Nix and no mirrored
-  tree, and GNOME settings are at their defaults. Restore the snapshot rather
-  than cleaning up by hand:
-  `virsh -c qemu:///system snapshot-revert ubuntu ssh-server`.
-- Bootstrap it with [docs/STAGING.md](docs/STAGING.md), substituting the
-  domain and address, with these differences:
-  - Skip the disk growth. Its disk is 40 GiB with a 40 G root on `vda2`, and
-    the snapshot keeps that size.
-  - Its `sudo` needs a password, which is also `z`, so the askpass helper
-    from step 2 works unchanged. Only the address differs.
-  - It has 4 CPUs and about 3 GiB of RAM, so large builds are slow and can
-    run out of memory. Build on the host where the check allows it.
-  - It uses the `staging` configuration and VPN identity as well. Don't run
-    that backend on both VMs at once.
-- Mirror to it with the command below, with this address in place of
-  `192.168.122.214`. Each VM is a separate mirror, so sync the one you are
-  about to test.
-- Its adapter is Virtio GPU, so the GPU limits under "What the VM cannot
-  verify" apply here too.
-- Settings a running session only reads at login need a real re-login on
-  this VM before they can be judged. That covers `environment.d`, newly
-  installed extensions and XKB options.
-
-Resetting the VM or bootstrapping it from a snapshot: follow
-[docs/STAGING.md](docs/STAGING.md). It covers disk size, sudo without a TTY,
-the operator-only recovery step and the `staging` configuration.
-
-### Mirroring the working tree
-
-The host is always the source of truth. The VM mirrors it and never syncs back,
-so anything that exists only on the guest is disposable, and every edit, commit,
-and test starts on the host. The guest copy is a plain directory rather than a
-clone, so Git operations stay on the host.
-
-This single command is the supported way to send the tree. Run it from the
-repository root:
-
-```bash
-rsync -ai --delete \
-  --exclude='.git/' --exclude='.scratch/' --exclude='result' --exclude='result-*' \
-  ./ z@192.168.122.214:~/Documents/dotfiles/
-```
-
-`-a` preserves modes, timestamps, and symlinks; `-i` reports exactly which files
-changed, which is what makes an unexpected transfer visible; and `--delete` is
-what makes the guest a mirror instead of a pile of accumulated leftovers. Repeat
-the command with `-n` first whenever the delete list matters. Do not add `-z`:
-the tree is small text over a local bridge, so compression costs more than the
-transfer.
-
-Each exclusion is load-bearing:
-
-- `.git/` keeps history on the host, where all Git operations belong.
-- `.scratch/` is host-side coordination material, not part of the flow.
-- `result` and `result-*` are guest build outputs pointing into the guest
-  `/nix/store`. They cannot come from the host, and without excluding them
-  `--delete` removes the very symlink `./result/activate` needs.
-
-`--delete` never removes an excluded path, which is what keeps `result` alive.
-The same protection means an excluded directory left by an earlier sync goes
-stale rather than disappearing, so remove a leftover guest `.scratch/` by hand
-when it is in the way.
-
-Then activate through the normal dispatcher:
-
-```bash
-ssh z@192.168.122.214 'cd ~/Documents/dotfiles && ./scripts/bootstrap.sh install home-manager'
-```
-
-A non-interactive `ssh` command runs without Nix on `PATH`. Bootstrap phases
-load the daemon profile themselves, but repository tooling that calls `nix`
-directly does not, so prefix those with
-`. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh &&`.
-
-On the host, evaluate and build without activating:
+The current host is Fedora and Home Manager is the normal user-environment
+manager. Run repository checks and builds on the host:
 
 ```bash
 nix flake check
 nix build .#homeConfigurations.z.activationPackage
 ```
 
-Activate a built generation directly with `./result/activate` only on the
-staging VM, or on the host after explicit operator approval.
-
-### What the VM cannot verify
-
-The guest has no usable GPU. It runs an X session on a virtual adapter whose
-only renderer is software, and mpv-class programs refuse a software renderer by
-design, so anything that needs a real GPU context — shaders, hardware decoding,
-GPU-accelerated compositing — cannot be judged there. A GPU feature can be
-shown to be *correct* on the VM by forcing the software device, which is enough
-for compilation and code paths, but never that it performs. Confirming that
-belongs to the host, under normal use.
+Activate a built generation on the host only after explicit operator approval.
 
 Prefer objective checks driven through the program's own control interface over
 reading logs and assuming. Where a program exposes one — mpv's IPC socket is

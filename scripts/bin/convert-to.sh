@@ -106,7 +106,7 @@ declare -A preexisting=() claimed_by=()
 declare -a collisions=() duplicates=()
 for input in "${inputs[@]}"; do
   output=$(output_for "$input")
-  if [[ -e $output ]]; then
+  if [[ -e $output || -L $output ]]; then
     preexisting[$output]=1
     collisions+=("$output")
   fi
@@ -141,6 +141,45 @@ probe() {
 }
 
 failures=0
+temporary_directory=''
+temporary_output=''
+
+cleanup_temporary_output() {
+  if [[ -n $temporary_output ]]; then
+    rm -f -- "$temporary_output"
+    temporary_output=''
+  fi
+  if [[ -n $temporary_directory ]]; then
+    rmdir -- "$temporary_directory" 2>/dev/null || true
+    temporary_directory=''
+  fi
+}
+trap cleanup_temporary_output EXIT
+
+prepare_temporary_output() {
+  local output=$1 output_directory='.'
+  [[ $output != */* ]] || output_directory=${output%/*}
+  temporary_directory=$(mktemp -d -- "$output_directory/.convert-to.XXXXXX") ||
+    return 1
+  temporary_output="$temporary_directory/${output##*/}"
+}
+
+publish_temporary_output() {
+  local output=$1
+  if [[ -n ${preexisting[$output]:-} ]]; then
+    # The old output remains untouched until this atomic replacement.
+    mv -fT -- "$temporary_output" "$output" || return 1
+  else
+    # Refuse a file which appeared after preflight instead of racing it with
+    # mv(1)'s default overwrite. `mv -n` reports success when it skips a move,
+    # so the temporary file's continued existence is the refusal signal.
+    mv -nT -- "$temporary_output" "$output" || return 1
+    [[ ! -e $temporary_output ]] || return 1
+  fi
+  temporary_output=''
+  rmdir -- "$temporary_directory" || return 1
+  temporary_directory=''
+}
 
 for input in "${inputs[@]}"; do
   output=$(output_for "$input")
@@ -160,13 +199,23 @@ for input in "${inputs[@]}"; do
       failures=$((failures + 1))
       continue
     fi
+    if ! prepare_temporary_output "$output"; then
+      warn "cannot create a temporary output beside $output"
+      failures=$((failures + 1))
+      continue
+    fi
     "${ffmpeg_common[@]}" -i "$input" -vn -c:a libmp3lame -q:a 0 -ar 48000 \
-      ${passthrough[@]+"${passthrough[@]}"} "$output" || status=$?
+      ${passthrough[@]+"${passthrough[@]}"} "$temporary_output" || status=$?
     ;;
 
   gif)
     if [[ -z $video_codec ]]; then
       warn "$input has no video stream to make a gif from"
+      failures=$((failures + 1))
+      continue
+    fi
+    if ! prepare_temporary_output "$output"; then
+      warn "cannot create a temporary output beside $output"
       failures=$((failures + 1))
       continue
     fi
@@ -178,18 +227,23 @@ for input in "${inputs[@]}"; do
       "$palette" &&
       "${ffmpeg_common[@]}" -i "$input" -i "$palette" \
         -lavfi "${filters}[x];[x][1:v]paletteuse=dither=bayer" \
-        ${passthrough[@]+"${passthrough[@]}"} "$output" || status=$?
+        ${passthrough[@]+"${passthrough[@]}"} "$temporary_output" || status=$?
     rm -f -- "$palette"
     ;;
 
   mp4)
     if [[ -n $video_codec ]]; then
+      if ! prepare_temporary_output "$output"; then
+        warn "cannot create a temporary output beside $output"
+        failures=$((failures + 1))
+        continue
+      fi
       if [[ $video_codec == h264 && ( -z $audio_codec || $audio_codec == aac ) ]]; then
         # The codecs already fit mp4, so this is a container change. Safe here
         # and not in download, because the codecs were read first.
         "${ffmpeg_common[@]}" -i "$input" -map '0:v:0' -map '0:a?' -sn -dn \
           -c copy -movflags +faststart \
-          ${passthrough[@]+"${passthrough[@]}"} "$output" || status=$?
+          ${passthrough[@]+"${passthrough[@]}"} "$temporary_output" || status=$?
       else
         "${ffmpeg_common[@]}" -fflags +genpts -i "$input" \
           -map '0:v:0' -map '0:a?' -sn -dn \
@@ -197,9 +251,14 @@ for input in "${inputs[@]}"; do
           -c:v libx264 -preset medium -crf 23 \
           -c:a aac -b:a 160k -ar 48000 -ac 2 \
           -movflags +faststart -max_muxing_queue_size 4096 \
-          ${passthrough[@]+"${passthrough[@]}"} "$output" || status=$?
+          ${passthrough[@]+"${passthrough[@]}"} "$temporary_output" || status=$?
       fi
     elif [[ -n $audio_codec && -n $cover ]]; then
+      if ! prepare_temporary_output "$output"; then
+        warn "cannot create a temporary output beside $output"
+        failures=$((failures + 1))
+        continue
+      fi
       artwork=$(mktemp -t "convert-to-cover.XXXXXX.jpg")
       "${ffmpeg_common[@]}" -i "$input" -map 0:v:0 -frames:v 1 "$artwork" &&
         "${ffmpeg_common[@]}" -loop 1 -framerate 1 -i "$artwork" -i "$input" \
@@ -207,7 +266,7 @@ for input in "${inputs[@]}"; do
           -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p" \
           -c:v libx264 -tune stillimage -c:a aac -b:a 320k \
           -shortest -movflags +faststart \
-          ${passthrough[@]+"${passthrough[@]}"} "$output" || status=$?
+          ${passthrough[@]+"${passthrough[@]}"} "$temporary_output" || status=$?
       rm -f -- "$artwork"
     elif [[ -n $audio_codec ]]; then
       warn "$input is audio with no cover art; nothing to show"
@@ -223,9 +282,11 @@ for input in "${inputs[@]}"; do
 
   if ((status)); then
     warn "$input failed to convert"
-    # Only remove a half-written file this run created. With --force the output
-    # may be one the operator already had, and a failed encode must not take it.
-    [[ -n ${preexisting[$output]:-} ]] || rm -f -- "$output"
+    cleanup_temporary_output
+    failures=$((failures + 1))
+  elif ! publish_temporary_output "$output"; then
+    warn "could not install the converted file at $output; the destination was not replaced"
+    cleanup_temporary_output
     failures=$((failures + 1))
   fi
 done

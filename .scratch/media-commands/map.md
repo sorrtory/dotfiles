@@ -6,10 +6,12 @@ yt-dlp, gallery-dl, aria2c, spotdl and FFmpeg. See [spec.md](spec.md).
 
 ## Tickets
 
-Not cut yet. The spec is settled and carries a `ready-for-agent` status; the
-work divides along obvious lines (the `download` dispatcher, the `convert-to`
-recipes, the package and module wiring, the documentation sweep) but the split
-has not been agreed with the operator.
+- [01 — Support image targets in `convert-to`](issues/01-convert-image-targets.md)
+- [02 — Diagnose Spotify download failure](issues/02-spotify-download-fails.md)
+- [03 — Preserve the requested video format](issues/03-video-original-format.md)
+
+The implementation landed before these field reports. They are follow-up bugs
+and scope decisions against the original settled design.
 
 ## Context
 

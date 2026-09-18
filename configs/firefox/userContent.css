@@ -22,8 +22,33 @@ body {
   /* Fade that trails a collapsed AI Overview into the page color. */
   [data-lhoverlay],
   .RDmXvc,
-  .Zze5V {
+  .Zze5V,
+  .lACQkd {
     background: none !important;
+  }
+
+  /* AI Mode's full-page result panels. */
+  .DZ13He,
+  .SbLVJc {
+    background: transparent !important;
+  }
+
+  /* Body revealed by the AI Overview's "Show more" toggle, and the AI Mode
+   * history drawer opened from the header. */
+  #m-x-content,
+  .ho072b,
+  .ho072b .lfsUlf {
+    background: transparent !important;
+  }
+
+  /* Classic AI Overview panel (the collapsible summary above regular results,
+   * as opposed to full AI Mode) and its lazy-loaded content container. */
+  [data-async-type="folsrch"],
+  [data-lhcontainer],
+  .bzXtMb,
+  .M8OgIe,
+  .dRpWwb {
+    background: transparent !important;
   }
 }
 

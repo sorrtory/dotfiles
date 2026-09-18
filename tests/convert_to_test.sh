@@ -17,12 +17,18 @@ cat "$PROBE_DIR/${argument##*/}" 2>/dev/null
 EOF
 
 # ffmpeg records every invocation and creates whatever output path it was
-# given last, so a two-pass recipe behaves like the real thing.
+# given last, so a two-pass recipe behaves like the real thing. A requested
+# failure writes a partial output first: real ffmpeg can fail after opening and
+# truncating its destination, which is the case transactional output protects.
 cat >"$root/bin/ffmpeg" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"$RECORDING"
-[[ ${FFMPEG_FAILS:-} == "${*: -1}" ]] && exit 1
-: >"${*: -1}"
+output=${*: -1}
+if [[ ${FFMPEG_FAILS:-} == "${output##*/}" ]]; then
+  printf 'partial output\n' >"$output"
+  exit 1
+fi
+: >"$output"
 exit 0
 EOF
 chmod +x "$root/bin/ffprobe" "$root/bin/ffmpeg"
@@ -155,6 +161,8 @@ fi
   fail 'a failed --force encode deleted the file it was overwriting'
 [[ $(<"$root/work/vp9.mp4") == 'PRECIOUS' ]] ||
   fail 'the pre-existing output should be left as it was'
+[[ -z $(find "$root/work" -maxdepth 1 -type d -name '.convert-to.*' -print -quit) ]] ||
+  fail 'a failed conversion left its temporary output behind'
 
 # Without --force the output cannot pre-exist, so a failure does clean up.
 reset_inputs
@@ -205,8 +213,8 @@ mkdir -p "$root/work/dot.dir"
 cp "$root/work/compatible.mkv" "$root/work/dot.dir/clip"
 printf 'h264,video,0\naac,audio,0\n' >"$root/probe/clip"
 run mp4 dot.dir/clip >/dev/null
-[[ $(calls) == *'dot.dir/clip.mp4'* ]] ||
-  fail "the output belongs beside its input: $(calls)"
+[[ -e $root/work/dot.dir/clip.mp4 ]] ||
+  fail 'the output was not installed beside its input'
 [[ ! -e $root/work/dot.mp4 ]] || fail 'the output escaped its directory'
 
 # --- remux keeps what transcode keeps ------------------------------------
