@@ -43,6 +43,7 @@ phases run unattended; the table says where one stops to ask you for something:
 | 10  | `virtualization`  | Installs distro QEMU/KVM, libvirt, virt-manager and UEFI firmware; enables local services and the default VM network. | sudo password |
 | 11  | `fedora-amd-gpu`  | On Fedora with an AMD GPU, pins DNF and RPM Fusion to Yandex mirrors and installs the Mesa VA-API freeworld driver, AMD firmware/kernel packages and GStreamer codecs. Does nothing elsewhere. | sudo password |
 | 12  | `native-toolchain` | Installs the host Clang, GTK 3 development files and `pkg-config` that native desktop builds link against, then proves them by compiling a GTK program with no Nix in the result. | sudo password |
+| 13  | `nix-gpu`         | Points `/run/opengl-driver` at the Nixpkgs GPU drivers from phase 04 and installs the boot rule that recreates it, so Nix programs such as WezTerm can open a window. Rerun after a `flake.lock` bump moves the drivers. | sudo password |
 
 **Then open a new login session.** The new shell, `PATH`, and Docker group
 membership only take effect there, as does any newly added libvirt membership.
@@ -229,9 +230,17 @@ and Shell CSS stays in the native locations Rewaita manages.
 
 ### GPU-accelerated programs
 
-Nothing to do. Nix-built programs cannot use a non-NixOS distro's GPU drivers,
-so MPV carries drivers from Nixpkgs in its own wrapper and finds the GPU
-without any system change or privileged step. On a machine whose GPU it still
+Run the `nix-gpu` bootstrap phase after `home-manager`, and again whenever
+activation warns that the GPU drivers need an update:
+
+```bash
+./scripts/bootstrap.sh install nix-gpu
+```
+
+Nix-built programs cannot use a non-NixOS distro's GPU drivers. WezTerm
+cannot open a window without them, so `targets.genericLinux.gpu` is enabled
+and the phase creates its root-owned `/run/opengl-driver` link. MPV also carries
+drivers from Nixpkgs in its own wrapper and finds the GPU without the link. On a machine whose GPU it still
 cannot reach, video output falls back through software rendering rather than
 disappearing — the picture stays, the Anime4K shaders do not.
 

@@ -21,6 +21,7 @@
     ./modules/programs/vault.nix
     ./modules/programs/vpnized-apps
     ./modules/programs/vscode.nix
+    ./modules/programs/wezterm.nix
     ./modules/programs/yazi.nix
     ./modules/programs/zsh.nix
     ./modules/secrets.nix
@@ -46,9 +47,10 @@
   # directory into the login session's XDG_DATA_DIRS, which is how GNOME finds
   # Nix-installed Shell extensions and desktop entries.
   targets.genericLinux.enable = true;
-  # The target would also deliver GPU drivers through a root-owned
-  # /run/opengl-driver. docs/DECISIONS.md keeps them in MPV's wrapper instead.
-  targets.genericLinux.gpu.enable = false;
+  # GPU drivers for every Nix program, through a root-owned /run/opengl-driver
+  # that the nix-gpu bootstrap phase creates with sudo. WezTerm is what forced
+  # it: without drivers it cannot open a window at all. See docs/DECISIONS.md.
+  targets.genericLinux.gpu.enable = true;
 
   dotfiles.localProxy.enable = true;
   # Change this to switch VPN profiles. The staging configuration in flake.nix
