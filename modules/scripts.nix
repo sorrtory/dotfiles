@@ -1,10 +1,23 @@
-{ pkgs, unstablePkgs, ... }:
+{ config, pkgs, unstablePkgs, ... }:
 
 let
+  # 7-Zip is only reached by --compress, but it belongs in runtimeInputs rather
+  # than being resolved from the caller's PATH: it is an ordinary Nix package,
+  # unlike the self-updating yt-dlp below. The root arrives as an environment
+  # variable rather than being substituted into the text, so the same script
+  # still runs straight from the repository — which is how the tests invoke it
+  # — and falls back to ~/Archive when nothing sets it.
   archive = pkgs.writeShellApplication {
     name = "archive";
-    runtimeInputs = [ pkgs.coreutils pkgs.findutils pkgs.rsync ];
-    text = builtins.readFile ../scripts/bin/archive.sh;
+    runtimeInputs = [ pkgs.coreutils pkgs.findutils pkgs.rsync pkgs._7zz ];
+    # := rather than runtimeEnv, which would export unconditionally and quietly
+    # beat a caller that set ARCHIVE_ROOT itself. The configured root is a
+    # default, so the documented order — --to, then the environment, then the
+    # configuration — is the order that actually happens.
+    text = ''
+      : "''${ARCHIVE_ROOT:=${config.dotfiles.archive.root}}"
+      export ARCHIVE_ROOT
+    '' + builtins.readFile ../scripts/bin/archive.sh;
   };
 
   # The one front door for fetching media. yt-dlp is deliberately absent from

@@ -1,6 +1,13 @@
 { config, lib, pkgs, ... }:
 
 {
+  options.dotfiles.archive.root = lib.mkOption {
+    type = lib.types.str;
+    default = "${config.home.homeDirectory}/Archive";
+    example = "/run/media/z/backup/Archive";
+    description = "Where the archive command puts archives. Activation creates it, and the command is told about it through ARCHIVE_ROOT, so the two cannot disagree.";
+  };
+
   options.dotfiles.repositories = lib.mkOption {
     type = lib.types.attrsOf lib.types.str;
     default = { };
@@ -19,7 +26,8 @@
     } ];
 
     home.activation.userDirectories = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      run ${pkgs.coreutils}/bin/mkdir -p "$HOME/Projects" "$HOME/Documents" "$HOME/Archive"
+      run ${pkgs.coreutils}/bin/mkdir -p "$HOME/Projects" "$HOME/Documents" \
+        ${lib.escapeShellArg config.dotfiles.archive.root}
     '';
 
     home.activation.cloneRepositories = lib.hm.dag.entryAfter [ "userDirectories" "linkGeneration" ] (
