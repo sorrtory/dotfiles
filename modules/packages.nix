@@ -1,4 +1,4 @@
-{ claudeCode, codex, config, pkgs, ... }:
+{ claudeCode, codex, config, pkgs, unstablePkgs, ... }:
 
 let
   # Toolchains that install and update themselves under $HOME rather than
@@ -24,7 +24,21 @@ in
     }
   ];
 
-  home.packages = with pkgs; [
+  home.packages = [
+    # The one package here from the unstable pin. Its extractors track the
+    # sites they scrape, so the months the stable channel trails upstream by
+    # are sites that no longer download rather than a version number. It is a
+    # plain package, not a proxy-wrapped program: it takes `--proxy`, so the
+    # download aliases in the Zsh module pass one. See docs/DECISIONS.md.
+    unstablePkgs.gallery-dl
+  ] ++ (with pkgs; [
+    # 7-Zip upstream rather than the p7zip fork, which trails it by years. The
+    # archive command writes .7z and needs it at runtime; it is here as well
+    # because opening an archive again is `7zz x`, and a command that creates
+    # something the profile cannot read back is not finished. See
+    # docs/DECISIONS.md.
+    _7zz
+
     # age, gh and keepassxc are also the secret-recovery app's closure. Plain
     # attributes from the same pin give identical store paths, so activation
     # reuses what recovery downloaded; an override here would fetch them twice.
@@ -116,7 +130,7 @@ in
     # rather than a terminal: gocryptfs runs it through -extpass and reads the
     # password from its stdout.
     zenity
-  ];
+  ]);
 
   # Off by default outside NixOS, so a font in home.packages above would sit in
   # the profile unseen by fontconfig, and therefore by every non-Nix

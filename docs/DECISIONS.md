@@ -49,6 +49,8 @@ Per-project toolchains need something to activate them, and that is direnv with 
 
 Do not design around `cargo install` or `go install`. Prefer a Nix package or a project development environment.
 
+The user environment has one base, the `nixos-26.05` pin, and one escape hatch beside it: the `nixpkgs-unstable` input, read through `unstablePkgs`. It is not a second base. A module keeps taking its packages from `pkgs` and names `unstablePkgs.<name>` only for the specific package stable cannot serve, so the set of packages ahead of the release is exactly the set someone wrote down. Three qualify today, for the two shapes the reason takes: sing-box needs the namespace support absent from the stable pin, a capability that is simply not there, while `gallery-dl` and `spotdl` need to be current, because their value decays between releases — the first tracks the sites it scrapes, the second resolves Spotify tracks through YouTube, and a stale copy of either fails on sites that have moved on. Anything taken from here owes a paragraph below saying which of those it is; "newer is better" is not a reason, since the release pin is the thing being traded away. A single input also means one lock entry moving on `nix flake update`, rather than several branch pins drifting apart.
+
 Codex and Claude Code come from the independently pinned
 `sadjow/codex-cli-nix` and `sadjow/claude-code-nix` flakes rather than stable
 Nixpkgs or the aggregate `llm-agents.nix` package set. These focused providers
@@ -68,6 +70,22 @@ preference, not a network boundary: child processes inherit it, but software
 can ignore proxy environment variables.
 
 The official stable `yt-dlp` binary is an intentional exception: bootstrap installs the verified standalone Linux release under `~/.local/bin`, and `yt-dlp -U` performs explicit updates. Home Manager owns FFmpeg and PATH, but does not install a competing `yt-dlp` package.
+
+`gallery-dl` deliberately does not repeat that pattern, despite looking like the same case. It advertises `-U`, but the updater only resolves a binary when the build sets its own variant marker, which a packaged install never does, and upstream stopped attaching assets to stable releases at v1.32.0: every `gallery-dl.bin` from v1.32.x is a 404, and no release has ever carried a checksums file, only detached GPG signatures. The two things the `yt-dlp` exception rests on — a verified official binary and a working `-U` — therefore do not exist here, and only the unsigned nightly builds in `gdl-org/builds` remain. Stable distribution is now PyPI and distro packages, which is what Nixpkgs packages, so working rule 3 applies unchanged.
+
+It comes from the unstable pin rather than the stable one because its extractors track the sites they scrape: releases land roughly weekly, and the stable channel sat eleven of them behind at the time of writing. A stale extractor is not a cosmetic lag but a site that no longer downloads.
+
+No downloader is a wrapped program of the local proxy, because none needs to be. The wrapper exists for Codex and Claude Code, which have no proxy flag or setting at all and read only the standard environment variables, so the sole lever is the environment they are started in. Every downloader here takes a proxy argument instead, which is the smaller tool: `download` reads `PROXY` and translates it into each backend's own spelling — `--proxy` for yt-dlp, gallery-dl and spotdl, `--all-proxy` for aria2c. `PROXY` is defined once by the local-proxy module, from the same binding the wrappers use, so a command cannot drift from the endpoint the service actually listens on. It is deliberately not `HTTP_PROXY` or `ALL_PROXY`: nothing reads `PROXY` implicitly, so naming it in the session tunnels nothing that did not ask.
+
+
+Fetching and converting are two commands, `download` and `convert-to`, and no aliases at all. An alias exists only in an interactive Zsh, which leaves it unavailable to a script, a desktop launcher or a non-interactive `ssh`, and a family of them copies the format into every name. One argument carries that instead: a type downloads in the source's own format, an extension asks for that format, and the same argument picks the backend, so no URL is ever matched against a table of supported sites — yt-dlp covers on the order of 1800 and gallery-dl hundreds, and any such table is wrong the week it is written. Spotify is the one exception the URL has to be read for, because nothing else can fetch it. Everything after the type reaches the backend verbatim, so `download` owns no destination flag: each backend already has one, and `-o` means four incompatible things across them.
+
+The two commands never call each other. A downloader asked for a format is better at producing it than a later re-encode, because it still holds the source streams, chapters and metadata; `convert-to` is for files already on disk. Only images need our own converter, because gallery-dl has no image post-processor at all and upstream's documented answer is to drive ImageMagick through `--exec`.
+
+Neither command removes anything the operator already had. `download` removes only what it created during the same run, and only after a conversion that both exited zero and wrote a non-empty file; it also skips any source holding more than one frame, because ImageMagick exits zero while exploding an animated WebP or AVIF into numbered files. `convert-to` works out every output before encoding starts and refuses the whole batch if one exists, so a collision costs a second rather than the length of the run, and refuses two inputs that would claim the same output whatever `--force` says, since one result would be lost either way. When `--force` does overwrite, a failed encode leaves the previous file alone rather than cleaning up what it did not create. All of this fixes a real defect in the legacy `convert-to-mp4`, which overwrote an existing `clip.mp4` silently and only after the transcode had finished.
+The per-run opt-outs differ between the backends, which is why `PROXY=` is the single bypass rather than a flag anyone has to remember. `yt-dlp --proxy ""` is documented to mean a direct connection and does, and `aria2c --all-proxy ""` overrides a previous proxy the same way. `gallery-dl --proxy ""` does not: it treats an empty value as unset and falls back to the environment, so an empty `PROXY` has to add `-o proxy-env=false`, the option that stops it reading proxy variables at all. `NO_PROXY` works for a single host in all of them. They also propagate to the FFmpeg they spawn when the variables are set rather than the flag, since FFmpeg reads `http_proxy` and `https_proxy` itself; all of this was verified against a local probe proxy.
+
+Two more findings are recorded here because they contradict what the flags look like they do. `yt-dlp --remux-video` fails outright when the target container does not support the codec rather than falling back to re-encoding, so `download mp4` always uses `--recode-video`, which is a no-op when the source already fits; `convert-to mp4` may remux only because it reads the codecs with `ffprobe` first. And `gallery-dl --proxy ""` is not a direct connection, as above.
 
 Docker is host integration rather than a Home Manager package. Its bootstrap phase uses Docker's official stable convenience installer, previews the installer's package plan, invokes it with explicit privilege, and adds the invoking user to the `docker` group. Membership in that group grants root-level privileges and is therefore a deliberate operator choice. Its explicitly requested uninstall is a full reset: it removes the current user from the group, purges known Docker packages, removes Docker repository configuration, and deletes `/var/lib/docker` and `/var/lib/containerd`, including all local images, containers, volumes, and containerd state.
 
@@ -322,6 +340,71 @@ user data. An encrypted working directory and a versioned backup repository
 serve different purposes, and gocryptfs is not a backup manager.
 
 ## Scripts and privileged networking
+
+The archive command moves by `rename(2)` within a filesystem and copies across
+one. rsync never renames — measured, source inode 24600 against destination
+24601 on one device — so the original rsync-always implementation rewrote every
+byte to archive a directory onto the same partition. Across filesystems it
+copies without `--remove-source-files`, compares both sides with `rsync -c
+--dry-run`, and deletes only once they match; deleting as rsync goes would
+leave the verification pass with nothing to compare against, and the cost is
+needing room for both copies until it finishes.
+
+Compression is a flag, never the default, because no archive format preserves
+hard links: 7z and zip both turn a two-link inode into two independent files. A
+move preserves them, so the faithful behaviour stays the one you get without
+asking.
+
+7z is the only archive format, for encrypted and unencrypted alike. zip cannot
+encrypt file names at all — its central directory is structural, and `unzip -l`
+lists every path of a `zip -e` archive without a password — so the encrypted
+path had to be 7z regardless, and a second format would mean two flag sets
+where `-snl` and `-y` mean the same thing and forgetting either silently
+changes what was archived. zip also loses on size, 401016 bytes against 200444
+on duplicate content, having no solid block to deduplicate across entries.
+
+Encrypted archives are verified with the password on the `7zz` command line,
+which `/proc` exposes to any local process for as long as `t` runs. This is
+accepted rather than preferred. Only `7zz a` will take a password on stdin;
+`t`, `l` and `x` read one from neither a pipe nor a terminal, so there is no
+mechanism that both reads an archive back and keeps the password off argv. The
+alternative was deleting originals against an archive nothing had ever opened.
+`7zz t` reports a wrong password and a damaged archive identically, so the
+command does not claim to tell them apart.
+
+The password is asked for twice and compared. 7-Zip prompts once with no
+confirmation of its own, and an archive made with a mistyped password is
+byte-for-byte as valid as a correct one, so nothing downstream can catch it and
+the source would already be gone. `ARCHIVE_ASKPASS` names a command that prints
+the password, following `VAULT_ASKPASS`; the password itself never goes in the
+environment, which `/proc` exposes for a whole run and every child inherits.
+
+A symlink is resolved into a real file only when its target is a regular file,
+under `$HOME`, and on `$HOME`'s device. Each condition rules out a different
+failure: following a directory symlink recurses — a five-file tree containing
+`up.link -> ..` became 121 files and 163 folders before hitting `ELOOP` — a
+target outside `$HOME` is not the operator's data, and a target on another
+device is a mount, which is what excludes an unlocked private vault, a
+removable disk and a network share without a name list that would rot. Links
+inside the archived tree stay links, because their target is archived too.
+Since 7z can only follow every symlink or none, the policy is applied by
+archiving a `cp -al` hardlink mirror in which qualifying links have been
+replaced; the mirror costs almost nothing beside the source.
+
+The archive name is claimed with `ln`, not by creating the file first. `7zz a`
+merges into an archive that already exists without reporting it, so a lost race
+would silently blend two unrelated archives, and 7z refuses to write into a
+file that exists, so the name cannot be reserved the way the move path reserves
+its directory with `mkdir`.
+
+`dotfiles.archive.root` is the single place the root is written down, reaching
+the command as `ARCHIVE_ROOT` through a `:=` default rather than
+`writeShellApplication`'s `runtimeEnv`, which would export unconditionally and
+beat a caller who set it. Substituting it into the script text instead would
+have left the bare script — which is how the tests invoke it — carrying a store
+path or a broken placeholder.
+
+
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 

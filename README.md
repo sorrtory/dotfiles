@@ -102,7 +102,12 @@ The sing-box user service exposes SOCKS5/HTTP at `127.0.0.1:1080` and HTTP at
 curl, use `curl --proxy socks5h://127.0.0.1:1080 https://api.ipify.org`.
 The shell helper's `socks5://` setting does not itself guarantee remote DNS.
 The `claude` and `codex` launchers always use the HTTP listener independently
-of the current shell's proxy settings.
+of the current shell's proxy settings, because neither program has a proxy
+option of its own to pass.
+
+The downloaders do have one, so they are not wrapped. `$PROXY` holds the HTTP
+listener's address, and the `download` command translates it into whichever
+spelling its backend uses. See [Downloading and converting](#downloading-and-converting).
 
 Use `systemctl --user status sing-box` to inspect the service and
 `systemctl --user restart sing-box` after changing its encrypted profile.
@@ -134,6 +139,46 @@ On the current migration host, the running legacy LXD proxy also uses the
 laptop peer. Stop its use of that identity before activating the new backend
 on this host, or select a different exclusive peer. The staging VM is tested
 with its separate desktop-ubuntu identity.
+
+### Downloading and converting
+
+Two commands. `download` fetches, `convert-to` works on files already on disk.
+
+```bash
+download audio URL     # best audio stream, untouched
+download mp3   URL     # extracted and encoded
+download video URL     # best video, untouched
+download mp4   URL     # recoded
+download image URL     # exactly as published
+download jpg   URL     # still images re-encoded
+download file  URL     # any plain file
+
+convert-to mp3 *.m4a
+convert-to mp4 clip.mkv        # remux if the codecs fit, else transcode
+convert-to mp4 song.mp3        # cover art plus audio, as a still video
+convert-to gif clip.mp4        # two-pass palette, 15 fps, 480px wide
+```
+
+The single argument is either a type, which keeps the source's own format, or
+an extension, which asks for that one. It also chooses the backend: yt-dlp for
+audio and video, gallery-dl for images, aria2c for plain files, spotdl for
+Spotify links and the `saved` query. `--spotify-meta` sends a YouTube link to
+spotdl too, for a track that is only there.
+
+Everything else you pass reaches the backend untouched, so `download mp4
+--playlist-items 1-3 URL` and `download jpg --range 1-5 URL` work. Files land
+in the current directory; use the backend's own option to change that (`-P`,
+`-D`, `-d`). `PROXY= download mp4 URL` runs direct.
+
+`download jpg` and `download png` remove each original they converted, and only
+after the new file exists and is not empty; videos and animations are left
+alone. `download png` skips JPEG sources, because re-encoding a lossy image
+into a lossless container only makes it bigger. `convert-to` never removes
+anything, and refuses the whole batch before encoding if an output already
+exists — `--force` overrides.
+
+`gif` is deliberately a `convert-to` target only: a one-pass GIF bands visibly,
+so download the clip first.
 
 ### GNOME application shortcuts
 
@@ -259,18 +304,43 @@ fix connectivity or Git authentication and activate again to retry.
 The `keepass` checkout created by secret recovery is reused without modification.
 
 The manual `~/.local/bin/archive` command moves a directory's contents, including
-hidden files, into `~/Archive/<name>/<date-and-time>.<unique-suffix>/`:
+hidden files, into `~/Archive/<name>/<date-and-time>/`:
 
 ```bash
 archive ~/Downloads
 archive                  # archive the current directory's contents
+archive --force ~/Downloads   # no question, for scripts and keybindings
 ```
+
+It shows what it is about to move and where, and waits for an answer before
+moving anything:
+
+```text
+  /home/z/Downloads
+  -> /home/z/Archive/Downloads/2026-09-18_01-21-49
+
+  .config
+  big.bin
+  photos/
+  shortcut -> /etc/hosts
+  ... and 10 more
+
+  30 items, 404K
+
+Move the contents of /home/z/Downloads? [y/N]
+```
+
+No is the default and end of input is a No, so a run with nothing attached to
+its input archives nothing rather than something unintended. `--force` skips
+the question for scripts and keybindings, where there is nobody to answer.
 
 It keeps the source directory, preserves symlinks and hard links, and uses
 rsync to remove only successfully transferred files. Failed transfers can leave
 data split between source and destination; the printed destination remains
 available. Run it when nothing is writing to the source. Each invocation creates
-a separate archive. Archiving Archive itself, its children or its ancestors is
+a separate archive: a second run within the same second is named
+`<date-and-time>-2` rather than merging into the first. An empty directory is
+not archived at all. Archiving Archive itself, its children or its ancestors is
 rejected.
 
 ## Development

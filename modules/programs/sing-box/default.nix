@@ -2,8 +2,10 @@
 
 let
   cfg = config.dotfiles.localProxy;
+  # One spelling of the endpoint, shared by the wrappers below and by $PROXY.
+  proxyUrl = "http://127.0.0.1:3128";
   proxyProgram = program: pkgs.writeShellScriptBin program.name ''
-    export HTTP_PROXY="http://127.0.0.1:3128"
+    export HTTP_PROXY="${proxyUrl}"
     export HTTPS_PROXY="$HTTP_PROXY"
     export http_proxy="$HTTP_PROXY"
     export https_proxy="$HTTP_PROXY"
@@ -60,6 +62,11 @@ in
 
   config = lib.mkIf cfg.enable {
     home.packages = [ cfg.package ] ++ map proxyProgram cfg.wrappedPrograms;
+
+    # For programs that take a proxy argument instead of needing to be wrapped:
+    # `yt-dlp --proxy "$PROXY"`. Naming the endpoint once means an alias cannot
+    # drift from the service it is meant to reach.
+    home.sessionVariables.PROXY = proxyUrl;
 
     sops.secrets."sing-box-wireguard" = {
       sopsFile = ../../../secrets/wireguard + "/${config.dotfiles.vpn.identity}.conf";

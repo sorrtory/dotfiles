@@ -4,9 +4,12 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
-    # Only sing-box needs the namespace support absent from the stable pin.
-    # Keep the rest of the user environment on its existing release.
-    nixpkgs-networking.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # The escape hatch for the individual packages the stable pin cannot serve,
+    # reached through `unstablePkgs` rather than as a second base for the user
+    # environment. Adding one is naming it at a single use site; everything
+    # left unnamed stays on the release above. Each package taken from here
+    # owes a line in docs/DECISIONS.md saying what stable could not do.
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     # Coding agents release too quickly for stable Nixpkgs. These focused
     # flakes package the vendors' native binaries instead of compiling them.
@@ -26,10 +29,10 @@
     };
   };
 
-  outputs = { nixpkgs, nixpkgs-networking, claude-code-nix, codex-cli-nix, home-manager, sops-nix, ... }:
+  outputs = { nixpkgs, nixpkgs-unstable, claude-code-nix, codex-cli-nix, home-manager, sops-nix, ... }:
     let
       system = "x86_64-linux";
-      networkingPkgs = import nixpkgs-networking { inherit system; };
+      unstablePkgs = import nixpkgs-unstable { inherit system; };
       claudeCode = claude-code-nix.packages.${system}.default;
       codex = codex-cli-nix.packages.${system}.default;
       pkgs = import nixpkgs {
@@ -86,7 +89,7 @@
       packages.${system} = {
         recover-age-identity = recoverAgeIdentity;
         inherit claudeCode codex;
-        sing-box = networkingPkgs.sing-box;
+        inherit (unstablePkgs) gallery-dl sing-box;
       };
 
       homeConfigurations =
@@ -94,11 +97,11 @@
           mkHome = extraModules: home-manager.lib.homeManagerConfiguration {
             inherit pkgs;
             extraSpecialArgs = {
-              inherit claudeCode codex sops-nix;
+              inherit claudeCode codex sops-nix unstablePkgs;
             };
             modules = [
               ./home.nix
-              { dotfiles.localProxy.package = networkingPkgs.sing-box; }
+              { dotfiles.localProxy.package = unstablePkgs.sing-box; }
             ] ++ extraModules;
           };
         in
