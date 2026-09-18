@@ -213,8 +213,9 @@ match. Additional vaults also named `Notes` are indistinguishable by title.
 ### GNOME autumn theme
 
 Rewaita applies its Gruvbox Medium palette to GTK, GNOME Shell and Firefox at
-graphical login. GNOME's orange accent selects the warm highlight, and the
-Yaru warty-brown icon variant carries it into Files and application launchers.
+graphical login. GTK surfaces use 90% opacity with hairline accent borders.
+GNOME's orange accent selects the warm highlight, and the Yaru warty-brown icon
+variant carries it into Files and application launchers.
 The first activation adds the User Themes extension, so log out and back in
 once; newly opened GTK applications and a fully restarted Firefox then use the
 generated theme. Rewaita's Fine Tune page remains mutable, but selecting a

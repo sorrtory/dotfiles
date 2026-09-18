@@ -135,7 +135,8 @@ Home Manager owns Zsh, Neovim, tmux, MPV, Yazi, Git, and the intentional GNOME d
 Rewaita owns the generated color layer for GTK 3, GTK 4/libadwaita, GNOME
 Shell and Firefox. The selected baseline is Gruvbox Medium in dark mode, with
 GNOME's orange accent choosing Gruvbox orange and Yaru's warty-brown icon
-variant completing the autumn palette. Home Manager installs the User Themes
+variant completing the autumn palette. GTK surfaces use Rewaita's 90% alpha
+variant and its accent borders are reduced to one pixel. Home Manager installs the User Themes
 extension and `adw-gtk3`, seeds Rewaita's mutable preferences only when absent,
 and reruns the preset inside each GNOME login; it does not put generated CSS in
 the Nix store. That leaves Fine Tune changes editable while making a missing or

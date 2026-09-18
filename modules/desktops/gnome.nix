@@ -15,7 +15,9 @@ let
     modify-gtk3-theme = true;
     modify-gnome-shell = true;
     run-in-background = false;
-    transparency = false;
+    # Rewaita's transparency toggle uses its built-in translucent surfaces;
+    # the local package override sets those GTK surfaces to 90% opacity.
+    transparency = true;
     window = true;
     sharp = false;
     firefox-theme = true;
