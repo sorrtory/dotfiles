@@ -1,0 +1,292 @@
+/* Pages show Firefox's translucent window through their root background.
+ * Only the root is cleared: a site that paints its own inner containers keeps
+ * them, and background images stay. Needs browser.tabs.allow_transparent_browser
+ * in user.js. */
+html,
+body {
+  background-color: transparent !important;
+}
+
+/* Google's class names are build-generated and change when Google redeploys.
+ * Each rule leads with a stable hook (an id or data attribute) and keeps the
+ * class seen in DevTools as a second selector; when a look comes back, find
+ * the element in DevTools again and replace the class. */
+@-moz-document regexp("https://www\\.google\\.[a-z.]+/search.*") {
+  /* Header bar. It is sticky, so it blurs what scrolls beneath instead. */
+  #searchform,
+  .CvDJxb {
+    background: transparent !important;
+    backdrop-filter: blur(24px) !important;
+  }
+
+  /* Fade that trails a collapsed AI Overview into the page color. */
+  [data-lhoverlay],
+  .RDmXvc,
+  .Zze5V {
+    background: none !important;
+  }
+}
+
+/* Google's home page: the bare domain or /webhp, with any query. */
+@-moz-document regexp("https://www\\.google\\.[a-z.]+/(webhp)?([?#].*)?") {
+  /* Footer with the country and the About/Privacy/Settings links. */
+  [role="contentinfo"],
+  .Ij8KCd {
+    background: transparent !important;
+  }
+}
+
+/* GitHub styles the logged-in .GlobalNav together with the older .AppHeader. */
+@-moz-document domain(github.com) {
+  .GlobalNav,
+  .AppHeader {
+    background: transparent !important;
+    backdrop-filter: blur(24px) !important;
+  }
+
+  /* CSS-module classes end in a build hash (__gl6dE), and React ids like
+   * #_r_e_ change per render, so only the readable prefix is matched. The
+   * repo page's file table and README panel (every module box inside them,
+   * since their numbered Box_N names shift between builds), the issue filter
+   * input (its suggestion dropdown overlaps the list and stays solid), the
+   * Open/Closed bar above issue and PR lists, the collapsible sidebar with
+   * its footer, and on an issue page the content column, the body and
+   * comment cards with their headers, and the comment composer. */
+  [class*="DirectoryContent-module__"],
+  [class*="DirectoryContent-module__"] [class*="Table-module__"],
+  [class*="OverviewRepoFiles-module__"],
+  [class*="OverviewRepoFiles-module__"] .markdown-body,
+  [class*="IssueViewer-module__contentArea"],
+  [class*="IssueBodyHeader-module__IssueBodyHeaderContainer__"],
+  [class*="TimelineRowBorder-module__shared__"],
+  [class*="ActivityHeader-module__ActivityHeaderContainer__"],
+  [class*="Shared-module__CommentBox__"],
+  [class*="MarkdownEditor-module__header__"],
+  [class*="FilteredListPageLayout-module__FilterBar"]
+    [class*="-module__"]:not([class*="SuggestionsList-module__"]),
+  [class*="ListView-module__container__"] [class*="Metadata-module__container__"],
+  [class*="CollapsibleSidebar-module__sidebar__"],
+  [class*="CollapsibleSidebar-module__footer__"] {
+    background: transparent !important;
+  }
+
+  /* Pull request conversation: server-rendered Primer classes, which are
+   * stable. The comment cards and their headers, the new-comment box, and
+   * the React merge box. A header caret is drawn in the header's fill, so it
+   * goes with it. */
+  .timeline-comment,
+  .timeline-comment-header,
+  .CommentBox,
+  .CommentBox-header,
+  [class*="MergeBox-module__"],
+  [class*="MergeBoxSectionHeader-module__"],
+  [class*="MergeBoxExpandable-module__"] {
+    background: transparent !important;
+  }
+
+  .timeline-comment--caret::before,
+  .timeline-comment--caret::after {
+    display: none !important;
+  }
+
+  /* Dashboard (github.com/): the page layers, both sidebars, the Copilot
+   * chat input, feed cards with their previews and tables, the "More"
+   * button, and the right column's notice and changelog cards. The Copilot
+   * banner keeps its artwork, so only its fill color is cleared. */
+  .application-main > .color-bg-default,
+  .feed-background,
+  .feed-left-sidebar,
+  .feed-left-sidebar .form-control,
+  [class*="ChatInput-module__chatForm__"],
+  .feed-item-content,
+  .feed-item-content .markdown-body,
+  .feed-item-content .markdown-body tr,
+  .ajax-pagination-btn,
+  .feed-right-sidebar .Box,
+  .dashboard-changelog {
+    background: transparent !important;
+  }
+
+  [data-testid="copilot-app-banner-inner"] {
+    background-color: transparent !important;
+  }
+}
+
+/* ChatGPT's classes are atomic and generated (x1abc...). Only ids, test ids
+ * and its design-token variables are stable enough to target. */
+@-moz-document domain(chatgpt.com) {
+  #stage-slideover-sidebar {
+    --sidebar-surface-primary: transparent !important;
+    background: transparent !important;
+  }
+
+  /* Top bar. The Chat/Work switch paints two stacked fills; its selected
+   * option's pill is a separate element and stays. Share and More sit on a
+   * translucent-surface pill. */
+  #page-header,
+  #page-header [role="radiogroup"],
+  #page-header [role="radiogroup"] > div:first-child,
+  #page-header .translucent-surface,
+  #conversation-header-actions {
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  /* bg-surface-primary is a shared utility class, so only the wrapper holding
+   * the suggestion list under the composer is cleared. */
+  .bg-surface-primary:has(li[data-suggestion-index]),
+  #thread-bottom .bg-surface-primary {
+    background: transparent !important;
+  }
+
+  /* The composer strip and the dark fade above it. The fade's class carries
+   * a generated prefix (Ejxyja_threadFooterContentFade), so match its name.
+   * The input keeps a tint and blur because the thread scrolls under it. */
+  #thread-bottom-container,
+  #thread-bottom-container > *,
+  [class*="threadFooterContentFade"],
+  [class*="threadFooterContentFade"]::before,
+  [class*="threadFooterContentFade"]::after {
+    background: transparent !important;
+    mask-image: none !important;
+  }
+
+  [data-composer-surface] {
+    background: color-mix(in srgb, var(--composer-surface-primary) 55%, transparent) !important;
+    backdrop-filter: blur(24px) !important;
+  }
+
+  /* "ChatGPT can make mistakes" and its Cookie preferences link. Cookie
+   * settings stay reachable from Settings. */
+  [data-testid="thread-disclaimer"] {
+    display: none !important;
+  }
+}
+
+/* Spotify's panels all paint --background-base. Setting it on every element
+ * outruns the theme scopes that redeclare it further down the tree. */
+@-moz-document domain(open.spotify.com) {
+  * {
+    --background-base: transparent !important;
+  }
+
+  /* The app grid and its direct panels (top bar, sidebars, player bar) paint
+   * black outside the variable. Their classes are generated, so the grid is
+   * reached from the stable .Root wrapper. */
+  .Root > div,
+  .Root > div > *,
+  footer nav {
+    background: transparent !important;
+  }
+}
+
+/* VK: ids and the messenger's BEM classes (MEApp__*, ConvoList__*) are
+ * stable; classes with a hash suffix (--tjNb8, vkit-*) are not used. Hover
+ * and selected highlights are translucent white and stay. */
+@-moz-document domain(vk.ru), domain(vk.com) {
+  /* Fixed top header: the page scrolls under it. */
+  #page_header_cont,
+  #page_header {
+    background: transparent !important;
+    backdrop-filter: blur(24px) !important;
+  }
+
+  /* Its separator line comes from a hashed class, as a border, shadow or
+   * pseudo-element. */
+  :is(#page_header_cont, #page_header_wrap, #page_header),
+  :is(#page_header_cont, #page_header_wrap, #page_header)::before,
+  :is(#page_header_cont, #page_header_wrap, #page_header)::after {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* The line under the header is the messenger card's 0.5px outline, drawn
+   * as a box-shadow on its root. */
+  #reforged-root {
+    box-shadow: none !important;
+  }
+
+  #page_body,
+  #spa_layout_content,
+  .MEApp,
+  .MEApp__mainPanel,
+  .MEApp__content,
+  .RightPanelContainer,
+  .RightPanel,
+  .ConvoMain,
+  .ConvoMain__themeWrapper,
+  .ConvoHeader,
+  .ConvoHistory,
+  .ConvoMain__composerWrapper,
+  .ConvoMain__composer,
+  .ConvoComposer,
+  .VKCOMMessenger__reforgedRightColumn,
+  .ConvoList,
+  .ConvoList__headerContent,
+  .ConvoList__top,
+  .ConvoList__item,
+  .ConvoList__footer,
+  [data-testid="rightmenu"],
+  [data-testid="rightmenuitem"] {
+    background: transparent !important;
+  }
+}
+
+/* Telegram Web K. The chat wallpaper layer has a hashed CSS-module class
+ * (_Slot_1kj7f_9 _IsPattern_1kj7f_14); only the readable part is matched.
+ * It paints a fill and the pattern above it, so the whole layer fades. */
+@-moz-document domain(web.telegram.org) {
+  [class*="_IsPattern"] {
+    opacity: 0 !important;
+  }
+
+  #column-left .sidebar-slider-item,
+  #column-right .sidebar-slider-item,
+  #chatlist-container,
+  #chatlist-container .transition-item,
+  .connection-status-bottom,
+  .chatlist {
+    background: transparent !important;
+  }
+
+  /* Fade from the sidebar color under the folder tabs. */
+  .folders-tabs-gradient {
+    background: none !important;
+  }
+}
+
+/* Claude paints the page and sidebar from the surface-0/1 tokens. The
+ * composer and menus use surface-3 and stay solid. */
+@-moz-document domain(claude.ai) {
+  * {
+    --cds-page-bg: transparent !important;
+    --cds-surface-0: transparent !important;
+    --cds-surface-1: transparent !important;
+  }
+}
+
+/* YouTube's element names (ytd-*, tp-yt-*) have stayed stable for years;
+ * its classes and color variables are obfuscated, so neither is used. */
+@-moz-document domain(youtube.com) {
+  ytd-app,
+  #guide-content.ytd-app,
+  #guide-skeleton,
+  #contentContainer.tp-yt-app-drawer,
+  #chips-wrapper.ytd-feed-filter-chip-bar-renderer,
+  ytd-feed-filter-chip-bar-renderer ytd-button-renderer {
+    background: transparent !important;
+  }
+
+  /* The fixed top bar blurs what scrolls under it. YouTube does that itself
+   * on the home page but not on the watch page. */
+  ytd-masthead #background,
+  #frosted-glass.ytd-app {
+    background: transparent !important;
+    backdrop-filter: blur(48px) !important;
+  }
+
+  ytd-feed-filter-chip-bar-renderer #left-arrow::after,
+  ytd-feed-filter-chip-bar-renderer #right-arrow::before {
+    background: none !important;
+  }
+}

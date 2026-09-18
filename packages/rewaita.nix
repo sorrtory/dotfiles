@@ -33,11 +33,20 @@ rewaita.overrideAttrs (old: rec {
       --replace-fail 'colors["border-color"] = colors["accent-color"]' \
         'colors["border-color"] = "transparent"'
 
-    # Firefox needs an explicit root opacity for the translucent surface to be
-    # composited; keep the same 90% level as the GTK backgrounds.
+    # Upstream's Firefox transparency is `* { opacity }`, which fades text and
+    # web pages too and compounds with nesting depth. The theme's background
+    # colors are already translucent rgba() (see utils.py below), but the
+    # template paints them on nested containers, and stacked 90% layers add up
+    # to opaque. Firefox also gives its window an alpha channel only while the
+    # root (#main-window) background is fully transparent, which is how its
+    # own GTK CSD styling draws the window color on body instead. Do the same:
+    # clear the root and the containers, and tint the body once. The tab panel
+    # behind pages is cleared too, so pages that userContent.css makes
+    # transparent (configs/firefox/userContent.css) show that same tint. The
+    # selected tab keeps its card color as a highlight.
     substituteInPlace src/themes/firefox_gnome_theme.py \
       --replace-fail 'extra_css += "* { opacity: 96% !important; }"' \
-        'extra_css += "* { opacity: 90% !important; }"'
+        'extra_css += "#tabbrowser-tabpanels { --tabpanel-background-color: transparent !important; } #main-window, #tabbrowser-tabbox, #tabbrowser-tabpanels, .browserSidebarContainer, .browserContainer, .browserStack, #navigator-toolbox, #nav-bar, #TabsToolbar, #toolbar-menubar, #PersonalToolbar, #browser, .browser-toolbar, .tabbrowser-arrowscrollbox, .tabbrowser-tab:not([selected]) .tab-background { background-color: transparent !important; } #main-window > body { background-color: var(--headerbar-bg-color) !important; }"'
     substituteInPlace src/utils.py \
       --replace-fail '0.82)' '0.90)' \
       --replace-fail 'opacity: 0.95' 'opacity: 0.90'

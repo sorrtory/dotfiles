@@ -2,6 +2,7 @@
 
 let
   userJs = ../../configs/firefox/user.js;
+  userContentCss = ../../configs/firefox/userContent.css;
 in
 {
   # proxy.pac carries no credentials, but it is a personal blocklist and this
@@ -31,6 +32,10 @@ in
         run mv $VERBOSE_ARG "$target" "$target.pre-home-manager"
       fi
       run ln -sf $VERBOSE_ARG ${userJs} "$target"
+
+      # Rewaita owns userChrome.css; page styling is ours alone.
+      run mkdir -p $VERBOSE_ARG "''${profile}chrome"
+      run ln -sf $VERBOSE_ARG ${userContentCss} "''${profile}chrome/userContent.css"
     done
   '';
 }
