@@ -33,7 +33,8 @@ a run with nobody watching archives nothing rather than something unintended.
 
 Within one filesystem a move is rename(2), so it is instant at any size and
 hard links survive. Across filesystems it copies, verifies the copy against
-the source, and only then removes the source.
+the frozen source set, and only then removes that set. Files arriving in the
+source directory after a run starts stay there for the next run.
 
 Compression cannot preserve hard links, which no archive format stores. A
 symlink pointing inside the archived directory stays a symlink, because it
@@ -104,13 +105,19 @@ measure() {
   local source_dir=$1
   local line link target
 
-  mapfile -t ENTRIES < <(
-    find "$source_dir" -mindepth 1 -maxdepth 1 -print0 |
-      du -sb --files0-from=- | sort -rn
+  mapfile -d '' -t SOURCE_ENTRIES < <(
+    find "$source_dir" -mindepth 1 -maxdepth 1 -print0
   )
+  ENTRIES=()
+  if ((${#SOURCE_ENTRIES[@]} > 0)); then
+    mapfile -d '' -t ENTRIES < <(
+      printf '%s\0' "${SOURCE_ENTRIES[@]}" |
+        du -sb --null --files0-from=- | sort -zrn
+    )
+  fi
   TOTAL_BYTES=0
   for line in "${ENTRIES[@]}"; do
-    TOTAL_BYTES=$((TOTAL_BYTES + ${line%%	*}))
+    TOTAL_BYTES=$((TOTAL_BYTES + ${line%%$'\t'*}))
   done
   # -printf '.' rather than a line per entry: a newline in a filename is legal
   # and would otherwise be counted as another file.
@@ -138,15 +145,16 @@ show_plan() {
       printf '  %6s  ... and %d more\n' '' "$((${#ENTRIES[@]} - shown))"
       break
     fi
-    size=${line%%	*}
-    name=${line#*	}
+    size=${line%%$'\t'*}
+    name=${line#*$'\t'}
     name=${name##*/}
     if [[ -L $source_dir/$name ]]; then
       name="$name -> $(readlink -- "$source_dir/$name")"
     elif [[ -d $source_dir/$name ]]; then
       name="$name/"
     fi
-    printf '  %6s  %s\n' "$(human "$size")" "$name"
+    printf '  %6s  ' "$(human "$size")"
+    printf '%q\n' "$name"
     shown=$((shown + 1))
   done
   printf '\n  %s items, %s\n' "$ITEM_COUNT" "$(human "$TOTAL_BYTES")"
@@ -240,16 +248,18 @@ reserve_directory() {
   return 1
 }
 
-# The name the archive will take. 7z refuses to write into a file that already
-# exists, so unlike a directory it cannot be reserved before it is built; this
-# only predicts, and claim_archive does the atomic part afterwards.
-predict_archive() {
-  local parent=$1 stamp=$2 attempt candidate
+# A separate directory reserves the displayed .7z name without putting a file
+# there: 7zz would merge into an existing file. Every cooperating run observes
+# the marker, and cleanup removes it if the run is cancelled or fails.
+reserve_archive() {
+  local parent=$1 stamp=$2 attempt candidate marker
 
   for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
     candidate=$(candidate_name "$parent" "$stamp" "$attempt" .7z)
-    if [[ ! -e $candidate ]]; then
-      printf '%s\n' "$candidate"
+    marker=$candidate.reserve
+    if [[ ! -e $candidate ]] && mkdir -- "$marker" 2>/dev/null; then
+      ARCHIVE_RESERVATION=$marker
+      destination=$candidate
       return 0
     fi
   done
@@ -260,16 +270,8 @@ predict_archive() {
 # here: `7zz a` merges into an archive that is already there without saying so,
 # so a lost race would silently blend two unrelated archives into one.
 claim_archive() {
-  local parent=$1 stamp=$2 built=$3 attempt candidate
-
-  for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
-    candidate=$(candidate_name "$parent" "$stamp" "$attempt" .7z)
-    if ln -- "$built" "$candidate" 2>/dev/null; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-  return 1
+  local destination=$1 built=$2
+  ln -- "$built" "$destination" 2>/dev/null
 }
 
 # --- moving ----------------------------------------------------------------------
@@ -277,8 +279,58 @@ claim_archive() {
 # rename(2) within one filesystem: instant whatever the size, atomic per entry,
 # and inodes are untouched so hard links between archived files survive.
 move_within_filesystem() {
-  local source_dir=$1 destination=$2
-  find "$source_dir" -mindepth 1 -maxdepth 1 -exec mv -t "$destination" -- {} +
+  local destination=$1 path
+  for path in "${SOURCE_ENTRIES[@]}"; do
+    [[ -e $path || -L $path ]] || continue
+    mv -t "$destination" -- "$path"
+  done
+}
+
+# Cross-device copies and archives must operate on a stable set of names. Move
+# the selected top-level entries aside on the source filesystem first. Anything
+# created at the original path afterwards is a new entry and is never removed
+# by this run.
+freeze_source() {
+  local source_dir=$1 path
+
+  HOLDING=$(mktemp -d -- "$(dirname -- "$source_dir")/.archive-holding.XXXXXX") ||
+    die "cannot create a holding directory beside $source_dir"
+  HOLDING_SOURCE=$source_dir
+  for path in "${SOURCE_ENTRIES[@]}"; do
+    [[ -e $path || -L $path ]] || continue
+    if ! mv -t "$HOLDING" -- "$path"; then
+      return 1
+    fi
+  done
+}
+
+restore_holding() {
+  [[ -n ${HOLDING:-} && -d $HOLDING ]] || return 0
+  local path name target blocked=0
+  local -a held=()
+
+  mapfile -d '' -t held < <(find "$HOLDING" -mindepth 1 -maxdepth 1 -print0)
+  for path in "${held[@]}"; do
+    name=${path##*/}
+    target=$HOLDING_SOURCE/$name
+    if [[ -e $target || -L $target ]]; then
+      printf 'archive: cannot restore %s because %s now exists; kept it in %s\n' \
+        "$path" "$target" "$HOLDING" >&2
+      blocked=1
+      continue
+    fi
+    mv -t "$HOLDING_SOURCE" -- "$path" || blocked=1
+  done
+  if ((blocked == 0)); then
+    rmdir -- "$HOLDING" 2>/dev/null || true
+    HOLDING=
+  fi
+}
+
+discard_holding() {
+  [[ -n ${HOLDING:-} ]] || return 0
+  rm -rf -- "$HOLDING"
+  HOLDING=
 }
 
 # Across filesystems there is no rename, so this copies without removing
@@ -288,23 +340,27 @@ move_within_filesystem() {
 copy_across_filesystems() {
   local source_dir=$1 destination=$2
   local -a progress=()
-  local differences
+  local changes differences report_source=${HOLDING_SOURCE:-$source_dir}
 
   ! interactive || progress=(--info=progress2)
-  rsync -aH "${progress[@]}" -- "$source_dir/" "$destination/"
+  if ! rsync -aH "${progress[@]}" -- "$source_dir/" "$destination/"; then
+    return 1
+  fi
 
   # -c re-reads both sides and compares checksums rather than size and time,
   # which is the only way to catch a destination that differs after the fact.
   # Lines beginning with a dot are entries needing no content update.
-  differences=$(rsync -aHc --dry-run --itemize-changes -- "$source_dir/" "$destination/" |
-    grep -v '^\.' || true)
+  if ! changes=$(rsync -aHc --dry-run --itemize-changes -- "$source_dir/" "$destination/"); then
+    printf 'archive: the copy could not be verified; nothing was removed.\n' >&2
+    return 1
+  fi
+  differences=$(printf '%s\n' "$changes" | grep -v '^\.' || true)
   if [[ -n $differences ]]; then
     printf 'archive: the copy does not match the source; nothing was removed.\n' >&2
-    printf 'archive: source %s\narchive: copy   %s\n' "$source_dir" "$destination" >&2
+    printf 'archive: source %s\narchive: copy   %s\n' "$report_source" "$destination" >&2
     printf '%s\n' "$differences" >&2
-    exit 1
+    return 1
   fi
-  find "$source_dir" -mindepth 1 -delete
 }
 
 # --- compressing -----------------------------------------------------------------
@@ -366,6 +422,9 @@ discard_mirror() {
 
 cleanup() {
   discard_mirror
+  [[ -z ${STAGING:-} ]] || rm -rf -- "$STAGING"
+  restore_holding
+  [[ -z ${ARCHIVE_RESERVATION:-} ]] || rmdir -- "$ARCHIVE_RESERVATION" 2>/dev/null || true
   [[ -z ${RESERVED:-} ]] || rmdir -- "$RESERVED" 2>/dev/null || true
   [[ -z ${PARENT:-} ]] || rmdir -- "$PARENT" 2>/dev/null || true
 }
@@ -462,7 +521,7 @@ SAME_DEVICE=0
 
 stamp=$(date +%Y-%m-%d_%H-%M-%S)
 if ((compress == 1)); then
-  destination=$(predict_archive "$parent" "$stamp") ||
+  reserve_archive "$parent" "$stamp" ||
     die "cannot find a free archive name in $parent"
 else
   # Reserved before asking rather than after, so the path in the question is
@@ -485,35 +544,39 @@ fi
 if ((compress == 0)); then
   printf 'Archiving %s to %s\n' "$(human "$TOTAL_BYTES")" "$destination"
   if ((SAME_DEVICE == 1)); then
-    move_within_filesystem "$source_dir" "$destination"
+    move_within_filesystem "$destination"
   else
     printf 'Destination is on another filesystem: copying, verifying, then removing the source.\n'
-    copy_across_filesystems "$source_dir" "$destination"
+    freeze_source "$source_dir" || die 'could not freeze the source; restored what had moved'
+    copy_across_filesystems "$HOLDING" "$destination" || exit 1
+    discard_holding
   fi
   exit 0
 fi
 
 printf 'Archiving %s to %s\n' "$(human "$TOTAL_BYTES")" "$destination"
 
+freeze_source "$source_dir" || die 'could not freeze the source; restored what had moved'
+
 # The mirror lives beside the source so that cp -al can hard-link into it;
 # next to the destination it would be a real copy whenever the two differ.
 MIRROR=$(mktemp -d -- "$(dirname -- "$source_dir")/.archive-mirror.XXXXXX") ||
   die "cannot create a staging directory beside $source_dir"
-build_mirror "$source_dir" "$MIRROR"
+build_mirror "$HOLDING" "$MIRROR"
 
-staging=$(mktemp -d -- "$parent/.archive-build.XXXXXX") ||
+STAGING=$(mktemp -d -- "$parent/.archive-build.XXXXXX") ||
   die "cannot create a staging directory in $parent"
-built="$staging/archive.7z"
+built="$STAGING/archive.7z"
 if ! build_archive "$built" "$MIRROR"; then
-  rm -rf -- "$staging"
   die 'the archive could not be written; nothing was removed'
 fi
 
-destination=$(claim_archive "$parent" "$stamp" "$built") || {
-  rm -rf -- "$staging"
-  die "cannot find a free archive name in $parent"
-}
-rm -rf -- "$staging"
+claim_archive "$destination" "$built" ||
+  die "the reserved archive name was taken: $destination"
+rm -rf -- "$STAGING"
+STAGING=
+rmdir -- "$ARCHIVE_RESERVATION"
+ARCHIVE_RESERVATION=
 discard_mirror
 
 if ! verify_archive "$destination"; then
@@ -523,5 +586,5 @@ if ! verify_archive "$destination"; then
   exit 1
 fi
 
-find "$source_dir" -mindepth 1 -delete
+discard_holding
 printf 'Archived %s to %s\n' "$(human "$(stat -c %s -- "$destination")")" "$destination"

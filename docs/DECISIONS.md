@@ -345,10 +345,13 @@ The archive command moves by `rename(2)` within a filesystem and copies across
 one. rsync never renames — measured, source inode 24600 against destination
 24601 on one device — so the original rsync-always implementation rewrote every
 byte to archive a directory onto the same partition. Across filesystems it
+first renames the selected top-level entries into a sibling holding directory,
 copies without `--remove-source-files`, compares both sides with `rsync -c
---dry-run`, and deletes only once they match; deleting as rsync goes would
-leave the verification pass with nothing to compare against, and the cost is
-needing room for both copies until it finishes.
+--dry-run`, and deletes only once they match. Freezing the names before copying
+means a file created in the live directory during the run remains there for the
+next archive instead of being deleted without ever reaching this one. Deleting
+as rsync goes would leave the verification pass with nothing to compare
+against, and the cost is needing room for both copies until it finishes.
 
 Compression is a flag, never the default, because no archive format preserves
 hard links: 7z and zip both turn a two-link inode into two independent files. A
@@ -387,15 +390,17 @@ target outside `$HOME` is not the operator's data, and a target on another
 device is a mount, which is what excludes an unlocked private vault, a
 removable disk and a network share without a name list that would rot. Links
 inside the archived tree stay links, because their target is archived too.
-Since 7z can only follow every symlink or none, the policy is applied by
-archiving a `cp -al` hardlink mirror in which qualifying links have been
-replaced; the mirror costs almost nothing beside the source.
+Since 7z can only follow every symlink or none, the policy is applied after the
+same holding rename by archiving a `cp -al` hardlink mirror in which qualifying
+links have been replaced; the mirror costs almost nothing beside the held
+source.
 
-The archive name is claimed with `ln`, not by creating the file first. `7zz a`
-merges into an archive that already exists without reporting it, so a lost race
-would silently blend two unrelated archives, and 7z refuses to write into a
-file that exists, so the name cannot be reserved the way the move path reserves
-its directory with `mkdir`.
+The archive name is claimed with `ln`, not by letting `7zz` write the final
+path. `7zz a` merges into an archive that already exists without reporting it,
+so a lost race would silently blend two unrelated archives. A sibling
+`.reserve` directory claims the name before the plan is shown; the archive is
+built under a private temporary name and hard-linked into the reserved final
+name. Thus the destination the operator approves is the one the run uses.
 
 `dotfiles.archive.root` is the one place the root is *configured*, reaching the
 command as `ARCHIVE_ROOT` through a `:=` default rather than

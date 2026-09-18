@@ -353,6 +353,14 @@ name: a second run in the same second becomes `<date-and-time>-2` rather than
 merging into the first. An empty directory is not archived at all. Archiving
 the root itself, its children or its ancestors is rejected.
 
+For cross-filesystem and compressed runs, the entries shown in the plan are
+moved first into a temporary holding directory on the source filesystem. This
+freezes the set that is copied or compressed. A file arriving at the original
+directory after that point stays there for the next run instead of being
+deleted with the current archive. A failed run restores held entries whenever
+their original names are still free and reports the holding path for any name
+that a newly arrived entry has occupied.
+
 `-z` writes one `<date-and-time>.7z`; `-e` encrypts it and its file names, and
 implies `-z`. Open either with `7zz x`. Compression **does not preserve hard
 links** — no archive format stores them — which is why it is a flag and not the

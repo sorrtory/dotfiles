@@ -131,6 +131,28 @@ if [[ -w /dev/shm ]]; then
   compgen -G "$cross/Crossed/*/file" >/dev/null || fail 'cross-device archive missing'
   [[ -z $(ls -A "$HOME/Crossed") ]] || fail 'cross-device source not emptied after verify'
   [[ $out == *filesystem* ]] || fail "cross-device run did not mention the filesystem: $out"
+
+  # A file arriving after verification belongs to the next run. It must remain
+  # in the live source rather than being deleted with the frozen entries.
+  real_rsync=$(command -v rsync)
+  mkdir -p "$TEST_ROOT/bin"
+  cat >"$TEST_ROOT/bin/rsync" <<'STUB'
+#!/usr/bin/env bash
+dry=0
+for arg in "$@"; do [[ $arg == --dry-run ]] && dry=1; done
+"$REAL_RSYNC" "$@" || exit
+if ((dry == 1)); then printf 'late\n' >"$LATE_SOURCE/late.txt"; fi
+STUB
+  chmod +x "$TEST_ROOT/bin/rsync"
+  mkdir -p "$HOME/Crossed"; printf 'first\n' >"$HOME/Crossed/first.txt"
+  REAL_RSYNC=$real_rsync LATE_SOURCE="$HOME/Crossed" PATH="$TEST_ROOT/bin:$PATH" \
+    bash "$archive" --force --to "$cross" "$HOME/Crossed" >/dev/null
+  [[ -f $HOME/Crossed/late.txt ]] || fail 'cross-device run deleted a late source file'
+  crossed=("$cross"/Crossed/*)
+  latest_crossed=${crossed[${#crossed[@]} - 1]}
+  [[ ! -e $latest_crossed/late.txt && -f $latest_crossed/first.txt ]] ||
+    fail 'cross-device archive did not use the frozen source set'
+  rm -f "$TEST_ROOT/bin/rsync"
 else
   fail 'this test needs a writable /dev/shm to exercise the cross-device path'
 fi
@@ -153,6 +175,35 @@ mkdir -p "$TEST_ROOT/out" && (cd "$TEST_ROOT/out" && 7zz x -snl -y "${archives[0
 [[ $(cat "$TEST_ROOT/out/a.txt") == alpha ]] || fail 'archive lost a file'
 [[ $(cat "$TEST_ROOT/out/sub/b.txt") == beta ]] || fail 'archive lost a nested file'
 [[ $(cat "$TEST_ROOT/out/.dot") == hidden ]] || fail 'archive lost a hidden file'
+
+# As with a cross-device copy, an entry created after the frozen set is built
+# stays in the source for a later run.
+real_7zz=$(command -v 7zz)
+cat >"$TEST_ROOT/bin/7zz" <<'STUB'
+#!/usr/bin/env bash
+op=$1
+"$REAL_7ZZ" "$@" || exit
+if [[ $op == a ]]; then printf 'late\n' >"$LATE_SOURCE/late.txt"; fi
+STUB
+chmod +x "$TEST_ROOT/bin/7zz"
+mkdir -p "$HOME/LiveZip"; printf 'first\n' >"$HOME/LiveZip/first.txt"
+REAL_7ZZ=$real_7zz LATE_SOURCE="$HOME/LiveZip" PATH="$TEST_ROOT/bin:$PATH" \
+  bash "$archive" --force -z "$HOME/LiveZip" >/dev/null
+[[ -f $HOME/LiveZip/late.txt ]] || fail 'compression deleted a late source file'
+live_archives=("$HOME"/Archive/LiveZip/*.7z)
+live_listing=$($real_7zz l -snl "${live_archives[0]}" </dev/null)
+[[ $live_listing == *first.txt* && $live_listing != *late.txt* ]] ||
+  fail 'compressed archive did not use the frozen source set'
+rm -f "$TEST_ROOT/bin/7zz"
+
+# Measurement and movement stay NUL-delimited, so a newline in a legal Unix
+# filename neither crashes arithmetic parsing nor splits the entry.
+mkdir -p "$HOME/Newline"
+newline_name=$'line\nbreak'
+printf 'odd\n' >"$HOME/Newline/$newline_name"
+bash "$archive" --force "$HOME/Newline" >/dev/null
+newline_archives=("$HOME"/Archive/Newline/*)
+[[ -f ${newline_archives[0]}/$newline_name ]] || fail 'newline filename was not archived'
 
 # A second archive in the same second is a separate file, never a merge.
 # 7zz a merges into an existing archive silently, so this is the guard.
@@ -358,6 +409,20 @@ if PATH="$TEST_ROOT/bin:$PATH" bash "$archive" --force --to "$cross" "$HOME/Fail
   fail 'hid rsync failure'
 fi
 [[ -f $HOME/Failed/file && -d $HOME/Failed/empty ]] || fail 'failure lost source data'
+
+# A verification command that fails is not an empty successful comparison.
+cat >"$TEST_ROOT/bin/rsync" <<'STUB'
+#!/bin/sh
+for arg in "$@"; do
+  if [ "$arg" = "--dry-run" ]; then exit 23; fi
+done
+exit 0
+STUB
+chmod +x "$TEST_ROOT/bin/rsync"
+if PATH="$TEST_ROOT/bin:$PATH" bash "$archive" --force --to "$cross" "$HOME/Failed"; then
+  fail 'accepted a failed verification command'
+fi
+[[ -f $HOME/Failed/file ]] || fail 'verification error removed source data'
 
 # A copy that does not match the source must leave the source alone. The stub
 # reports success for the transfer and a difference for the verification pass.
