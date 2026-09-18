@@ -27,9 +27,16 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Spicetify patches Spotify's client at build time, which is how the ad
+    # blocker gets in. Like sops-nix it has no release branches.
+    spicetify-nix = {
+      url = "github:Gerg-L/spicetify-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, nixpkgs-unstable, claude-code-nix, codex-cli-nix, home-manager, sops-nix, ... }:
+  outputs = { nixpkgs, nixpkgs-unstable, claude-code-nix, codex-cli-nix, home-manager, sops-nix, spicetify-nix, ... }:
     let
       system = "x86_64-linux";
       unstablePkgs = import nixpkgs-unstable { inherit system; };
@@ -96,7 +103,7 @@
           mkHome = extraModules: home-manager.lib.homeManagerConfiguration {
             inherit pkgs;
             extraSpecialArgs = {
-              inherit claudeCode codex sops-nix unstablePkgs;
+              inherit claudeCode codex sops-nix spicetify-nix unstablePkgs;
             };
             modules = [
               ./home.nix

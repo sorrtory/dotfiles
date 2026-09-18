@@ -15,6 +15,7 @@
     ./modules/programs/obsidian.nix
     ./modules/programs/ssh.nix
     ./modules/programs/sing-box
+    ./modules/programs/spotify.nix
     ./modules/programs/sublime-text.nix
     ./modules/programs/tealdeer.nix
     ./modules/programs/tmux.nix

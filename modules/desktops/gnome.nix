@@ -263,6 +263,18 @@ in
         transparency-mode = "FIXED";
       };
 
+      # Spotify's window has no alpha channel, even with Chromium's
+      # --enable-transparent-visuals, so its CSS cannot make it see-through the
+      # way Rewaita does for GTK and Firefox. Blur my Shell fades the whole
+      # window instead, text included, and blurs what is behind it. Opacity is
+      # out of 255; dynamic opacity would make the focused window opaque again.
+      "org/gnome/shell/extensions/blur-my-shell/applications" = {
+        blur = true;
+        whitelist = [ "Spotify" ];
+        opacity = 230;
+        dynamic-opacity = false;
+      };
+
       # Rewaita reads GNOME's accent to choose within Gruvbox's palette. GTK 3
       # starts from adw-gtk3 while Rewaita supplies its generated color override;
       # icons remain a regular packaged theme rather than generated CSS.

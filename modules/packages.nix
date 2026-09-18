@@ -120,7 +120,6 @@ in
     shellcheck
 
     sops
-    spotify
     tree
     uv
 
