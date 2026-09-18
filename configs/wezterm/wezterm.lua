@@ -42,21 +42,36 @@ config.window_frame = {
 -- background is translucent; text stays opaque.
 config.window_background_opacity = 0.9
 
--- Select all, as in Ptyxis. WezTerm has no such action, so this enters copy
--- mode and selects from the top of the scrollback to the end of the last
--- line; y or Ctrl+Shift+C copies it, Escape leaves.
+-- Up from WezTerm's 3500, so select all reaches further back.
+config.scrollback_lines = 10000
+
+-- Select all, as in Ptyxis. WezTerm has no such action, so this puts the
+-- scrollback and screen on the clipboard (wrapped lines rejoined, blank rows
+-- around it trimmed), then enters copy mode and highlights the same range.
+-- Escape leaves copy mode.
+-- https://github.com/wezterm/wezterm/discussions/2026
+--
+-- The selection steps need their own perform_action call. Inside one
+-- act.Multiple they go to the pane that was active before copy mode opened
+-- and do nothing; a later call is routed to the copy overlay instead.
 local act = wezterm.action
+local select_all = act.Multiple({
+  act.CopyMode("MoveToScrollbackTop"),
+  act.CopyMode({ SetSelectionMode = "Cell" }),
+  act.CopyMode("MoveToScrollbackBottom"),
+  act.CopyMode("MoveToEndOfLineContent"),
+})
 config.keys = {
   {
     key = "a",
     mods = "CTRL|SHIFT",
-    action = act.Multiple({
-      act.ActivateCopyMode,
-      act.CopyMode("MoveToScrollbackTop"),
-      act.CopyMode({ SetSelectionMode = "Cell" }),
-      act.CopyMode("MoveToScrollbackBottom"),
-      act.CopyMode("MoveToEndOfLineContent"),
-    }),
+    action = wezterm.action_callback(function(window, pane)
+      local rows = pane:get_dimensions().scrollback_rows
+      local text = pane:get_lines_as_text(rows)
+      window:copy_to_clipboard(text:match("^%s*(.-)%s*$"), "Clipboard")
+      window:perform_action(act.ActivateCopyMode, pane)
+      window:perform_action(select_all, pane)
+    end),
   },
 }
 
