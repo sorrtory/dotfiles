@@ -52,6 +52,9 @@
   # it: without drivers it cannot open a window at all. See docs/DECISIONS.md.
   targets.genericLinux.gpu.enable = true;
 
+  # The terminal Ctrl+Alt+T runs or raises: "wezterm" or Fedora's "ptyxis".
+  dotfiles.terminal = "wezterm";
+
   dotfiles.localProxy.enable = true;
   # Change this to switch VPN profiles. The staging configuration in flake.nix
   # overrides it, because the VM runs alongside this machine.

@@ -102,17 +102,26 @@ let
       command = "AyuGram";
       wmClass = "/^(AyuGram|com\\.ayugram\\.desktop)$/";
     };
-    # Ptyxis is Fedora's distro-provided terminal, kept alongside Firefox and
-    # Nautilus rather than a Home Manager package.
-    terminal = {
-      binding = "<Control><Alt>t";
-      command = "ptyxis";
-      wmClass = "/^(org\\.gnome\\.Ptyxis|ptyxis)$/";
-    };
+    # home.nix picks the terminal; see terminals below.
+    terminal = { binding = "<Control><Alt>t"; } // terminals.${config.dotfiles.terminal};
     typing = {
       binding = "<Super>t";
       command = "subl";
       wmClass = "/^(Sublime_text|sublime_text)$/";
+    };
+  };
+
+  # Ptyxis is Fedora's distro-provided terminal, kept alongside Firefox and
+  # Nautilus rather than a Home Manager package. WezTerm comes from
+  # modules/programs/wezterm.nix.
+  terminals = {
+    ptyxis = {
+      command = "ptyxis";
+      wmClass = "/^(org\\.gnome\\.Ptyxis|ptyxis)$/";
+    };
+    wezterm = {
+      command = "wezterm";
+      wmClass = "/^org\\.wezfurlong\\.wezterm$/";
     };
   };
 
@@ -133,178 +142,187 @@ let
     ]);
 in
 {
-  # GNOME Shell finds these through ~/.nix-profile/share, which reaches the
-  # session's XDG_DATA_DIRS only through targets.genericLinux (see home.nix).
-  # A newly installed extension needs a re-login on Wayland before it loads.
-  #
-  # A distro's own extensions are not listed. Ubuntu enables Ubuntu Dock,
-  # AppIndicators, Tiling Assistant, and the snapd and web search providers
-  # through its session mode (/usr/share/gnome-shell/modes/ubuntu.json),
-  # independently of enabled-extensions, which a fresh install leaves empty.
-  programs.gnome-shell = {
-    enable = true;
-    extensions = with pkgs.gnomeExtensions; [
-      { package = blur-my-shell; }
-      { package = clipboard-indicator; }
-      { package = hide-top-bar; }
-      { package = run-or-raise; }
-      { package = user-themes; }
-    ];
+  options.dotfiles.terminal = lib.mkOption {
+    type = lib.types.enum (lib.attrNames terminals);
+    default = "ptyxis";
+    example = "wezterm";
+    description = "The terminal Ctrl+Alt+T runs or raises.";
   };
 
-  # Run or Raise reads this file when enabled; re-login after first install,
-  # or disable/re-enable the extension after changing the shortcut table.
-  xdg.configFile."run-or-raise/shortcuts.conf".text =
-    lib.concatStringsSep "\n" (lib.mapAttrsToList shortcutLine launchers) + "\n";
-
-  dconf.settings = {
-    # For the same reason, a session-mode extension can only be switched off
-    # through disabled-extensions. Ubuntu's desktop icons stay off, as on the
-    # current PC; the entry is inert where the distro has no such extension.
-    "org/gnome/shell".disabled-extensions = [ "ding@rastersoft.com" ];
-
-    # Caps Lock is Escape and Shift+Caps Lock is the real Caps Lock. Alt+Shift
-    # switches layout, alongside GNOME's own <Super>space, which stays at its
-    # default. xkb-options is replaced as a whole list, so every option to keep
-    # is named here. The console and GDM keymap in /etc/default/keyboard stay
-    # host-owned.
-    "org/gnome/desktop/input-sources" = {
-      sources = [
-        (mkTuple [ "xkb" "us" ])
-        (mkTuple [ "xkb" "ru" ])
-      ];
-      xkb-options = [
-        "grp:alt_shift_toggle"
-        "caps:escape_shifted_capslock"
+  config = {
+    # GNOME Shell finds these through ~/.nix-profile/share, which reaches the
+    # session's XDG_DATA_DIRS only through targets.genericLinux (see home.nix).
+    # A newly installed extension needs a re-login on Wayland before it loads.
+    #
+    # A distro's own extensions are not listed. Ubuntu enables Ubuntu Dock,
+    # AppIndicators, Tiling Assistant, and the snapd and web search providers
+    # through its session mode (/usr/share/gnome-shell/modes/ubuntu.json),
+    # independently of enabled-extensions, which a fresh install leaves empty.
+    programs.gnome-shell = {
+      enable = true;
+      extensions = with pkgs.gnomeExtensions; [
+        { package = blur-my-shell; }
+        { package = clipboard-indicator; }
+        { package = hide-top-bar; }
+        { package = run-or-raise; }
+        { package = user-themes; }
       ];
     };
 
-    # Application keys belong exclusively to Run or Raise. Replacing this
-    # list also releases the old media-key registrations on migration.
-    ${mediaKeys}.custom-keybindings = lib.mapAttrsToList (
-      name: _: "/${mediaKeys}/custom-keybindings/${name}/"
+    # Run or Raise reads this file when enabled; re-login after first install,
+    # or disable/re-enable the extension after changing the shortcut table.
+    xdg.configFile."run-or-raise/shortcuts.conf".text =
+      lib.concatStringsSep "\n" (lib.mapAttrsToList shortcutLine launchers) + "\n";
+
+    dconf.settings = {
+      # For the same reason, a session-mode extension can only be switched off
+      # through disabled-extensions. Ubuntu's desktop icons stay off, as on the
+      # current PC; the entry is inert where the distro has no such extension.
+      "org/gnome/shell".disabled-extensions = [ "ding@rastersoft.com" ];
+
+      # Caps Lock is Escape and Shift+Caps Lock is the real Caps Lock. Alt+Shift
+      # switches layout, alongside GNOME's own <Super>space, which stays at its
+      # default. xkb-options is replaced as a whole list, so every option to keep
+      # is named here. The console and GDM keymap in /etc/default/keyboard stay
+      # host-owned.
+      "org/gnome/desktop/input-sources" = {
+        sources = [
+          (mkTuple [ "xkb" "us" ])
+          (mkTuple [ "xkb" "ru" ])
+        ];
+        xkb-options = [
+          "grp:alt_shift_toggle"
+          "caps:escape_shifted_capslock"
+        ];
+      };
+
+      # Application keys belong exclusively to Run or Raise. Replacing this
+      # list also releases the old media-key registrations on migration.
+      ${mediaKeys}.custom-keybindings = lib.mapAttrsToList (
+        name: _: "/${mediaKeys}/custom-keybindings/${name}/"
+      ) actionLaunchers;
+
+      "org/gnome/shell/extensions/run-or-raise" = {
+        isolate-workspace = false;
+        move-window-to-active-workspace = false;
+        switch-back-when-focused = false;
+        minimize-when-unfocused = false;
+        center-mouse-to-focused-window = false;
+        dbus = false;
+      };
+
+      # Each replaces GNOME's default list for that action rather than adding
+      # to it.
+      "org/gnome/desktop/wm/keybindings" = {
+        close = [ "<Super>q" ];
+        move-to-workspace-left = [ "<Control><Super>Left" ];
+        move-to-workspace-right = [ "<Control><Super>Right" ];
+        switch-to-workspace-left = [ "<Control><Alt>Left" ];
+        switch-to-workspace-right = [ "<Control><Alt>Right" ];
+      };
+
+      # GNOME's defaults would take the obsidian (<Super>n), spotify (<Super>s)
+      # and telegram (<Super>m) keys before the launchers see them.
+      "org/gnome/shell/keybindings" = {
+        focus-active-notification = [ "disabled" ];
+        toggle-quick-settings = [ "disabled" ];
+        toggle-message-tray = mkEmptyArray type.string;
+      };
+
+      # Both already match Ubuntu's defaults. They are declared so other distros
+      # place windows the same way. Mutter's edge-tiling and toggle-tiled-* keys
+      # are left out on purpose: Tiling Assistant sets them while it runs and
+      # restores them when disabled.
+      "org/gnome/mutter" = {
+        center-new-windows = true;
+        workspaces-only-on-primary = true;
+      };
+
+      # Ubuntu Dock (dash-to-dock) is distro-provided. These keys are inert
+      # wherever it isn't installed. The whole set is declared, not only its
+      # differences from Ubuntu's defaults, so the dock is the same wherever the
+      # extension runs. The preferred-monitor keys are machine-specific and left
+      # to each machine.
+      "org/gnome/shell/extensions/dash-to-dock" = {
+        always-center-icons = true;
+        autohide = true;
+        background-opacity = 0.0;
+        click-action = "minimize";
+        dash-max-icon-size = 48;
+        dock-fixed = false;
+        dock-position = "LEFT";
+        extend-height = true;
+        height-fraction = 0.9;
+        hot-keys = false;
+        intellihide = true;
+        intellihide-mode = "ALL_WINDOWS";
+        isolate-monitors = false;
+        isolate-workspaces = false;
+        show-show-apps-button = false;
+        show-trash = false;
+        transparency-mode = "FIXED";
+      };
+
+      # Rewaita reads GNOME's accent to choose within Gruvbox's palette. GTK 3
+      # starts from adw-gtk3 while Rewaita supplies its generated color override;
+      # icons remain a regular packaged theme rather than generated CSS.
+      "org/gnome/desktop/interface" = {
+        accent-color = "orange";
+        clock-show-weekday = true;
+        color-scheme = "prefer-dark";
+        gtk-enable-primary-paste = true;
+        gtk-theme = "adw-gtk3-dark";
+        icon-theme = "Yaru-wartybrown-dark";
+      };
+
+      # Rewaita writes this Shell theme beneath ~/.local/share/themes. The User
+      # Themes extension owns loading it; Rewaita refreshes the CSS at login.
+      "org/gnome/shell/extensions/user-theme" = {
+        name = "rewaita";
+      };
+    }
+    // lib.mapAttrs' (
+      name: launcher:
+      lib.nameValuePair "${mediaKeys}/custom-keybindings/${name}" (launcher // { inherit name; })
     ) actionLaunchers;
 
-    "org/gnome/shell/extensions/run-or-raise" = {
-      isolate-workspace = false;
-      move-window-to-active-workspace = false;
-      switch-back-when-focused = false;
-      minimize-when-unfocused = false;
-      center-mouse-to-focused-window = false;
-      dbus = false;
-    };
+    # Nixpkgs rather than the distro, so every machine gets them the same way
+    # whether it runs Ubuntu, Fedora or something else. gnome-tweaks costs about
+    # 850 MiB of closure, because it links against its own GNOME Shell and
+    # Mutter; that was accepted over a per-distro install.
+    home.packages = with pkgs; [
+      adw-gtk3
+      dconf-editor
+      gnome-extension-manager
+      gnome-tweaks
+      rewaita
+      # Provides the Yaru-wartybrown-dark icons set above, so Nautilus finds the
+      # warm variant on every distro rather than falling back to generic icons.
+      yaru-theme
+    ];
 
-    # Each replaces GNOME's default list for that action rather than adding
-    # to it.
-    "org/gnome/desktop/wm/keybindings" = {
-      close = [ "<Super>q" ];
-      move-to-workspace-left = [ "<Control><Super>Left" ];
-      move-to-workspace-right = [ "<Control><Super>Right" ];
-      switch-to-workspace-left = [ "<Control><Alt>Left" ];
-      switch-to-workspace-right = [ "<Control><Alt>Right" ];
-    };
+    # Preferences stay mutable so the GUI's Fine Tune controls remain useful.
+    # Seed only a new installation; subsequent edits belong to Rewaita.
+    home.activation.seedRewaitaPreferences = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      preferences="$HOME/.local/share/rewaita/prefs.json"
+      if [[ ! -e $preferences ]]; then
+        run mkdir -p "$(dirname "$preferences")"
+        run cp --no-preserve=mode ${rewaitaPreferences} "$preferences"
+      fi
+    '';
 
-    # GNOME's defaults would take the obsidian (<Super>n), spotify (<Super>s)
-    # and telegram (<Super>m) keys before the launchers see them.
-    "org/gnome/shell/keybindings" = {
-      focus-active-notification = [ "disabled" ];
-      toggle-quick-settings = [ "disabled" ];
-      toggle-message-tray = mkEmptyArray type.string;
-    };
-
-    # Both already match Ubuntu's defaults. They are declared so other distros
-    # place windows the same way. Mutter's edge-tiling and toggle-tiled-* keys
-    # are left out on purpose: Tiling Assistant sets them while it runs and
-    # restores them when disabled.
-    "org/gnome/mutter" = {
-      center-new-windows = true;
-      workspaces-only-on-primary = true;
-    };
-
-    # Ubuntu Dock (dash-to-dock) is distro-provided. These keys are inert
-    # wherever it isn't installed. The whole set is declared, not only its
-    # differences from Ubuntu's defaults, so the dock is the same wherever the
-    # extension runs. The preferred-monitor keys are machine-specific and left
-    # to each machine.
-    "org/gnome/shell/extensions/dash-to-dock" = {
-      always-center-icons = true;
-      autohide = true;
-      background-opacity = 0.0;
-      click-action = "minimize";
-      dash-max-icon-size = 48;
-      dock-fixed = false;
-      dock-position = "LEFT";
-      extend-height = true;
-      height-fraction = 0.9;
-      hot-keys = false;
-      intellihide = true;
-      intellihide-mode = "ALL_WINDOWS";
-      isolate-monitors = false;
-      isolate-workspaces = false;
-      show-show-apps-button = false;
-      show-trash = false;
-      transparency-mode = "FIXED";
-    };
-
-    # Rewaita reads GNOME's accent to choose within Gruvbox's palette. GTK 3
-    # starts from adw-gtk3 while Rewaita supplies its generated color override;
-    # icons remain a regular packaged theme rather than generated CSS.
-    "org/gnome/desktop/interface" = {
-      accent-color = "orange";
-      clock-show-weekday = true;
-      color-scheme = "prefer-dark";
-      gtk-enable-primary-paste = true;
-      gtk-theme = "adw-gtk3-dark";
-      icon-theme = "Yaru-wartybrown-dark";
-    };
-
-    # Rewaita writes this Shell theme beneath ~/.local/share/themes. The User
-    # Themes extension owns loading it; Rewaita refreshes the CSS at login.
-    "org/gnome/shell/extensions/user-theme" = {
-      name = "rewaita";
-    };
-  }
-  // lib.mapAttrs' (
-    name: launcher:
-    lib.nameValuePair "${mediaKeys}/custom-keybindings/${name}" (launcher // { inherit name; })
-  ) actionLaunchers;
-
-  # Nixpkgs rather than the distro, so every machine gets them the same way
-  # whether it runs Ubuntu, Fedora or something else. gnome-tweaks costs about
-  # 850 MiB of closure, because it links against its own GNOME Shell and
-  # Mutter; that was accepted over a per-distro install.
-  home.packages = with pkgs; [
-    adw-gtk3
-    dconf-editor
-    gnome-extension-manager
-    gnome-tweaks
-    rewaita
-    # Provides the Yaru-wartybrown-dark icons set above, so Nautilus finds the
-    # warm variant on every distro rather than falling back to generic icons.
-    yaru-theme
-  ];
-
-  # Preferences stay mutable so the GUI's Fine Tune controls remain useful.
-  # Seed only a new installation; subsequent edits belong to Rewaita.
-  home.activation.seedRewaitaPreferences = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    preferences="$HOME/.local/share/rewaita/prefs.json"
-    if [[ ! -e $preferences ]]; then
-      run mkdir -p "$(dirname "$preferences")"
-      run cp --no-preserve=mode ${rewaitaPreferences} "$preferences"
-    fi
-  '';
-
-  # Run in the real graphical session so Rewaita can refresh GNOME Shell and
-  # discover Firefox's machine-local profile. Repeating the preset is
-  # idempotent and also repairs generated CSS after an upstream format change.
-  xdg.configFile."autostart/rewaita-theme.desktop".text = ''
-    [Desktop Entry]
-    Type=Application
-    Name=Apply Rewaita autumn theme
-    Comment=Generate Gruvbox GTK, GNOME Shell and Firefox colors
-    Exec=${rewaita}/bin/rewaita --theme=gruvbox-medium
-    OnlyShowIn=GNOME;
-    X-GNOME-Autostart-enabled=true
-    X-GNOME-Autostart-Delay=5
-  '';
+    # Run in the real graphical session so Rewaita can refresh GNOME Shell and
+    # discover Firefox's machine-local profile. Repeating the preset is
+    # idempotent and also repairs generated CSS after an upstream format change.
+    xdg.configFile."autostart/rewaita-theme.desktop".text = ''
+      [Desktop Entry]
+      Type=Application
+      Name=Apply Rewaita autumn theme
+      Comment=Generate Gruvbox GTK, GNOME Shell and Firefox colors
+      Exec=${rewaita}/bin/rewaita --theme=gruvbox-medium
+      OnlyShowIn=GNOME;
+      X-GNOME-Autostart-enabled=true
+      X-GNOME-Autostart-Delay=5
+    '';
+  };
 }
