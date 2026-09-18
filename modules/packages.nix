@@ -83,6 +83,8 @@ in
     jq
     keepassxc
 
+    lazygit
+
     # Patches Meslo with the glyphs Neovim's completion menu, lualine, neo-tree
     # and Yazi's file-type icons all assume are present in whatever font the
     # terminal actually uses. Meslo specifically because configs/vscode
