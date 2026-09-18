@@ -3,6 +3,31 @@
 let
   inherit (lib.hm.gvariant) mkEmptyArray mkTuple type;
 
+  # Stable and unstable Nixpkgs both still carry 1.1.1, which predates the
+  # CLI theme selector and Firefox output described by Rewaita's current
+  # guide. packages/rewaita.nix keeps the newer upstream pin local to the one
+  # consumer that needs it.
+  rewaita = pkgs.callPackage ../../packages/rewaita.nix { };
+  rewaitaPreferences = pkgs.writeText "rewaita-preferences.json" (builtins.toJSON {
+    light-theme = "Gruvbox Medium 🌴.css";
+    dark-theme = "Gruvbox Medium 🌴.css";
+    window-controls = "default";
+    modify-gtk3-theme = true;
+    modify-gnome-shell = true;
+    run-in-background = false;
+    transparency = false;
+    window = true;
+    sharp = false;
+    firefox-theme = true;
+    accent-fg = false;
+    accent-tabs = true;
+    light-text = false;
+    dark-panel = false;
+    trans-panel = false;
+    no-pills = false;
+    accent = "'orange'";
+  });
+
   mediaKeys = "org/gnome/settings-daemon/plugins/media-keys";
 
   # Where home.nix clones the knowledge database. Obsidian takes a vault as a
@@ -121,6 +146,7 @@ in
       { package = clipboard-indicator; }
       { package = hide-top-bar; }
       { package = run-or-raise; }
+      { package = user-themes; }
     ];
   };
 
@@ -218,16 +244,22 @@ in
       transparency-mode = "FIXED";
     };
 
-    # Yaru-sage-dark is also declared in home.packages below, so it resolves
-    # the same way on every distro rather than only where it happens to be
-    # distro-provided.
+    # Rewaita reads GNOME's accent to choose within Gruvbox's palette. GTK 3
+    # starts from adw-gtk3 while Rewaita supplies its generated color override;
+    # icons remain a regular packaged theme rather than generated CSS.
     "org/gnome/desktop/interface" = {
-      accent-color = "slate";
+      accent-color = "orange";
       clock-show-weekday = true;
       color-scheme = "prefer-dark";
       gtk-enable-primary-paste = true;
-      gtk-theme = "Yaru-sage-dark";
-      icon-theme = "Yaru-sage-dark";
+      gtk-theme = "adw-gtk3-dark";
+      icon-theme = "Yaru-wartybrown-dark";
+    };
+
+    # Rewaita writes this Shell theme beneath ~/.local/share/themes. The User
+    # Themes extension owns loading it; Rewaita refreshes the CSS at login.
+    "org/gnome/shell/extensions/user-theme" = {
+      name = "rewaita";
     };
   }
   // lib.mapAttrs' (
@@ -240,12 +272,37 @@ in
   # 850 MiB of closure, because it links against its own GNOME Shell and
   # Mutter; that was accepted over a per-distro install.
   home.packages = with pkgs; [
+    adw-gtk3
     dconf-editor
     gnome-extension-manager
     gnome-tweaks
-    # Provides the Yaru-sage-dark GTK and icon themes set above, so Nautilus
-    # (and everything else reading org/gnome/desktop/interface) actually finds
-    # them instead of falling back to hicolor's unstyled generic icons.
+    rewaita
+    # Provides the Yaru-wartybrown-dark icons set above, so Nautilus finds the
+    # warm variant on every distro rather than falling back to generic icons.
     yaru-theme
   ];
+
+  # Preferences stay mutable so the GUI's Fine Tune controls remain useful.
+  # Seed only a new installation; subsequent edits belong to Rewaita.
+  home.activation.seedRewaitaPreferences = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    preferences="$HOME/.local/share/rewaita/prefs.json"
+    if [[ ! -e $preferences ]]; then
+      run mkdir -p "$(dirname "$preferences")"
+      run cp --no-preserve=mode ${rewaitaPreferences} "$preferences"
+    fi
+  '';
+
+  # Run in the real graphical session so Rewaita can refresh GNOME Shell and
+  # discover Firefox's machine-local profile. Repeating the preset is
+  # idempotent and also repairs generated CSS after an upstream format change.
+  xdg.configFile."autostart/rewaita-theme.desktop".text = ''
+    [Desktop Entry]
+    Type=Application
+    Name=Apply Rewaita autumn theme
+    Comment=Generate Gruvbox GTK, GNOME Shell and Firefox colors
+    Exec=${rewaita}/bin/rewaita --theme=gruvbox-medium
+    OnlyShowIn=GNOME;
+    X-GNOME-Autostart-enabled=true
+    X-GNOME-Autostart-Delay=5
+  '';
 }

@@ -132,6 +132,28 @@ Keep a readable native config when translating it to Nix would reduce clarity. U
 
 Home Manager owns Zsh, Neovim, tmux, MPV, Yazi, Git, and the intentional GNOME dconf settings: the Shell extension list, custom launchers and keybindings, input sources, Ubuntu Dock and appearance. Keys a GNOME component manages at runtime, such as the Mutter tiling keys Tiling Assistant overrides, are not declared, and neither are machine-specific ones such as the dock's preferred monitor. GNOME tools and extensions come from Nixpkgs rather than the distro, because the target machines span Ubuntu, Fedora and possibly NixOS. A distro's own session-mode extensions, such as Ubuntu Dock, stay distro-provided and are not listed. Migration may preserve selected native configuration first and translate it later.
 
+Rewaita owns the generated color layer for GTK 3, GTK 4/libadwaita, GNOME
+Shell and Firefox. The selected baseline is Gruvbox Medium in dark mode, with
+GNOME's orange accent choosing Gruvbox orange and Yaru's warty-brown icon
+variant completing the autumn palette. Home Manager installs the User Themes
+extension and `adw-gtk3`, seeds Rewaita's mutable preferences only when absent,
+and reruns the preset inside each GNOME login; it does not put generated CSS in
+the Nix store. That leaves Fine Tune changes editable while making a missing or
+stale generated theme self-repairing. The native package is used instead of
+Flatpak, so no system-wide `sudo flatpak override` grants every Flatpak write
+access to the GTK configuration directories.
+
+Nixpkgs 26.05 and the repository's unstable pin both carry Rewaita 1.1.1,
+which predates the command-line theme selector and Firefox generation described
+by the current guide. A small local override pins upstream 1.1.7 until Nixpkgs
+catches up. It also corrects the native build's broad data path: upstream relies
+on Flatpak remapping `XDG_DATA_HOME`, so outside the sandbox it writes generic
+`~/.local/share/prefs.json`, `light/`, `dark/` and `wallpapers/`; the package
+keeps those beneath `~/.local/share/rewaita/` instead. Firefox profile and login
+state remain machine-local. Only its two required `user.js` switches are
+declarative; Rewaita writes the generated `chrome/rewaitaChrome.css` beside the
+profile at login.
+
 The Zsh module owns the shell package, generated startup files, Oh My Zsh,
 shell plugins, history policy, and zoxide integration. It preserves the small
 safe alias baseline and local proxy toggles. Neovim owns the single default

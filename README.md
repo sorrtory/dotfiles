@@ -210,6 +210,22 @@ Obsidian matching uses its standard vault-name suffix in the window title.
 Renaming a vault or changing that title with a plugin requires updating its
 match. Additional vaults also named `Notes` are indistinguishable by title.
 
+### GNOME autumn theme
+
+Rewaita applies its Gruvbox Medium palette to GTK, GNOME Shell and Firefox at
+graphical login. GNOME's orange accent selects the warm highlight, and the
+Yaru warty-brown icon variant carries it into Files and application launchers.
+The first activation adds the User Themes extension, so log out and back in
+once; newly opened GTK applications and a fully restarted Firefox then use the
+generated theme. Rewaita's Fine Tune page remains mutable, but selecting a
+different palette is temporary because the declared Gruvbox preset is restored
+at the next login.
+
+Unlike the Flatpak path in the upstream guide, this setup needs no privileged
+filesystem override: Home Manager installs the native Nix package. Its mutable
+palettes and preferences live under `~/.local/share/rewaita/`; generated GTK
+and Shell CSS stays in the native locations Rewaita manages.
+
 ### GPU-accelerated programs
 
 Nothing to do. Nix-built programs cannot use a non-NixOS distro's GPU drivers,
