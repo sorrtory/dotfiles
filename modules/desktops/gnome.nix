@@ -96,6 +96,9 @@ let
     video/x-theora+ogg=mpv.desktop
   '';
 
+  # Ptyxis's profile ID format: 32 lowercase hex digits, no dashes.
+  ptyxisProfile = "5f1d0c7a9e3b4c2d8a6f0b1e2d3c4a5b";
+
   mediaKeys = "org/gnome/settings-daemon/plugins/media-keys";
 
   # Where home.nix clones the knowledge database. Obsidian takes a vault as a
@@ -281,6 +284,10 @@ in
       # to it.
       "org/gnome/desktop/wm/keybindings" = {
         close = [ "<Super>q" ];
+        # Unlike GNOME's separate maximize action, this makes a second press
+        # restore the window. Keep Alt+F10, GNOME's default toggle, alongside it.
+        maximize = mkEmptyArray type.string;
+        toggle-maximized = [ "<Super>Up" "<Alt>F10" ];
         move-to-workspace-left = [ "<Control><Super>Left" ];
         move-to-workspace-right = [ "<Control><Super>Right" ];
         switch-to-workspace-left = [ "<Control><Alt>Left" ];
@@ -357,6 +364,18 @@ in
       # Themes extension owns loading it; Rewaita refreshes the CSS at login.
       "org/gnome/shell/extensions/user-theme" = {
         name = "rewaita";
+      };
+
+      # Ptyxis's GNOME palette, with no opacity of its own: Rewaita's translucent
+      # surfaces already style its window. Ptyxis generates a random profile
+      # UUID on first run, so a fixed one is declared and made the only profile.
+      # Profiles added in the GUI are dropped from the list at next activation.
+      "org/gnome/Ptyxis" = {
+        default-profile-uuid = ptyxisProfile;
+        profile-uuids = [ ptyxisProfile ];
+      };
+      "org/gnome/Ptyxis/Profiles/${ptyxisProfile}" = {
+        palette = "Gnome";
       };
     }
     // lib.mapAttrs' (
