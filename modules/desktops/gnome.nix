@@ -30,6 +30,72 @@ let
     accent = "'orange'";
   });
 
+  # Every image type nomacs's own .desktop file declares support for (see its
+  # MimeType=), plus the video types mpv already opened before this file
+  # existed. GNOME's "Open With → Set as default" rewrites this file
+  # live, same as Rewaita's prefs.json, so this only seeds it for a fresh
+  # profile: whatever the GUI decides afterwards, including for the mime
+  # types left out here (scheme handlers, editor associations, and image
+  # formats nomacs cannot open), stays untouched.
+  defaultMimeApps = pkgs.writeText "mimeapps.list" ''
+    [Default Applications]
+    image/avif=org.nomacs.ImageLounge.desktop
+    image/bmp=org.nomacs.ImageLounge.desktop
+    image/gif=org.nomacs.ImageLounge.desktop
+    image/heic=org.nomacs.ImageLounge.desktop
+    image/heif=org.nomacs.ImageLounge.desktop
+    image/jpeg=org.nomacs.ImageLounge.desktop
+    image/jxl=org.nomacs.ImageLounge.desktop
+    image/png=org.nomacs.ImageLounge.desktop
+    image/tiff=org.nomacs.ImageLounge.desktop
+    image/webp=org.nomacs.ImageLounge.desktop
+    image/x-eps=org.nomacs.ImageLounge.desktop
+    image/x-ico=org.nomacs.ImageLounge.desktop
+    image/x-portable-bitmap=org.nomacs.ImageLounge.desktop
+    image/x-portable-graymap=org.nomacs.ImageLounge.desktop
+    image/x-portable-pixmap=org.nomacs.ImageLounge.desktop
+    image/x-xbitmap=org.nomacs.ImageLounge.desktop
+    image/x-xpixmap=org.nomacs.ImageLounge.desktop
+    video/3gp=mpv.desktop
+    video/3gpp=mpv.desktop
+    video/3gpp2=mpv.desktop
+    video/avi=mpv.desktop
+    video/divx=mpv.desktop
+    video/dv=mpv.desktop
+    video/flv=mpv.desktop
+    video/fli=mpv.desktop
+    video/mkv=mpv.desktop
+    video/mp2t=mpv.desktop
+    video/mp4=mpv.desktop
+    video/mp4v-es=mpv.desktop
+    video/mpeg=mpv.desktop
+    video/msvideo=mpv.desktop
+    video/ogg=mpv.desktop
+    video/quicktime=mpv.desktop
+    video/vnd.avi=mpv.desktop
+    video/vnd.divx=mpv.desktop
+    video/vnd.mpegurl=mpv.desktop
+    video/vnd.rn-realvideo=mpv.desktop
+    video/webm=mpv.desktop
+    video/x-avi=mpv.desktop
+    video/x-flc=mpv.desktop
+    video/x-flic=mpv.desktop
+    video/x-flv=mpv.desktop
+    video/x-m4v=mpv.desktop
+    video/x-mpeg2=mpv.desktop
+    video/x-mpeg3=mpv.desktop
+    video/x-ms-afs=mpv.desktop
+    video/x-ms-asf=mpv.desktop
+    video/x-ms-wmv=mpv.desktop
+    video/x-ms-wmx=mpv.desktop
+    video/x-ms-wvxvideo=mpv.desktop
+    video/x-msvideo=mpv.desktop
+    video/x-ogm=mpv.desktop
+    video/x-ogm+ogg=mpv.desktop
+    video/x-theora=mpv.desktop
+    video/x-theora+ogg=mpv.desktop
+  '';
+
   mediaKeys = "org/gnome/settings-daemon/plugins/media-keys";
 
   # Where home.nix clones the knowledge database. Obsidian takes a vault as a
@@ -320,6 +386,17 @@ in
       if [[ ! -e $preferences ]]; then
         run mkdir -p "$(dirname "$preferences")"
         run cp --no-preserve=mode ${rewaitaPreferences} "$preferences"
+      fi
+    '';
+
+    # Default apps stay mutable the same way: xdg-mime and "Open With → Set as
+    # default" both rewrite mimeapps.list live, so this seeds it only when the
+    # file doesn't exist yet rather than owning it outright.
+    home.activation.seedDefaultMimeApps = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      mimeApps="$HOME/.config/mimeapps.list"
+      if [[ ! -e $mimeApps ]]; then
+        run mkdir -p "$(dirname "$mimeApps")"
+        run cp --no-preserve=mode ${defaultMimeApps} "$mimeApps"
       fi
     '';
 

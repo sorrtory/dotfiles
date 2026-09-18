@@ -12,6 +12,7 @@
     ./modules/programs/git.nix
     ./modules/programs/mpv.nix
     ./modules/programs/neovim.nix
+    ./modules/programs/nomacs.nix
     ./modules/programs/obsidian.nix
     ./modules/programs/ssh.nix
     ./modules/programs/sing-box
