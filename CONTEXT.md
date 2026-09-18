@@ -116,6 +116,18 @@ _Avoid_: Profile, shared key
 The user environment's tunnel entry point for applications that explicitly send connections through their proxy settings.
 _Avoid_: VPN command, whole-application tunneling
 
+**Archive command**:
+The command that retires a directory's contents by moving them under the archive root, keeping the directory itself.
+_Avoid_: Backup, cleanup, delete
+
+**Archive root**:
+The one configured directory every archive is written beneath, created by activation and named to the command through its environment.
+_Avoid_: Archive folder, backup destination
+
+**Archive plan**:
+What the command shows before it moves anything: the source, the destination, the largest entries, the totals, and every symlink pointing out of the tree.
+_Avoid_: Dry run, preview
+
 **Package baseline**:
 The package requirements declared by the legacy installation sources, translated into user-owned and host-owned responsibilities during migration.
 _Avoid_: Installed package snapshot, unconditional package copy

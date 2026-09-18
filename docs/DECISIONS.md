@@ -339,7 +339,7 @@ backend is the selected direction, covering the vault, the archive and other
 user data. An encrypted working directory and a versioned backup repository
 serve different purposes, and gocryptfs is not a backup manager.
 
-## Scripts and privileged networking
+## Archive command
 
 The archive command moves by `rename(2)` within a filesystem and copies across
 one. rsync never renames — measured, source inode 24600 against destination
@@ -397,14 +397,17 @@ would silently blend two unrelated archives, and 7z refuses to write into a
 file that exists, so the name cannot be reserved the way the move path reserves
 its directory with `mkdir`.
 
-`dotfiles.archive.root` is the single place the root is written down, reaching
-the command as `ARCHIVE_ROOT` through a `:=` default rather than
+`dotfiles.archive.root` is the one place the root is *configured*, reaching the
+command as `ARCHIVE_ROOT` through a `:=` default rather than
 `writeShellApplication`'s `runtimeEnv`, which would export unconditionally and
 beat a caller who set it. Substituting it into the script text instead would
 have left the bare script — which is how the tests invoke it — carrying a store
-path or a broken placeholder.
+path or a broken placeholder. The literal `~/Archive` therefore appears twice,
+in the module's default and in the script's own fallback: the duplication is
+what buys a script that still runs with no Nix around it, and the two are only
+ever read when nothing else has set the root.
 
-
+## Scripts and privileged networking
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 

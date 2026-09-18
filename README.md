@@ -286,7 +286,7 @@ Re-activate the user environment through the same dispatcher:
 
 ## Projects and archives
 
-Home Manager creates `~/Projects`, `~/Documents` and `~/Archive`. It clones
+Home Manager creates `~/Projects`, `~/Documents` and the archive root. It clones
 `Uni-Mobile`, `Uni-Julia`, `Uni-AI`, `Uni-Bioinformatics`, `freebooru` and
 `scripts` into Projects, and `keepass` and `knowledge-database` into Documents,
 all from the `sorrtory` GitHub account.
@@ -303,13 +303,16 @@ untouched. It never pulls or deletes projects. A failed clone prints a warning;
 fix connectivity or Git authentication and activate again to retry.
 The `keepass` checkout created by secret recovery is reused without modification.
 
-The manual `~/.local/bin/archive` command moves a directory's contents, including
-hidden files, into `~/Archive/<name>/<date-and-time>/`:
+The manual `~/.local/bin/archive` command moves a directory's contents,
+including hidden files, into `<root>/<name>/<date-and-time>/`:
 
 ```bash
 archive ~/Downloads
-archive                  # archive the current directory's contents
-archive --force ~/Downloads   # no question, for scripts and keybindings
+archive                        # the current directory's contents
+archive --force ~/Downloads    # no question, for scripts and keybindings
+archive -z ~/Downloads         # one .7z instead of a directory
+archive -e ~/Downloads         # encrypted, file names included
+archive --to /run/media/z/backup ~/Downloads
 ```
 
 It shows what it is about to move and where, and waits for an answer before
@@ -317,31 +320,56 @@ moving anything:
 
 ```text
   /home/z/Downloads
-  -> /home/z/Archive/Downloads/2026-09-18_01-21-49
+  -> /home/z/Archive/Downloads/2026-09-18_02-29-04
 
-  .config
-  big.bin
-  photos/
-  shortcut -> /etc/hosts
-  ... and 10 more
+    2.9M  movie.mkv
+    391K  photos/
+    2.0K  notes.txt
+          ... and 23 more
 
-  30 items, 404K
+  30 items, 3.3M
 
 Move the contents of /home/z/Downloads? [y/N]
 ```
 
 No is the default and end of input is a No, so a run with nothing attached to
 its input archives nothing rather than something unintended. `--force` skips
-the question for scripts and keybindings, where there is nobody to answer.
+the question, never the password.
 
-It keeps the source directory, preserves symlinks and hard links, and uses
-rsync to remove only successfully transferred files. Failed transfers can leave
-data split between source and destination; the printed destination remains
-available. Run it when nothing is writing to the source. Each invocation creates
-a separate archive: a second run within the same second is named
-`<date-and-time>-2` rather than merging into the first. An empty directory is
-not archived at all. Archiving Archive itself, its children or its ancestors is
-rejected.
+The archive root is `--to` when given, then `ARCHIVE_ROOT`, then
+`dotfiles.archive.root`, which activation also creates so the command and the
+configuration cannot disagree:
+
+```nix
+dotfiles.archive.root = "/run/media/z/backup/Archive";
+```
+
+Within one filesystem the move is `rename(2)`: instant whatever the size, and
+hard links between archived files survive. Across filesystems it copies,
+compares both sides by checksum, and removes the source only once they match —
+so a cross-device archive needs room for both copies until it finishes. Either
+way the source directory itself stays, and each run archives under its own
+name: a second run in the same second becomes `<date-and-time>-2` rather than
+merging into the first. An empty directory is not archived at all. Archiving
+the root itself, its children or its ancestors is rejected.
+
+`-z` writes one `<date-and-time>.7z`; `-e` encrypts it and its file names, and
+implies `-z`. Open either with `7zz x`. Compression **does not preserve hard
+links** — no archive format stores them — which is why it is a flag and not the
+default.
+
+A symlink pointing inside the archived directory stays a symlink, because its
+target is in the archive too and it still resolves once extracted. One pointing
+outside becomes a real file, so the archive stands alone, but only when its
+target is a regular file under `$HOME` on the same filesystem. That bound is
+what stops a stray link pulling in a mounted vault, a removable disk or a
+system path. Every out-of-tree link is named in the plan before you answer.
+
+`-e` asks for the password on the terminal, twice, because 7-Zip asks once with
+no confirmation and nothing can open the archive afterwards without that exact
+string. `ARCHIVE_ASKPASS` names a command that prints the password instead, for
+a scripted archive. Verifying an encrypted archive puts the password in the
+`7zz` command line for the moment it runs; see [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Development
 
