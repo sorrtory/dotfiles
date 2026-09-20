@@ -35,6 +35,9 @@
     # rather than the terminal's brighter one, and four surfaces the roles do
     # not name, each within a few units of the derived value but chosen by
     # eye. Every other slot comes from the roles.
+    # Obsidian's hand-made theme used the same parchment text.
+    obsidian.text = "#f6e9da";
+
     spotify = {
       text = "#f6e9da";
       scheme = {
