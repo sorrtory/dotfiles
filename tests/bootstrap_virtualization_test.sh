@@ -53,6 +53,7 @@ case "$command_name" in
         test -e "$TEST_ROOT/network"
         echo 'Active:         yes'
         echo 'Autostart:      yes'
+        echo 'Bridge:         virbr0'
         ;;
       *'net-list --all --name') echo default ;;
       *'net-list --name') if [[ -e $TEST_ROOT/network ]]; then echo default; fi ;;
@@ -61,11 +62,28 @@ case "$command_name" in
       *) exit 64 ;;
     esac
     ;;
+  firewall-cmd)
+    # firewall-cmd exits 252 for every query when the daemon is not running.
+    test -e "$TEST_ROOT/firewalld" || exit 252
+    case "$*" in
+      --state) : ;;
+      *--get-zones) echo 'block dmz drop external home internal libvirt public trusted work' ;;
+      *--permanent*--get-zone-of-interface=*)
+        if [[ -e $TEST_ROOT/zoned-permanent ]]; then echo libvirt; else echo 'no zone'; exit 2; fi
+        ;;
+      *--get-zone-of-interface=*)
+        if [[ -e $TEST_ROOT/zoned ]]; then echo libvirt; else echo 'no zone'; exit 2; fi
+        ;;
+      *--permanent*--change-interface=*) touch "$TEST_ROOT/zoned-permanent" ;;
+      *--change-interface=*) touch "$TEST_ROOT/zoned" ;;
+      *) exit 64 ;;
+    esac
+    ;;
   *) exit 64 ;;
 esac
 EOF
 chmod +x "$TEST_ROOT/bin/mock"
-for command_name in sudo uname id getent usermod apt-get dnf pacman dpkg-query rpm systemctl virsh; do
+for command_name in sudo uname id getent usermod apt-get dnf pacman dpkg-query rpm systemctl virsh firewall-cmd; do
   ln -s mock "$TEST_ROOT/bin/$command_name"
 done
 export PATH="$TEST_ROOT/bin:$PATH"
@@ -74,7 +92,8 @@ phase="$REPO_ROOT/scripts/bootstrap/10-virtualization.sh"
 
 reset_state() {
   rm -f "$TEST_ROOT"/active-* "$TEST_ROOT"/enabled-* "$TEST_ROOT/installed" \
-    "$TEST_ROOT/member" "$TEST_ROOT/network"
+    "$TEST_ROOT/member" "$TEST_ROOT/network" "$TEST_ROOT/firewalld" \
+    "$TEST_ROOT/zoned" "$TEST_ROOT/zoned-permanent"
   : >"$TEST_ROOT/actions"
   printf 'ID=%s\n' "$1" >"$BOOTSTRAP_OS_RELEASE_FILE"
 }
@@ -104,6 +123,41 @@ if FAIL_PACKAGES=1 bash "$phase" install >/dev/null 2>&1; then fail 'ignored pac
 if grep -q systemctl "$TEST_ROOT/actions"; then fail 'changed services after package failure'; fi
 reset_state fedora
 if FAIL_NETWORK=1 bash "$phase" install >/dev/null 2>&1; then fail 'ignored network failure'; fi
+
+# A host with no running firewalld has no bridge policy to enforce.
+reset_state fedora
+bash "$phase" install >/dev/null
+bash "$phase" status >/dev/null
+if grep -q firewall-cmd "$TEST_ROOT/actions"; then fail 'changed firewall policy without firewalld'; fi
+
+# With firewalld the bridge is recorded permanently, so neither a parallel boot
+# nor a later reload can drop the binding guests need for DHCP.
+reset_state fedora
+touch "$TEST_ROOT/firewalld"
+bash "$phase" install >/dev/null
+bash "$phase" status >/dev/null
+grep -q -- '--permanent --zone=libvirt --change-interface=virbr0' "$TEST_ROOT/actions" ||
+  fail 'bridge not bound to the libvirt zone permanently'
+grep -q -- 'firewall-cmd --zone=libvirt --change-interface=virbr0' "$TEST_ROOT/actions" ||
+  fail 'bridge not bound in the running firewall'
+count=$(wc -l <"$TEST_ROOT/actions")
+bash "$phase" install >/dev/null
+[[ $(wc -l <"$TEST_ROOT/actions") == "$count" ]] || fail 'reinstall rebound a configured bridge'
+
+# The regression this guards: an unbound bridge rejects guest DHCP, so an
+# otherwise healthy host must not report itself ready.
+rm -f "$TEST_ROOT/zoned"
+if bash "$phase" status >/dev/null; then fail 'unbound bridge reported ready'; fi
+
+# A binding that exists only in the running firewall is the state a reboot or a
+# reload discards, so it is not a configured host either.
+reset_state fedora
+touch "$TEST_ROOT/firewalld"
+bash "$phase" install >/dev/null
+rm -f "$TEST_ROOT/zoned-permanent"
+if bash "$phase" status >/dev/null; then fail 'runtime-only binding reported ready'; fi
+bash "$phase" install >/dev/null
+bash "$phase" status >/dev/null || fail 'reinstall did not restore the permanent binding'
 
 reset_state alpine
 if bash "$phase" install >/dev/null 2>&1; then fail 'accepted unsupported distro'; fi
