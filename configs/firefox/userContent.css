@@ -36,12 +36,31 @@ body {
     background: transparent !important;
   }
 
-  .Jzkafd > .in7vHe {
-    background-color: var(--xhUGwc) !important;
-    /*background: revert !important;*/
-    border: revert !important;
-    box-shadow: revert !important;
+  /* AI Mode's composer, the "Ask anything" box. Its fill is painted by a
+   * ::before on a layer inside the input plate rather than on the plate or
+   * the textarea, so every rule that clears a background missed it and it
+   * stayed an opaque #363840 slab over the cleared page — the one light
+   * rectangle left on the page, in every theme. Google's own dark palette
+   * draws it, so no theme changes it; clearing it is what makes it follow
+   * the window behind, the way the other panels do.
+   *
+   * data-xid is Google's own stable hook. The layer under it is matched by
+   * where it sits and by aria-hidden, with the class DevTools showed as the
+   * second selector; its siblings at that depth paint nothing of their own.
+   * This replaces a rule for .Jzkafd > .in7vHe, which matched no element on
+   * the page any more.
+   *
+   * A scrim rather than nothing, and black rather than a palette color, for
+   * the reason ChatGPT's composer keeps one below: the answer scrolls under
+   * this box, so clearing it outright leaves the text running through the
+   * placeholder. Darkening what is behind reads the same under every theme,
+   * which naming a color would not. */
+  [data-xid="aim-mars-input-plate"] > * > [aria-hidden="true"]::before,
+  [data-xid="aim-mars-input-plate"] .d4HWzd::before {
+    background-color: rgba(0, 0, 0, 0.35) !important;
+    backdrop-filter: blur(24px) !important;
   }
+
   /* Body revealed by the AI Overview's "Show more" toggle, and the AI Mode
    * history drawer opened from the header. */
   #m-x-content,
