@@ -35,7 +35,7 @@ what it builds.
       shows up in WezTerm, and the remap follows a theme switch.
 - [x] Gruvbox and autumn-glass WezTerm match today's WezTerm where the spec
       says they should.
-- [ ] On the VM, switching the theme prints the hint with WezTerm under "live";
+- [x] On the VM, switching the theme prints the hint with WezTerm under "live";
       a switch that changes nothing prints no hint.
 
 ## Comments
@@ -64,6 +64,10 @@ Built in `modules/theme/` (options, resolution, notice) with palettes in
   `overrides.<app>.text` in that palette.
 - Gruvbox no longer has WezTerm's contrast tweak (spec: stock Gruvbox).
 
-Not done: the VM run. The notice was checked by running the theme's
-activation steps against a scratch home (first switch prints it, unchanged
-prints nothing, a transparency change prints it again), not a real switch.
+Verified on the Fedora VM (2026-09-20), with real activations: a theme change
+and a transparency change each print the notice with WezTerm under "live", an
+activation that changes neither prints nothing, and the theme file keeps its
+inode. WezTerm windows left open recolored without a restart, measured from
+`virsh screenshot` of the guest: #261814 (autumn-glass) to #282828 (gruvbox)
+to #282c34 (onedark), and transparency off turned a pixel that showed the
+wallpaper (#2b3038) into the flat background.

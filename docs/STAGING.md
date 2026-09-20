@@ -139,10 +139,32 @@ both helpers when testing is done.
 Phases that need a real terminal are the operator's: `secret-recovery` wants a
 GitHub sign-in and the KeePassXC vault password, so run it with `ssh -t`.
 
+## Seeing the guest's screen
+
+GNOME refuses `org.gnome.Shell.Screenshot` to anything but its own screenshot
+UI and the portal, so a screenshot comes from outside the guest instead:
+
+```bash
+virsh -c qemu:///system screenshot fedora /tmp/shot.ppm   # despite .ppm, a PNG
+```
+
+The framebuffer is what the guest's display shows, so nothing runs in the
+guest and no session permission is involved. Sampling one pixel of it is how a
+color change was measured for the theme work.
+
+A session left locked (`gdbus call --session -d org.gnome.ScreenSaver -o
+/org/gnome/ScreenSaver -m org.gnome.ScreenSaver.GetActive`) shows the lock
+screen and starts no windows; `loginctl unlock-session <id>` unlocks it from a
+plain SSH connection. Launch a graphical program into the session with
+`systemd-run --user --unit=<name> --setenv=WAYLAND_DISPLAY=wayland-0`: started
+with `&` from an SSH command it dies with the connection.
+
 ## What a VM cannot verify
 
 The guest has no usable GPU, so anything reaching a real driver — the `nix-gpu`
-phase, hardware decode, WezTerm opening a window — has to be judged on the host.
+phase, hardware decode, GPU-dependent rendering — has to be judged on the host.
+WezTerm does open a window here with `--config front_end='"Software"'`, which is
+enough to watch it recolor, but not to judge how it draws with a driver.
 
 Settings a session only reads at login still need a real re-login, not a
 reconnect: `environment.d`, newly installed GNOME extensions and XKB options.
