@@ -106,6 +106,8 @@ in
 
     obs-studio
 
+
+    qbittorrent
     # pkg-config is deliberately absent: the Nixpkgs binary searches only its
     # own store path, so first on PATH it hides the host's .pc files and a
     # build against system GTK fails at pkg_check_modules with the development
