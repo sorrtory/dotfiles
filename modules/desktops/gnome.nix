@@ -23,6 +23,29 @@ let
     buildInputs = old.buildInputs ++ [ pkgs.glib-networking ];
   });
 
+  # Blur my Shell 72 loses the windows on the secondary monitor after a
+  # workspace switch. Application blur patches _finishWorkspaceSwitch to hide
+  # every window of every inactive workspace, and with GNOME's
+  # workspaces-only-on-primary the secondary monitor's windows are on all
+  # workspaces, so hiding them for an inactive one hides them everywhere: they
+  # keep working and still show in the overview and Alt+Tab, but nothing is
+  # drawn. Upstream fixed it by skipping such windows (aunetx/blur-my-shell#866,
+  # merged as #867 on 2026-04-29), after v72 was published on
+  # extensions.gnome.org, which is where Nixpkgs fetches this from, so neither
+  # the stable pin nor unstable can carry it before upstream tags v73. Drop
+  # this when the packaged version rises above 72; --replace-fail then fails
+  # the build rather than leaving a silently dead patch behind.
+  blurMyShell = pkgs.gnomeExtensions.blur-my-shell.overrideAttrs (old: {
+    postPatch = (old.postPatch or "") + ''
+      substituteInPlace components/overview.js --replace-fail \
+        'window => window.get_compositor_private().hide()' \
+        'window => {
+                                          if (window.is_on_all_workspaces()) return;
+                                          window.get_compositor_private().hide();
+                                      }'
+    '';
+  });
+
   theme = config.dotfiles.theme;
   themeColors = theme.forApp "gnome";
   rewaitaCss = import ../theme/rewaita-css.nix { inherit lib; };
@@ -272,7 +295,7 @@ in
     programs.gnome-shell = {
       enable = true;
       extensions = with pkgs.gnomeExtensions; [
-        { package = blur-my-shell; }
+        { package = blurMyShell; }
         { package = clipboard-indicator; }
         { package = hide-top-bar; }
         { package = run-or-raise; }
