@@ -27,6 +27,7 @@
 
     home.activation.userDirectories = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       run ${pkgs.coreutils}/bin/mkdir -p "$HOME/Projects" "$HOME/Documents" \
+        "$HOME/Junk" "$HOME/Memos" \
         ${lib.escapeShellArg config.dotfiles.archive.root}
     '';
 
