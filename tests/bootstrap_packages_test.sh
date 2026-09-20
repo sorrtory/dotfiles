@@ -24,6 +24,12 @@ for argument in "$@"; do
     printf '#!/bin/sh\nexit 0\n' >"$FAKE_BIN/$argument"
     /bin/chmod +x "$FAKE_BIN/$argument"
     ;;
+  ca-certificates)
+    if [[ -n "${FAKE_CA_PREFIX:-}" && -z "${FAKE_CA_REFUSES:-}" ]]; then
+      /bin/mkdir -p "$FAKE_CA_PREFIX/etc/ssl/certs"
+      printf 'fake bundle\n' >"$FAKE_CA_PREFIX/etc/ssl/certs/ca-certificates.crt"
+    fi
+    ;;
   esac
 done
 EOF
@@ -103,17 +109,66 @@ printf 'ID=ubuntu\nID_LIKE="debian"\n' >"$PACKAGES_TEST_ROOT/os-release"
 : >"$PACKAGES_TEST_ROOT/packages.log"
 rm -f "$PACKAGES_TEST_ROOT/bin/git" "$PACKAGES_TEST_ROOT/bin/curl"
 
-output="$(
+readonly CA_PREFIX="$PACKAGES_TEST_ROOT/caroot"
+mkdir -p "$CA_PREFIX/etc/ssl/certs"
+printf 'fake bundle\n' >"$CA_PREFIX/etc/ssl/certs/ca-certificates.crt"
+
+run_host_deps() {
   PATH="$PACKAGES_TEST_ROOT/bin" \
     PACKAGE_LOG="$PACKAGES_TEST_ROOT/packages.log" \
     FAKE_BIN="$PACKAGES_TEST_ROOT/bin" \
+    FAKE_CA_PREFIX="$CA_PREFIX" \
     BOOTSTRAP_OS_RELEASE_FILE="$PACKAGES_TEST_ROOT/os-release" \
-    "$PACKAGES_TEST_ROOT/bootstrap/01-host-deps.sh" install
-)"
-[[ "$output" == $'[host-deps] installing required host commands: curl git zsh\n[host-deps] required commands available: curl git zsh' ]] ||
-  fail 'the host-deps phase should install and verify its authoritative command list'
+    BOOTSTRAP_CA_BUNDLE_PREFIX="$CA_PREFIX" \
+    "$PACKAGES_TEST_ROOT/bootstrap/01-host-deps.sh" "$@"
+}
+
+output="$(run_host_deps install)"
+[[ "$output" == *"[host-deps] CA bundle available at $CA_PREFIX/etc/ssl/certs/ca-certificates.crt"* ]] ||
+  fail 'the host-deps phase should report the CA bundle it found'
 [[ "$(<"$PACKAGES_TEST_ROOT/packages.log")" == $'apt-get update\napt-get install -y curl git zsh' ]] ||
-  fail 'the host-deps phase should use the detected host package manager'
+  fail 'an existing CA bundle should not provoke a package refresh'
+
+# A machine whose trust store sits at no path Nix probes: the phase must fail
+# its check, then repair it through the detected package manager.
+# Each case is id|id_like|expected, with @ standing in for a newline so one
+# case stays on one line for `read`.
+for distro_case in \
+  'ubuntu|debian|apt-get update@env DEBIAN_FRONTEND=noninteractive apt-get install -y --only-upgrade ca-certificates' \
+  'fedora|rhel centos|dnf install -y --refresh ca-certificates@dnf upgrade -y ca-certificates' \
+  'arch||pacman -S --needed --noconfirm ca-certificates'; do
+  IFS='|' read -r ca_id ca_id_like ca_expected <<<"$distro_case"
+  ca_expected="${ca_expected//@/$'\n'}"
+  printf 'ID=%s\nID_LIKE="%s"\n' "$ca_id" "$ca_id_like" >"$PACKAGES_TEST_ROOT/os-release"
+  rm -f "$CA_PREFIX/etc/ssl/certs/ca-certificates.crt"
+  : >"$PACKAGES_TEST_ROOT/packages.log"
+
+  if run_host_deps status >/dev/null 2>&1; then
+    fail "$ca_id status should fail when no CA bundle is at a path Nix probes"
+  fi
+
+  run_host_deps install >/dev/null || fail "$ca_id should repair a missing CA bundle"
+  [[ "$(<"$PACKAGES_TEST_ROOT/packages.log")" == "$ca_expected"* ]] || {
+    printf 'Expected:\n%s\nActual:\n%s\n' "$ca_expected" "$(<"$PACKAGES_TEST_ROOT/packages.log")" >&2
+    fail "$ca_id ca-certificates adapter"
+  }
+done
+
+# The package manager running without producing a bundle is a hard failure, not
+# a phase that silently reports success.
+printf 'ID=fedora\nID_LIKE="rhel centos"\n' >"$PACKAGES_TEST_ROOT/os-release"
+rm -f "$CA_PREFIX/etc/ssl/certs/ca-certificates.crt"
+: >"$PACKAGES_TEST_ROOT/packages.log"
+if output="$(FAKE_CA_REFUSES=1 run_host_deps install 2>&1)"; then
+  fail 'a refresh that produces no CA bundle should fail the phase'
+fi
+[[ "$output" == *'no CA bundle at any path Nix probes'* ]] ||
+  fail 'the phase should name the paths it probed'
+[[ "$output" == *'upgrade the host and retry'* ]] ||
+  fail 'the phase should say what to do when refreshing its packages is not enough'
+
+printf 'ID=ubuntu\nID_LIKE="debian"\n' >"$PACKAGES_TEST_ROOT/os-release"
+printf 'fake bundle\n' >"$CA_PREFIX/etc/ssl/certs/ca-certificates.crt"
 
 if output="$(
   PATH="$PACKAGES_TEST_ROOT/bin" \
