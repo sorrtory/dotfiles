@@ -39,11 +39,11 @@ let
   };
 
   # Its counterpart for files already on disk. FFmpeg carries the ffprobe the
-  # recipe choice reads, and coreutils the mktemp the palette and cover-art
-  # passes need.
+  # recipe choice reads, ImageMagick the jpg and png targets, and coreutils the
+  # mktemp the palette and cover-art passes need.
   convertTo = pkgs.writeShellApplication {
     name = "convert-to";
-    runtimeInputs = [ pkgs.coreutils pkgs.ffmpeg ];
+    runtimeInputs = [ pkgs.coreutils pkgs.ffmpeg pkgs.imagemagick ];
     text = builtins.readFile ../scripts/bin/convert-to.sh;
   };
 in

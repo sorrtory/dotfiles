@@ -1,6 +1,6 @@
 # 01 — Support image targets in convert-to
 
-Status: needs-triage
+Status: resolved
 Priority: P2
 
 ## Evidence
@@ -24,3 +24,19 @@ reported usability bug and a scope decision against the current spec.
   or document and surface `download jpg/png` as the only supported interface.
 - If added, preserve originals, handle batches and collisions like the existing
   targets, and test PNG/WebP/JPEG inputs plus animated images.
+
+## Answer
+
+`convert-to jpg` and `convert-to png` are supported targets, driven by
+ImageMagick. They share the existing preflight: outputs are worked out first,
+collisions refuse the batch unless `--force`, two inputs cannot claim one
+output, and originals are never removed. `jpg` flattens transparency onto white
+and applies EXIF orientation. Anything holding more than one frame (animated
+GIF/WebP, multi-page TIFF, video) is refused by frame count rather than split
+into `name-0.jpg`, `name-1.jpg`. An explicit JPEG to PNG is honoured, unlike
+`download png`, since the operator asked for it.
+
+Fixed alongside: a relative path containing a colon, such as `Song: Live.mkv`,
+was read by ffmpeg as a URL (`Protocol not found`) and by ImageMagick as a
+format prefix. Paths now reach both tools as `./path`. ImageMagick's `%d`
+expansion in output names is escaped as well.
