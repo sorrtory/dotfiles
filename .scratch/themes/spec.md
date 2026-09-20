@@ -15,9 +15,13 @@ in step.
 
 ### Themes and switches
 
-- **N themes**, each a palette file. Adding a theme is adding a palette file.
+- **N themes**, each a palette file, all this repository's own: they start
+  from an upstream palette and may diverge from it where the result looks
+  better, with the divergence recorded in the palette file and its provenance
+  in the README (decided 2026-09-20; no external theme collection or
+  generator, see Out of scope). Adding a theme is adding a palette file.
   The first three:
-  - **gruvbox** — the main theme. Stock Rewaita Gruvbox Medium, no tweaks.
+  - **gruvbox** — the main theme, from Rewaita's Gruvbox Medium.
   - **autumn-glass** — the espresso/copper Autumn Glass family, with text
     brighter than stock and Gruvbox's bright ANSI set as the normal colors
     (the tweaks WezTerm carries today move here). Applied to every app.
@@ -109,7 +113,9 @@ Activation never restarts or signals a program.
 - Restarting or reloading programs from activation.
 - Writing Telegram's `tdata`.
 - Stylix or base16 frameworks: they would fight Rewaita and the native
-  configs, and give up per-app overrides.
+  configs, and give up per-app overrides. Terminal scheme collections such as
+  Gogh for the same reason from the other end: they carry a terminal's 16
+  colors and none of the roles the other apps need, and install by script.
 
 ## Definition of done
 

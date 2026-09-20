@@ -255,6 +255,32 @@ in every theme:
 dotfiles.theme.overrides.wezterm = r: { base = r.mantle; };
 ```
 
+Overrides are part of the design, not a patch over a shortcoming: a palette
+carries what a theme is, and an override carries what one app should do
+differently. A theme can ship its own, and yours in `home.nix` win over those.
+
+#### Where the colors come from
+
+The themes are this repository's own, started from palettes worth starting
+from. They are free to diverge where the result looks better, and the
+divergences are written down in the palette file that makes them.
+
+- **gruvbox** — surfaces and text from Rewaita's Gruvbox Medium, so the
+  desktop keeps the look it had before there was a palette; terminal colors
+  from Gruvbox's own 16.
+- **onedark** — surfaces and text from Rewaita's One Dark, with One Dark
+  Pro's editor background and its terminal colors.
+- **autumn-glass** — ours, from the Autumn Glass theme in `configs/ayugram/`:
+  espresso surfaces, parchment text, copper and maple accents. Its terminal
+  colors deliberately keep Gruvbox's brighter set, which reads better on a
+  dark background than Gruvbox's dim neutrals.
+
+There is no external theme framework behind this, on purpose. Collections
+like Gogh give a terminal's 16 colors and nothing for GTK, Telegram, Obsidian
+or Spotify, and generators like Stylix take the per-app overrides away. A
+palette here is one file of hexes, pinned in this repository's history, and
+adding a theme is adding one more.
+
 ### GNOME autumn theme
 
 Rewaita applies its Gruvbox Medium palette to GTK, GNOME Shell and Firefox at
