@@ -1,0 +1,7 @@
+# `nix build` drops its output link here; it is a GC root into /nix/store,
+# not repository content.
+/result
+/result-*
+
+# Screenshots kept locally while the theme documentation is being written.
+/docs/images/
