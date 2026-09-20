@@ -20,11 +20,14 @@ mkdir -p "$TEST_ROOT/config" "$TEST_ROOT/data/dotfiles/theme" "$TEST_ROOT/state"
 ln -s "$REPO_ROOT/configs/nvim" "$TEST_ROOT/config/nvim"
 ln -s "$plugins" "$TEST_ROOT/data/nvim"
 
-# What Home Manager would write for a given theme and switch.
+# What Home Manager would write for a given theme and switch. liveFiles is
+# keyed by the absolute path activation writes to, not by a bare file name.
+theme_data_path="${XDG_DATA_HOME:-$HOME/.local/share}/dotfiles/theme/nvim.lua"
+
 theme_file() {
   nix build --impure --no-link --print-out-paths --expr "((builtins.getFlake \"$REPO_ROOT\").homeConfigurations.z.extendModules {
     modules = [ ({ lib, ... }: { dotfiles.theme = lib.mapAttrs (_: lib.mkForce) ($1); }) ];
-  }).config.dotfiles.theme.liveFiles.\"nvim.lua\"" 2>/dev/null || fail "theme data for $1"
+  }).config.dotfiles.theme.liveFiles.\"$theme_data_path\"" 2>/dev/null || fail "theme data for $1"
 }
 
 # Neovim's own report of what it ended up with.
