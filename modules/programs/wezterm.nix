@@ -13,6 +13,14 @@ in
   xdg.configFile."wezterm/wezterm.lua".source =
     config.lib.file.mkOutOfStoreSymlink "${configRoot}/wezterm.lua";
 
+  # The theme's colors as a Lua table that wezterm.lua loads and watches, so
+  # a switch recolors open windows the way an edit to wezterm.lua does.
+  dotfiles.theme.liveFiles."wezterm.lua" = pkgs.writeText "wezterm-theme.lua"
+    "return ${lib.generators.toLua { } (config.dotfiles.theme.forApp "wezterm")}\n";
+  dotfiles.theme.apps.wezterm = {
+    label = "WezTerm";
+    apply = "live";
+  };
 
   # Nautilus's "Open in Console" (Ctrl+.) is not a terminal preference: it
   # calls org.freedesktop.Application.Open on the D-Bus name org.gnome.Ptyxis

@@ -1,0 +1,250 @@
+{ config, lib, pkgs, ... }:
+
+# One palette drives every themed app. A palette exports semantic roles and
+# the 16 ANSI colors; each app sees them with the theme's override for that
+# app layered on top, then the operator's. Apps take their colors from
+# `dotfiles.theme.forApp "<app>"` and register in `dotfiles.theme.apps` so
+# the notice printed after a switch can say how each one picks it up.
+# .scratch/themes/spec.md has the decisions behind this.
+
+let
+  inherit (lib) mkOption types;
+
+  cfg = config.dotfiles.theme;
+
+  requiredRoles = [
+    "base" "mantle" "surface" "overlay"
+    "text" "subtext" "muted"
+    "accent" "accent2"
+    "error" "warning" "success" "info"
+  ];
+  requiredAnsi = lib.concatMap (color: [ color "bright${lib.toUpper (lib.substring 0 1 color)}${lib.substring 1 (-1) color}" ]) [
+    "black" "red" "green" "yellow" "blue" "magenta" "cyan" "white"
+  ];
+
+  # Alphas for translucent surfaces. Off makes every app opaque, whatever an
+  # override asks for.
+  alphaOn = { window = 0.9; surface = 0.9; popup = 0.9; };
+  alphaOff = lib.mapAttrs (_: _: 1.0) alphaOn;
+
+  isHex = value: builtins.isString value && builtins.match "#[0-9a-fA-F]{6}" value != null;
+
+  # The theme's roles and ANSI colors, flattened, after checking the palette
+  # exports all of them.
+  checked = name: palette:
+    let
+      roles = palette.roles or { };
+      ansi = palette.ansi or { };
+      missing = lib.filter (role: !(roles ? ${role})) requiredRoles
+        ++ lib.filter (color: !(ansi ? ${color})) requiredAnsi;
+      malformed = lib.filter (key: !(isHex (roles // ansi).${key}))
+        (requiredRoles ++ requiredAnsi);
+    in
+    if missing != [ ] then
+      throw "dotfiles.theme: palette \"${name}\" is missing required role ${lib.concatMapStringsSep ", " (role: "\"${role}\"") missing}"
+    else if malformed != [ ] then
+      throw "dotfiles.theme: palette \"${name}\" has a role that is not a #rrggbb hex: ${lib.concatStringsSep ", " malformed}"
+    else
+      roles // ansi;
+
+  palette =
+    cfg.palettes.${cfg.name} or (throw "dotfiles.theme: no palette named \"${cfg.name}\"; known: ${lib.concatStringsSep ", " (lib.attrNames cfg.palettes)}");
+
+  global = checked cfg.name palette // {
+    alpha = if cfg.transparency then alphaOn else alphaOff;
+  };
+
+  # An override is an attrset of hexes, or a function of the colors so far
+  # (`r: { base = r.mantle; }`), which is what lets a remap follow the theme.
+  applyOverride = colors: override:
+    lib.recursiveUpdate colors (if lib.isFunction override then override colors else override);
+
+  forApp = app:
+    let
+      resolved = lib.foldl applyOverride global [
+        (palette.overrides.${app} or { })
+        (cfg.overrides.${app} or { })
+      ];
+    in
+    if cfg.transparency then resolved else resolved // { alpha = alphaOff; };
+
+  overrideType = types.either (types.functionTo types.attrs) types.attrs;
+
+  liveFileTargets = lib.mapAttrsToList (path: source: {
+    target = "${cfg.dataDir}/${path}";
+    inherit source;
+  }) cfg.liveFiles;
+
+  stateFile = "${config.xdg.stateHome}/dotfiles/theme";
+  stateValue = "${cfg.name} transparency=${lib.boolToString cfg.transparency}";
+in
+{
+  options.dotfiles.theme = {
+    name = mkOption {
+      type = types.str;
+      default = "gruvbox";
+      example = "autumn-glass";
+      description = "The palette every themed app follows: a name from `dotfiles.theme.palettes`.";
+    };
+
+    transparency = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Whether themed apps draw translucent windows and surfaces.";
+    };
+
+    overrides = mkOption {
+      type = types.attrsOf overrideType;
+      default = { };
+      example = lib.literalExpression ''
+        {
+          wezterm = r: { base = r.mantle; };
+          sublime-text = { accent = "#d65d0e"; alpha.window = 0.95; };
+        }
+      '';
+      description = ''
+        The operator's per-app overrides, applied after the theme's own. Each
+        is an attrset of colors or a function of the colors so far; `alpha`
+        overrides the transparency table and only applies while transparency
+        is on.
+      '';
+    };
+
+    palettes = mkOption {
+      type = types.attrsOf types.attrs;
+      default = {
+        gruvbox = import ./palettes/gruvbox.nix;
+        autumn-glass = import ./palettes/autumn-glass.nix;
+        onedark = import ./palettes/onedark.nix;
+      };
+      description = ''
+        Every theme there is. A palette has `roles` and `ansi`, and may add
+        `overrides.<app>` for how that theme should differ in one app.
+      '';
+    };
+
+    forApp = mkOption {
+      type = types.functionTo types.attrs;
+      readOnly = true;
+      default = forApp;
+      description = "The current theme's colors and alphas as the given app should use them.";
+    };
+
+    dataDir = mkOption {
+      type = types.str;
+      readOnly = true;
+      default = "${config.xdg.dataHome}/dotfiles/theme";
+      description = "Where live files are written.";
+    };
+
+    liveFiles = mkOption {
+      type = types.attrsOf types.path;
+      default = { };
+      description = ''
+        Generated files, relative to `dataDir`, that activation copies into
+        place as ordinary files, written over in place when they change. An
+        app watching such a file sees an edit, which a Home Manager symlink
+        swapped to a new store path does not give it.
+      '';
+    };
+
+    apps = mkOption {
+      default = { };
+      description = "How each themed app takes a switch, for the notice activation prints.";
+      type = types.attrsOf (types.submodule ({ name, ... }: {
+        options = {
+          label = mkOption {
+            type = types.str;
+            default = name;
+            description = "The app's name in the notice.";
+          };
+          apply = mkOption {
+            type = types.enum [ "live" "restart" "relogin" ];
+            description = ''
+              How the app picks up a switch. An activation step can move an
+              app at run time with `dotfilesThemeApply[<app>]=<value>`, as
+              GNOME does when it cannot recolor the running session.
+            '';
+          };
+          restartNote = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            example = "Reload Window";
+            description = "What restarting means for this app, when not the obvious.";
+          };
+          setup = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            description = "A one-time step the operator does by hand so later switches reach the app.";
+          };
+          check = mkOption {
+            type = types.nullOr types.lines;
+            default = null;
+            description = "Shell run when the notice is printed; each line it prints is listed as needing attention.";
+          };
+        };
+      }));
+    };
+  };
+
+  config = {
+    # Before anything that applies a theme, so those steps can move an app.
+    home.activation.dotfilesThemeInit = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      declare -gA dotfilesThemeApply=(
+        ${lib.concatStrings (lib.mapAttrsToList (name: app: "[${lib.escapeShellArg name}]=${app.apply} ") cfg.apps)}
+      )
+    '';
+
+    home.activation.dotfilesThemeFiles = lib.hm.dag.entryAfter [ "dotfilesThemeInit" ] (
+      lib.concatMapStrings ({ target, source }: ''
+        run mkdir -p ${lib.escapeShellArg (dirOf target)}
+        if [[ -L ${lib.escapeShellArg target} ]]; then
+          run rm -f ${lib.escapeShellArg target}
+        fi
+        if ! cmp -s ${source} ${lib.escapeShellArg target}; then
+          # cp onto an existing file truncates and rewrites that same file,
+          # which is the change a watcher is waiting for.
+          run cp --no-preserve=mode ${source} ${lib.escapeShellArg target}
+        fi
+      '') liveFileTargets
+    );
+
+    # After every other step, so it ends the output and steps that apply the
+    # theme have moved any app whose live apply failed. Printed only when the
+    # theme or transparency differs from the previous activation.
+    home.activation.dotfilesThemeHint = lib.hm.dag.entryAfter
+      (lib.attrNames (removeAttrs config.home.activation [ "dotfilesThemeHint" ])) ''
+      if [[ "$(cat ${lib.escapeShellArg stateFile} 2>/dev/null)" != ${lib.escapeShellArg stateValue} ]]; then
+        dotfilesThemeList() {
+          local apply=$1 heading=$2 name line=
+          for name in $(printf '%s\n' "''${!dotfilesThemeLabel[@]}" | sort); do
+            if [[ ''${dotfilesThemeApply[$name]} == "$apply" ]]; then
+              line+="''${line:+, }''${dotfilesThemeLabel[$name]}"
+            fi
+          done
+          [[ -z $line ]] || echo "  $heading: $line"
+        }
+        declare -gA dotfilesThemeLabel=(
+          ${lib.concatStrings (lib.mapAttrsToList (name: app:
+            "[${lib.escapeShellArg name}]=${lib.escapeShellArg (app.label + lib.optionalString (app.restartNote != null) " (${app.restartNote})")} ") cfg.apps)}
+        )
+        echo
+        echo ${lib.escapeShellArg "Theme is now ${cfg.name}, transparency ${if cfg.transparency then "on" else "off"}."}
+        dotfilesThemeList live "Updated live"
+        dotfilesThemeList restart "Restart to apply"
+        dotfilesThemeList relogin "Log out and back in"
+        ${lib.concatStrings (lib.mapAttrsToList (name: app: lib.optionalString (app.setup != null) ''
+          echo ${lib.escapeShellArg "  Once, if not done yet — ${app.label}: ${app.setup}"}
+        '') cfg.apps)}
+        ${lib.concatStrings (lib.mapAttrsToList (name: app: lib.optionalString (app.check != null) ''
+          while IFS= read -r line; do
+            [[ -n $line ]] && echo ${lib.escapeShellArg "  Needs attention — ${app.label}:"} "$line"
+          done < <(${pkgs.writeShellScript "theme-check-${name}" app.check})
+        '') cfg.apps)}
+        echo
+        run mkdir -p ${lib.escapeShellArg (dirOf stateFile)}
+        run cp --no-preserve=mode ${pkgs.writeText "theme-state" stateValue} ${lib.escapeShellArg stateFile}
+      fi
+    '';
+  };
+}

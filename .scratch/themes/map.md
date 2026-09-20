@@ -6,7 +6,7 @@ app follows, generated from a single palette with per-app overrides. See
 
 ## Tickets
 
-- [01: Theme core, proven in WezTerm](issues/01-theme-core.md) — ready-for-agent.
+- [01: Theme core, proven in WezTerm](issues/01-theme-core.md) — resolved; see its Answer for the app-facing API (`forApp`, `apps`, `liveFiles`).
 - [02: GNOME via a generated Rewaita palette](issues/02-gnome.md) — ready-for-agent; blocked by 01.
 - [03: Neovim](issues/03-neovim.md) — ready-for-agent; blocked by 01.
 - [04: Sublime Text](issues/04-sublime-text.md) — ready-for-agent; blocked by 01.
