@@ -321,6 +321,64 @@ On a machine with this configuration but no Home Manager — a remote host the
 Lua tree was copied to — there is no generated palette, and the editor starts
 in onedark rather than failing.
 
+#### VS Code
+
+The editor always runs the theme called "Dotfiles", which is what
+`configs/vscode/settings.json` selects and what never changes. Behind the name
+is a small local extension Home Manager builds and links in: for a theme that
+names a native extension it is that extension's own theme, renamed — Gruvbox
+Dark Hard for gruvbox, One Dark Pro for onedark, both taken from the
+extension's `contributes.themes` rather than a file name guessed here — and
+for a theme that names none, as autumn-glass does, it is drawn from the
+palette by `modules/theme/vscode-theme.nix`. Both upstream extensions stay
+installed, so they can also be selected directly, and extensions installed by
+hand are untouched.
+
+The editor reads a theme only at startup, so a switch applies at the next
+Reload Window. VS Code's own color keys are an override of their own, which is
+merged into the contributed theme rather than written into the settings file
+the editor has to keep saving to:
+
+```nix
+dotfiles.theme.overrides.vscode.colorCustomizations = {
+  "editor.background" = "#1d2021";
+};
+```
+
+#### Spotify
+
+Spicetify takes eighteen named slots and writes them into the client's CSS.
+Fourteen are a role; the other four — a card, its shadow, the neutral "misc"
+line and the hover fill above a selection — are a step between two roles, so
+`modules/theme/spotify-scheme.nix` mixes them. Autumn-glass, the theme this
+palette family came from, pins those four to the shades its hand-made scheme
+chose by eye. Spicetify bakes the result into the client at activation, so a
+switch shows at the next Spotify launch.
+
+#### Obsidian
+
+The theme is generated to `~/.local/share/dotfiles/theme/obsidian/` and is
+called **Dotfiles**. Vaults are machine-local and Obsidian has to have created
+a vault's `.obsidian` directory first, so linking one is a one-time step per
+vault, done by hand:
+
+```bash
+mkdir -p <vault>/.obsidian/themes
+ln -s ~/.local/share/dotfiles/theme/obsidian "<vault>/.obsidian/themes/Dotfiles"
+```
+
+Then pick **Dotfiles** under Settings → Appearance → Themes, with the base
+color scheme set to dark. The link never has to be made again: Home Manager
+repoints what is behind that path at every generation, and a switch shows at
+the next Obsidian start, because Obsidian reads a theme once at launch. After
+a switch, activation names any vault it knows about — the repositories
+`dotfiles.repositories` clones — that has no link yet.
+
+Solid colors only, and the transparency switch does not reach Obsidian: its
+window can be see-through on Linux, but Chromium redraws it with glitches on
+GNOME Wayland while the window moves, and a wallpaper behind the panels was
+too busy for writing.
+
 ### GNOME through Rewaita
 
 Rewaita applies a palette to GTK, GNOME Shell and Firefox, and that palette is
