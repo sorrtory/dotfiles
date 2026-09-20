@@ -578,6 +578,7 @@ expressions — it does not prove content is safe to publish.
 - [docs/DECISIONS.md](docs/DECISIONS.md) records ownership and policy.
 - [docs/MIGRATION.md](docs/MIGRATION.md) defines migration order and verification.
 - [docs/SOFTWARE.md](docs/SOFTWARE.md) maps software to its installation mechanism.
+- [docs/WORKAROUNDS.md](docs/WORKAROUNDS.md) records each Nixpkgs workaround and what must happen before it goes.
 - [AGENTS.md](AGENTS.md) contains agent operating rules.
 - [docs/STAGING.md](docs/STAGING.md) covers the staging VM.
 

@@ -11,6 +11,7 @@ Read these before making architectural changes:
 - `CONTEXT.md` — canonical project vocabulary.
 - `docs/DECISIONS.md` — stable decisions, ownership boundaries, and security model.
 - `docs/MIGRATION.md` — ordered migration plan from the legacy repos.
+- `docs/WORKAROUNDS.md` — every deviation from a Nixpkgs package and when it can go.
 
 ## Agent skills
 
@@ -67,6 +68,7 @@ that loads but draws nothing.
 │   ├── MIGRATION.md
 │   ├── SOFTWARE.md
 │   ├── STAGING.md
+│   ├── WORKAROUNDS.md
 │   └── agents/
 ├── modules/
 │   ├── desktops/            # GNOME; Hyprland if it is ever migrated
@@ -96,10 +98,11 @@ Create a file only when the corresponding responsibility is actually moved.
 1. Preserve the intentionally selected behavior baseline; improve or remove legacy behavior deliberately.
 2. Prefer small migration commits over broad rewrites.
 3. Prefer Nixpkgs packages and ecosystem package sets before writing local packages.
-4. Use `mkOutOfStoreSymlink` intentionally for native configs that should remain live-editable.
-5. Do not Nix-ify a readable native config merely for aesthetics.
-6. Never commit plaintext secrets or leak them into Nix expressions, logs, patches, or the Nix store.
-7. Normal Home Manager activation must not unexpectedly invoke `sudo`.
-8. The host distro owns low-level system integration; Home Manager owns the user environment.
-9. Application login/session state remains machine-local rather than declarative.
-10. Before deleting legacy machinery, verify the replacement under normal use.
+4. Give every override of a Nixpkgs package an entry in `docs/WORKAROUNDS.md` when it works around someone else's defect, recording the packaged version the defect was seen in and the date; delete the entry with the override.
+5. Use `mkOutOfStoreSymlink` intentionally for native configs that should remain live-editable.
+6. Do not Nix-ify a readable native config merely for aesthetics.
+7. Never commit plaintext secrets or leak them into Nix expressions, logs, patches, or the Nix store.
+8. Normal Home Manager activation must not unexpectedly invoke `sudo`.
+9. The host distro owns low-level system integration; Home Manager owns the user environment.
+10. Application login/session state remains machine-local rather than declarative.
+11. Before deleting legacy machinery, verify the replacement under normal use.

@@ -56,8 +56,10 @@
           ];
       };
       # nixpkgs currently carries gitleaks 8.30.1, whose default rules do not
-      # detect canonical tokens (upstream issue #2170). Keep the regression
-      # fixture in tests/secret_scan_test.sh before updating this pin.
+      # detect canonical tokens (upstream issue #2170). The issue is closed but
+      # the fix is unreleased — 8.30.1 is still the newest tag — so this pin
+      # goes when a later release lands, not when the issue closed. Keep the
+      # regression fixture in tests/secret_scan_test.sh before updating it.
       gitleaks = pkgs.gitleaks.overrideAttrs (_: rec {
         version = "8.18.4";
         src = pkgs.fetchFromGitHub {
