@@ -4,7 +4,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly REPO_ROOT
-readonly SUBJECT="$REPO_ROOT/scripts/bootstrap/05-yt-dlp.sh"
+readonly SUBJECT="$REPO_ROOT/scripts/bootstrap/06-yt-dlp.sh"
 YTDLP_TEST_ROOT="$(mktemp -d)"
 readonly YTDLP_TEST_ROOT
 trap 'rm -rf -- "$YTDLP_TEST_ROOT"' EXIT

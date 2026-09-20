@@ -4,7 +4,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly REPO_ROOT
-readonly SUBJECT="$REPO_ROOT/scripts/bootstrap/02-nix.sh"
+readonly SUBJECT="$REPO_ROOT/scripts/bootstrap/03-nix.sh"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2

@@ -100,7 +100,7 @@ fi
   fail 'an unsupported distribution should not invoke a package manager'
 
 mkdir -p "$PACKAGES_TEST_ROOT/bootstrap/common"
-cp "$REPO_ROOT/scripts/bootstrap/01-host-deps.sh" \
+cp "$REPO_ROOT/scripts/bootstrap/02-host-deps.sh" \
   "$PACKAGES_TEST_ROOT/bootstrap/01-host-deps.sh"
 cp "$REPO_ROOT/scripts/bootstrap/common/"*.sh \
   "$PACKAGES_TEST_ROOT/bootstrap/common/"

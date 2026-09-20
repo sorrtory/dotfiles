@@ -4,7 +4,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly REPO_ROOT
-readonly SUBJECT="$REPO_ROOT/scripts/bootstrap/06-docker.sh"
+readonly SUBJECT="$REPO_ROOT/scripts/bootstrap/07-docker.sh"
 DOCKER_TEST_ROOT="$(mktemp -d)"
 readonly DOCKER_TEST_ROOT
 trap 'rm -rf -- "$DOCKER_TEST_ROOT"' EXIT

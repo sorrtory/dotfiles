@@ -15,7 +15,7 @@ fail() {
 
 mkdir -p "$LOGIN_SHELL_TEST_ROOT/bootstrap/common" \
   "$LOGIN_SHELL_TEST_ROOT/bin"
-cp "$REPO_ROOT/scripts/bootstrap/07-login-shell.sh" \
+cp "$REPO_ROOT/scripts/bootstrap/08-login-shell.sh" \
   "$LOGIN_SHELL_TEST_ROOT/bootstrap/07-login-shell.sh"
 cp "$REPO_ROOT/scripts/bootstrap/common/"*.sh \
   "$LOGIN_SHELL_TEST_ROOT/bootstrap/common/"

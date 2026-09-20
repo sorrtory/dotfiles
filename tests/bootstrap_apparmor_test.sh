@@ -33,7 +33,7 @@ phase() {
     BOOTSTRAP_APPARMOR_SOURCE="$TEST_ROOT/source" \
     BOOTSTRAP_APPARMOR_TARGET="$TEST_ROOT/target" \
     BOOTSTRAP_USERNS_RESTRICTION="$restriction" \
-    bash "$REPO_ROOT/scripts/bootstrap/09-apparmor.sh" "$@"
+    bash "$REPO_ROOT/scripts/bootstrap/10-apparmor.sh" "$@"
 }
 sudo_calls() { if [[ -e "$TEST_ROOT/sudo.log" ]]; then wc -l <"$TEST_ROOT/sudo.log"; else echo 0; fi; }
 

@@ -88,7 +88,7 @@ for command_name in sudo uname id getent usermod apt-get dnf pacman dpkg-query r
 done
 export PATH="$TEST_ROOT/bin:$PATH"
 export BOOTSTRAP_OS_RELEASE_FILE="$TEST_ROOT/os-release"
-phase="$REPO_ROOT/scripts/bootstrap/10-virtualization.sh"
+phase="$REPO_ROOT/scripts/bootstrap/11-virtualization.sh"
 
 reset_state() {
   rm -f "$TEST_ROOT"/active-* "$TEST_ROOT"/enabled-* "$TEST_ROOT/installed" \

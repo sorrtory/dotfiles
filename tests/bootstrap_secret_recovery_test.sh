@@ -4,7 +4,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly REPO_ROOT
-readonly SUBJECT="$REPO_ROOT/scripts/bootstrap/03-secret-recovery.sh"
+readonly SUBJECT="$REPO_ROOT/scripts/bootstrap/04-secret-recovery.sh"
 RECOVERY_PHASE_TEST_ROOT="$(mktemp -d)"
 readonly RECOVERY_PHASE_TEST_ROOT
 trap 'rm -rf -- "$RECOVERY_PHASE_TEST_ROOT"' EXIT

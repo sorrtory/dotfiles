@@ -6,39 +6,25 @@ BOOTSTRAP_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly BOOTSTRAP_DIR
 # shellcheck disable=SC1091
 . "$BOOTSTRAP_DIR/common/phase.sh"
-# shellcheck disable=SC1091
-. "$BOOTSTRAP_DIR/common/packages.sh"
 
+# Repository policy runs first so that every later phase installs from known
+# endpoints rather than from whatever mirror a metalink happens to pick. It is
+# deliberately not gated on which GPU the host has: mirror choice is a property
+# of the network, and pinning it behind a graphics check left a Fedora machine
+# with non-AMD graphics on the default mirrors.
 readonly YANDEX='https://mirror.yandex.ru/fedora'
 # Overridable so tests never write to the real host paths.
-readonly OVERRIDE_DIR="${BOOTSTRAP_FEDORA_AMD_OVERRIDE_DIR:-/etc/dnf/repos.override.d}"
-readonly BACKUP_ROOT="${BOOTSTRAP_FEDORA_AMD_BACKUP_DIR:-/root}"
+readonly OVERRIDE_DIR="${BOOTSTRAP_HOST_REPOS_OVERRIDE_DIR:-/etc/dnf/repos.override.d}"
+readonly BACKUP_ROOT="${BOOTSTRAP_HOST_REPOS_BACKUP_DIR:-/root}"
 readonly FEDORA_OVERRIDE="$OVERRIDE_DIR/80-yandex-fedora.repo"
 readonly RPMFUSION_OVERRIDE="$OVERRIDE_DIR/81-yandex-rpmfusion.repo"
 
-readonly -a AMD_PACKAGES=(
-  mesa-dri-drivers
-  mesa-vulkan-drivers
-  libva-utils
-  vulkan-tools
-  mpv
-  linux-firmware
-  amd-gpu-firmware
-  amd-ucode-firmware
-  kernel
-  kernel-core
-  kernel-modules
-  kernel-modules-core
-  kernel-modules-extra
-)
-
-readonly -a GSTREAMER_PACKAGES=(
-  gstreamer1-plugin-libav
-  gstreamer1-plugins-good
-  gstreamer1-plugins-bad-free
-  gstreamer1-plugins-bad-free-extras
-  gstreamer1-plugins-bad-freeworld
-  gstreamer1-plugins-ugly
+# RPM Fusion is repository configuration, so it is established here for every
+# Fedora host rather than by a driver phase. It carries the freeworld codecs the
+# AMD phase needs, and is also where an NVIDIA phase would find akmod-nvidia.
+readonly -a RPMFUSION_RELEASES=(
+  rpmfusion-free-release
+  rpmfusion-nonfree-release
 )
 
 host_os_id() {
@@ -59,25 +45,8 @@ fedora_version() {
   rpm -E %fedora
 }
 
-# Matched on the AMD/ATI PCI vendor ID rather than a text match, and treated
-# as absent rather than fatal when lspci itself is unavailable: this only
-# gates whether the phase applies, it must never block an unrelated host.
-amd_gpu_present() {
-  command -v lspci >/dev/null 2>&1 || return 1
-  lspci -nnk 2>/dev/null | grep -Eiq '(VGA|3D|Display).*\[1002:'
-}
-
 host_matches() {
-  [[ "$(uname -m)" == x86_64 ]] && is_fedora && amd_gpu_present
-}
-
-show_mesa_versions() {
-  rpm -q \
-    mesa-libGL \
-    mesa-dri-drivers \
-    mesa-va-drivers \
-    mesa-va-drivers-freeworld \
-    mesa-vulkan-drivers 2>/dev/null || true
+  [[ "$(uname -m)" == x86_64 ]] && is_fedora
 }
 
 check_url() {
@@ -109,14 +78,14 @@ preflight_mirrors() {
 
 backup_repos() {
   local backup_dir
-  backup_dir="$BACKUP_ROOT/fedora-amd-repo-backup-$(date +%Y%m%d-%H%M%S)"
+  backup_dir="$BACKUP_ROOT/host-repos-backup-$(date +%Y%m%d-%H%M%S)"
 
   phase_info "backing up repository configuration to $backup_dir"
   sudo mkdir -p -- "$backup_dir"
   [[ -d /etc/yum.repos.d ]] && sudo cp -a -- /etc/yum.repos.d "$backup_dir/"
   [[ -d "$OVERRIDE_DIR" ]] && sudo cp -a -- "$OVERRIDE_DIR" "$backup_dir/"
   [[ -f /etc/dnf/dnf.conf ]] && sudo cp -a -- /etc/dnf/dnf.conf "$backup_dir/"
-  sudo tee "$BACKUP_ROOT/fedora-amd-last-repo-backup" >/dev/null <<<"$backup_dir"
+  sudo tee "$BACKUP_ROOT/host-repos-last-backup" >/dev/null <<<"$backup_dir"
 }
 
 write_fedora_override() {
@@ -176,10 +145,8 @@ refresh_cache() {
 }
 
 check() {
-  local package
-
   if ! host_matches; then
-    phase_info 'not a Fedora/AMD host; nothing to do'
+    phase_info 'not an x86_64 Fedora host; nothing to do'
     return
   fi
 
@@ -188,29 +155,19 @@ check() {
     phase_info 'Yandex repo overrides are missing'
     return 1
   fi
-  if ! rpm -q rpmfusion-free-release rpmfusion-nonfree-release >/dev/null 2>&1; then
+  if ! rpm -q "${RPMFUSION_RELEASES[@]}" >/dev/null 2>&1; then
     phase_info 'RPM Fusion release packages are missing'
     return 1
   fi
-  if ! rpm -q mesa-va-drivers-freeworld >/dev/null 2>&1; then
-    phase_info 'mesa-va-drivers-freeworld is not installed'
-    return 1
-  fi
-  for package in "${AMD_PACKAGES[@]}" "${GSTREAMER_PACKAGES[@]}"; do
-    rpm -q "$package" >/dev/null 2>&1 || {
-      phase_info "$package is not installed"
-      return 1
-    }
-  done
 
-  phase_info 'Fedora AMD Mesa/VA-API driver stack is installed'
+  phase_info 'Fedora and RPM Fusion repositories are pinned to Yandex'
 }
 
 install() {
-  local freeworld
+  local f
 
   if ! host_matches; then
-    phase_info 'not a Fedora/AMD host; nothing to do'
+    phase_info 'not an x86_64 Fedora host; nothing to do'
     return
   fi
 
@@ -225,6 +182,9 @@ install() {
   phase_info 'refreshing Fedora metadata from Yandex'
   refresh_cache
 
+  # Repointing the mirrors leaves a package set assembled somewhere else, so
+  # reconcile it here. This is also what makes the rest of the flow
+  # deterministic: every later phase installs from these pinned endpoints.
   phase_info 'synchronizing the currently mixed Fedora package set'
   sudo dnf -y distro-sync --refresh
 
@@ -232,7 +192,6 @@ install() {
   sudo dnf -y upgrade --refresh
 
   phase_info 'installing RPM Fusion release packages from Yandex'
-  local f
   f="$(fedora_version)"
   sudo dnf -y install \
     "$YANDEX/rpmfusion/free/fedora/rpmfusion-free-release-$f.noarch.rpm" \
@@ -247,49 +206,7 @@ install() {
   sudo dnf -y distro-sync --refresh
   sudo dnf -y upgrade --refresh
 
-  show_mesa_versions
-
-  phase_info 'checking for mesa-va-drivers-freeworld in RPM Fusion'
-  freeworld=$(dnf -q repoquery --available --latest-limit=1 \
-    --qf '%{name}-%{evr}.%{arch}' mesa-va-drivers-freeworld 2>/dev/null | tail -n1 || true)
-  if [[ -z "$freeworld" ]]; then
-    phase_error 'mesa-va-drivers-freeworld is not visible; check RPM Fusion metadata before continuing'
-    return 1
-  fi
-
-  if rpm -q mesa-va-drivers-freeworld >/dev/null 2>&1; then
-    phase_info 'mesa-va-drivers-freeworld is already installed; leaving it in place'
-  elif rpm -q mesa-va-drivers >/dev/null 2>&1; then
-    phase_info 'replacing Fedora mesa-va-drivers with RPM Fusion mesa-va-drivers-freeworld'
-    # Intentionally NO --allowerasing here. If this cannot resolve cleanly,
-    # stop instead of removing unrelated graphics packages.
-    sudo dnf -y swap mesa-va-drivers mesa-va-drivers-freeworld
-  else
-    phase_info 'installing mesa-va-drivers-freeworld'
-    sudo dnf -y install mesa-va-drivers-freeworld
-  fi
-
-  phase_info 'installing AMD graphics/video tools and current firmware/kernel packages'
-  sudo dnf -y install "${AMD_PACKAGES[@]}"
-
-  # Keep Fedora's ffmpeg-free stack, but complement the codec library from
-  # RPM Fusion, avoiding a broad ffmpeg swap while still enabling H.264.
-  if rpm -q ffmpeg-free >/dev/null 2>&1; then
-    phase_info 'installing RPM Fusion libavcodec-freeworld to complement Fedora ffmpeg-free'
-    sudo dnf -y install libavcodec-freeworld
-  fi
-
-  phase_info 'installing GStreamer codec/plugin packages'
-  if ! sudo dnf -y install "${GSTREAMER_PACKAGES[@]}"; then
-    phase_error 'GStreamer extras did not fully install; core AMD/kernel/VA-API setup can still be used'
-  fi
-
-  phase_info 'final update pass'
-  sudo dnf -y upgrade --refresh
-
-  show_mesa_versions
-  phase_info 'reboot before relying on the new kernel and VA-API driver'
-  phase_info "repository backup recorded in $BACKUP_ROOT/fedora-amd-last-repo-backup"
+  phase_info "repository backup recorded in $BACKUP_ROOT/host-repos-last-backup"
 }
 
 phase_main "$@"

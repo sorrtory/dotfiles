@@ -26,7 +26,7 @@ EOF
 chmod +x "$TEST_ROOT/bin/loginctl"
 export TEST_ROOT
 export PATH="$TEST_ROOT/bin:$PATH"
-phase="$REPO_ROOT/scripts/bootstrap/08-user-linger.sh"
+phase="$REPO_ROOT/scripts/bootstrap/09-user-linger.sh"
 printf 'no\n' >"$TEST_ROOT/state"
 if bash "$phase" status >/dev/null; then fail 'disabled linger reported satisfied'; fi
 [[ ! -e "$TEST_ROOT/actions" ]] || fail 'status changed linger'

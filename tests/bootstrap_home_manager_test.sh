@@ -12,11 +12,11 @@ trap 'rm -rf -- "$HOME_MANAGER_TEST_ROOT"' EXIT
 fixture_repo="$HOME_MANAGER_TEST_ROOT/repo"
 mkdir -p "$fixture_repo/scripts/bootstrap/common" "$fixture_repo/scripts/bin" \
   "$fixture_repo/modules" "$fixture_repo/packages"
-cp "$REPO_ROOT/scripts/bootstrap/04-home-manager.sh" "$fixture_repo/scripts/bootstrap/"
+cp "$REPO_ROOT/scripts/bootstrap/05-home-manager.sh" "$fixture_repo/scripts/bootstrap/"
 cp "$REPO_ROOT/scripts/bootstrap/common/"*.sh "$fixture_repo/scripts/bootstrap/common/"
 touch "$fixture_repo/flake.nix" "$fixture_repo/flake.lock" "$fixture_repo/home.nix"
 printf '# initial generator\n' >"$fixture_repo/scripts/bin/generator.sh"
-readonly SUBJECT="$fixture_repo/scripts/bootstrap/04-home-manager.sh"
+readonly SUBJECT="$fixture_repo/scripts/bootstrap/05-home-manager.sh"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2

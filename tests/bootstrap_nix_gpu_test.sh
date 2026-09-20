@@ -41,7 +41,7 @@ phase() {
     BOOTSTRAP_NIX_GPU_LINK="$TEST_ROOT/opengl-driver" \
     BOOTSTRAP_NIX_GPU_TMPFILES="$TEST_ROOT/etc/non-nixos-gpu.conf" \
     BOOTSTRAP_NIX_GPU_GCROOT="$TEST_ROOT/gcroots/non-nixos-gpu.conf" \
-    bash "$REPO_ROOT/scripts/bootstrap/13-nix-gpu.sh" "$@"
+    bash "$REPO_ROOT/scripts/bootstrap/14-nix-gpu.sh" "$@"
 }
 sudo_calls() { if [[ -e "$TEST_ROOT/sudo.log" ]]; then wc -l <"$TEST_ROOT/sudo.log"; else echo 0; fi; }
 

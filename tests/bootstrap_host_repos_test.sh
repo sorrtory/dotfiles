@@ -88,63 +88,57 @@ for command_name in uname lspci curl rpm dnf sudo; do
 done
 export PATH="$TEST_ROOT/bin:$PATH"
 export BOOTSTRAP_OS_RELEASE_FILE="$TEST_ROOT/os-release"
-readonly PHASE="$REPO_ROOT/scripts/bootstrap/12-fedora-amd-gpu.sh"
-
-# The host-repos phase is this one's prerequisite; stub its result.
-configure_repos() {
-  touch "$TEST_ROOT/rpm/rpmfusion-free-release" "$TEST_ROOT/rpm/rpmfusion-nonfree-release"
-}
+export BOOTSTRAP_HOST_REPOS_OVERRIDE_DIR="$TEST_ROOT/override"
+export BOOTSTRAP_HOST_REPOS_BACKUP_DIR="$TEST_ROOT/root"
+readonly PHASE="$REPO_ROOT/scripts/bootstrap/01-host-repos.sh"
 
 reset_state() {
-  rm -rf "$TEST_ROOT/rpm" "$TEST_ROOT"/lspci-amd "$TEST_ROOT"/no-freeworld
-  mkdir -p "$TEST_ROOT/rpm"
+  rm -rf "$TEST_ROOT/rpm" "$TEST_ROOT/override" "$TEST_ROOT"/lspci-amd "$TEST_ROOT"/fail-curl
+  mkdir -p "$TEST_ROOT/rpm" "$TEST_ROOT/override"
   printf 'ID=%s\n' "$1" >"$BOOTSTRAP_OS_RELEASE_FILE"
 }
 
-# Non-Fedora host: check() must no-op without ever invoking lspci.
+# Non-Fedora host: nothing to do.
 reset_state ubuntu
-rm -f "$TEST_ROOT/bin/lspci"
 if ! "$PHASE" status >/dev/null; then
   fail 'a non-Fedora host should report satisfied (nothing to do)'
 fi
-ln -s mock "$TEST_ROOT/bin/lspci"
 
-# Fedora, non-AMD GPU: check() must no-op.
+# Repository policy is a property of the network, not of the graphics card, so
+# a Fedora host with no AMD GPU must still be claimed by this phase.
 reset_state fedora
-if ! "$PHASE" status >/dev/null; then
-  fail 'a Fedora host without an AMD GPU should report satisfied (nothing to do)'
-fi
-
-# Fedora + AMD, nothing installed: check() must report unsatisfied.
-reset_state fedora
-touch "$TEST_ROOT/lspci-amd"
 if "$PHASE" status >/dev/null 2>&1; then
-  fail 'a matching host with nothing installed should not report satisfied'
+  fail 'an unconfigured Fedora host should not report satisfied, whatever its GPU'
 fi
 
-# Without RPM Fusion the freeworld packages are unreachable, so the phase must
-# name its missing prerequisite rather than fail inside a dnf resolution.
-output="$("$PHASE" install 2>&1 || true)"
-if [[ "$output" != *'run the host-repos phase first'* ]]; then
-  fail 'install without RPM Fusion should point at the host-repos phase'
+# Mirror preflight failure must leave the override directory untouched.
+touch "$TEST_ROOT/fail-curl"
+if "$PHASE" install >/dev/null 2>&1; then
+  fail 'a failed mirror preflight should not report success'
 fi
-if [[ -e "$TEST_ROOT/rpm/mesa-va-drivers-freeworld" ]]; then
-  fail 'install should install nothing before its prerequisite is met'
+if [[ -n "$(ls -A "$TEST_ROOT/override")" ]]; then
+  fail 'a failed mirror preflight must not write any repository override file'
 fi
+rm -f "$TEST_ROOT/fail-curl"
 
-# With repositories configured, the driver install proceeds.
-configure_repos
+# Full install against the stubs, then a satisfied re-check.
 if ! "$PHASE" install >/dev/null; then
-  fail 'install should succeed against a fully stubbed Fedora/AMD host'
+  fail 'install should succeed against a stubbed Fedora host'
 fi
-if [[ ! -e "$TEST_ROOT/rpm/mesa-va-drivers-freeworld" ]]; then
-  fail 'install should end up with mesa-va-drivers-freeworld installed'
+if [[ ! -e "$TEST_ROOT/override/80-yandex-fedora.repo" || ! -e "$TEST_ROOT/override/81-yandex-rpmfusion.repo" ]]; then
+  fail 'install should write both Yandex repository overrides'
 fi
-if [[ -e "$TEST_ROOT/override/80-yandex-fedora.repo" ]]; then
-  fail 'the driver phase must not write repository configuration'
+if ! grep -q 'enabled=0' "$TEST_ROOT/override/80-yandex-fedora.repo"; then
+  fail 'the Fedora override should disable the Cisco OpenH264 repository'
+fi
+if [[ ! -e "$TEST_ROOT/rpm/rpmfusion-free-release" || ! -e "$TEST_ROOT/rpm/rpmfusion-nonfree-release" ]]; then
+  fail 'install should establish both RPM Fusion release packages'
+fi
+if [[ ! -e "$TEST_ROOT/root/host-repos-last-backup" ]]; then
+  fail 'install should record where it backed the repository configuration up'
 fi
 if ! "$PHASE" status >/dev/null; then
   fail 'a repeat status check after install should report satisfied'
 fi
 
-printf 'bootstrap Fedora AMD GPU tests passed\n'
+printf 'bootstrap host repository tests passed\n'

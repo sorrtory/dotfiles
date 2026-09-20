@@ -103,7 +103,7 @@ export PATH="$TEST_ROOT/bin:$PATH"
 export BOOTSTRAP_OS_RELEASE_FILE="$TEST_ROOT/os-release"
 export BOOTSTRAP_HOST_CLANGXX="$TEST_ROOT/bin/host-clang++"
 export BOOTSTRAP_HOST_PKG_CONFIG="$TEST_ROOT/bin/host-pkg-config"
-readonly PHASE="$REPO_ROOT/scripts/bootstrap/12-native-toolchain.sh"
+readonly PHASE="$REPO_ROOT/scripts/bootstrap/13-native-toolchain.sh"
 
 reset_state() {
   rm -rf "$TEST_ROOT/packages" "$TEST_ROOT/leak-nix" "$TEST_ROOT/no-gtk" "$TEST_ROOT/compiler-fails"
