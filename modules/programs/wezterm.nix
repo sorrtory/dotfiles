@@ -15,7 +15,8 @@ in
 
   # The theme's colors as a Lua table that wezterm.lua loads and watches, so
   # a switch recolors open windows the way an edit to wezterm.lua does.
-  dotfiles.theme.liveFiles."wezterm.lua" = pkgs.writeText "wezterm-theme.lua"
+  dotfiles.theme.liveFiles."${config.dotfiles.theme.dataDir}/wezterm.lua" =
+    pkgs.writeText "wezterm-theme.lua"
     "return ${lib.generators.toLua { } (config.dotfiles.theme.forApp "wezterm")}\n";
   dotfiles.theme.apps.wezterm = {
     label = "WezTerm";

@@ -42,7 +42,7 @@ in
   xdg.configFile."nvim".source =
     config.lib.file.mkOutOfStoreSymlink configRoot;
 
-  dotfiles.theme.liveFiles."nvim.lua" = pkgs.writeText "nvim-theme.lua"
+  dotfiles.theme.liveFiles."${theme.dataDir}/nvim.lua" = pkgs.writeText "nvim-theme.lua"
     "return ${lib.generators.toLua { } themeData}\n";
   dotfiles.theme.apps.neovim = {
     label = "Neovim";

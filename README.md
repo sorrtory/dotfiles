@@ -245,8 +245,8 @@ Two settings in `home.nix` choose the look of every themed app:
 file each under `modules/theme/palettes/`) and `dotfiles.theme.transparency`.
 Change them and run `home-manager switch`. When either changed, activation
 ends with a notice saying which apps recolored live and which need a restart.
-Apps moved onto the palette so far: WezTerm, Neovim, and GNOME Shell, GTK and
-Firefox through Rewaita. Both recolor without a restart, except that a GTK
+Apps moved onto the palette so far: WezTerm, Sublime Text, Neovim, and GNOME
+Shell, GTK and Firefox through Rewaita. Both recolor without a restart, except that a GTK
 program reads its colors when it starts, so windows already open keep theirs.
 Neovim takes a switch at its next start. Activation outside a GNOME session — over SSH, say — cannot recolor the
 running desktop, so the notice moves GNOME to a "log out and back in" line and
@@ -285,6 +285,15 @@ like Gogh give a terminal's 16 colors and nothing for GTK, Telegram, Obsidian
 or Spotify, and generators like Stylix take the per-app overrides away. A
 palette here is one file of hexes, pinned in this repository's history, and
 adding a theme is adding one more.
+
+#### Sublime Text
+
+The color scheme is generated into Sublime's own `Packages/User` directory
+under the fixed name "Dotfiles", which is what Preferences select; Sublime
+rereads the file when it changes, so a switch recolors an open window. The
+hand-made Gruvbox scheme it replaced is gone, and the two choices worth
+keeping from it — the softer background and the brighter plain text — are now
+gruvbox's own overrides for this app.
 
 #### Neovim
 

@@ -1,6 +1,8 @@
 {
   "theme": "Adaptive.sublime-theme",
-  "color_scheme": "Gruvbox Rewaita.sublime-color-scheme",
+  // Generated from the theme in home.nix (modules/theme); the name stays put
+  // while the colors behind it follow the switch.
+  "color_scheme": "Dotfiles.sublime-color-scheme",
   "font_size": 14,
   "ignored_packages": ["Vintage"],
   "index_files": true,

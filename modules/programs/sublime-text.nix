@@ -30,13 +30,24 @@ let
           --set-default SSL_CERT_FILE "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       '';
     });
+  theme = config.dotfiles.theme;
 in
 {
   home.packages = [ sublime4 ];
 
+  # Sublime rereads a color scheme in Packages/User when its file changes, so
+  # a switch recolors an open window. The name never changes; what is behind
+  # it does.
+  dotfiles.theme.liveFiles."${config.xdg.configHome}/sublime-text/Packages/User/Dotfiles.sublime-color-scheme" =
+    pkgs.writeText "Dotfiles.sublime-color-scheme"
+      (import ../theme/sublime-scheme.nix { inherit lib; } (theme.forApp "sublime-text"));
+  dotfiles.theme.apps.sublime-text = {
+    label = "Sublime Text";
+    apply = "live";
+  };
+
   xdg.configFile = lib.genAttrs (map (name: "sublime-text/Packages/User/${name}") [
     "Preferences.sublime-settings"
-    "Gruvbox Rewaita.sublime-color-scheme"
     "Default (Linux).sublime-keymap"
     "Package Control.sublime-settings"
     "Terminus.sublime-settings"

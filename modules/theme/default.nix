@@ -72,10 +72,7 @@ let
 
   overrideType = types.either (types.functionTo types.attrs) types.attrs;
 
-  liveFileTargets = lib.mapAttrsToList (path: source: {
-    target = "${cfg.dataDir}/${path}";
-    inherit source;
-  }) cfg.liveFiles;
+  liveFileTargets = lib.mapAttrsToList (target: source: { inherit target source; }) cfg.liveFiles;
 
   stateFile = "${config.xdg.stateHome}/dotfiles/theme";
   # The digest makes an edit to a palette count as a change too, so a switch
@@ -169,16 +166,19 @@ in
       type = types.str;
       readOnly = true;
       default = "${config.xdg.dataHome}/dotfiles/theme";
-      description = "Where live files are written.";
+      description = "Where an app with nowhere of its own keeps its generated theme.";
     };
 
     liveFiles = mkOption {
       type = types.attrsOf types.path;
+      example = lib.literalExpression ''
+        { "''${config.xdg.dataHome}/dotfiles/theme/wezterm.lua" = generated; }
+      '';
       default = { };
       description = ''
-        Generated files, relative to `dataDir`, that activation copies into
-        place as ordinary files, written over in place when they change. An
-        app watching such a file sees an edit, which a Home Manager symlink
+        Generated files, by absolute path, that activation copies into place
+        as ordinary files, written over in place when they change. An app
+        watching such a file sees an edit, which a Home Manager symlink
         swapped to a new store path does not give it.
       '';
     };

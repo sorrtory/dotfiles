@@ -5,6 +5,7 @@ let
   gruvbox = {
     bg0_h = "#1d2021";
     bg0 = "#282828";
+    bg0_s = "#32302f";
     bg1 = "#3c3836";
     bg2 = "#504945";
     bg3 = "#665c54";
@@ -61,6 +62,16 @@ with gruvbox;
     # Rewaita's Gruvbox Medium draws sidebar borders and GTK 3's named
     # neutrals with bg2 rather than the lighter bg3 the terminal selects with.
     gnome = { overlay = bg2; };
+
+    # The editor sits on Gruvbox's soft background rather than the terminal's,
+    # and its plain text is a cream brighter than any Gruvbox shade, because
+    # the window blur fades it. Both were hand-chosen in the scheme this
+    # replaced.
+    sublime-text = {
+      base = bg0_s;
+      surface = "#45403d";
+      text = "#fffaeb";
+    };
   };
 
   ansi = {
