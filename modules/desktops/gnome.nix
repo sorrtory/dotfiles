@@ -560,7 +560,16 @@ in
       if (( dotfilesThemeChanged )); then
         if [[ ''${XDG_CURRENT_DESKTOP-} == *GNOME* && -n ''${DBUS_SESSION_BUS_ADDRESS-}
               && ( -n ''${WAYLAND_DISPLAY-} || -n ''${DISPLAY-} ) ]]; then
-          run ${lib.getExe rewaita} --theme=${paletteName theme.name} ||
+          # Rewaita's CLI reaches its own exit only when the theme applies
+          # cleanly. An exception on the way — GNOME's D-Bus extension helper
+          # dropping the call that reloads the Shell is the one seen — leaves
+          # the traceback printed, the window it already presented open and
+          # the main loop running, so an unbounded call waits for ever instead
+          # of failing. The timeout turns that hang into the re-login path,
+          # which is the truthful outcome: every generated file is written
+          # before the Shell reload, so only the live recolor is lost.
+          run ${pkgs.coreutils}/bin/timeout 60 \
+            ${lib.getExe rewaita} --theme=${paletteName theme.name} ||
             dotfilesThemeApply[gnome]=relogin
         else
           dotfilesThemeApply[gnome]=relogin
@@ -598,12 +607,15 @@ in
     # Run in the real graphical session so Rewaita can refresh GNOME Shell and
     # discover Firefox's machine-local profile. Repeating the preset is
     # idempotent and also repairs generated CSS after an upstream format change.
+    # The timeout is here for the reason given on the activation step above;
+    # a Rewaita that hangs at login leaves a stray window rather than blocking
+    # anything, but it is the same hang.
     xdg.configFile."autostart/rewaita-theme.desktop".text = ''
       [Desktop Entry]
       Type=Application
       Name=Apply the Rewaita theme
       Comment=Generate the theme's GTK, GNOME Shell and Firefox colors
-      Exec=${lib.getExe rewaita} --theme=${paletteName theme.name}
+      Exec=${pkgs.coreutils}/bin/timeout 60 ${lib.getExe rewaita} --theme=${paletteName theme.name}
       OnlyShowIn=GNOME;
       X-GNOME-Autostart-enabled=true
       X-GNOME-Autostart-Delay=5

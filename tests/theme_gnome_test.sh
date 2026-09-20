@@ -126,6 +126,11 @@ user_js=$(grep -oP '/nix/store/\S+-user\.js' "$package/activate" | head -1)
 grep -q 'allow_transparent_browser", false' "$user_js" ||
   fail 'Firefox page transparency does not follow the switch'
 
+# Rewaita keeps its main loop running when applying the theme throws, so an
+# unbounded call wedges activation instead of falling back to the notice below.
+tr -d '\\\n' <"$package/activate" | grep -qE 'timeout 60 +\S+/bin/rewaita' ||
+  fail 'the Rewaita call activation makes is not bounded by a timeout'
+
 # With no GNOME session to talk to, GNOME waits for the next login and the
 # notice says so instead of claiming it recolored live.
 rm -f "$TEST_ROOT/home/.local/state/dotfiles/theme"
@@ -136,6 +141,6 @@ notice=$(
 )
 grep -q 'Log out and back in: GNOME Shell, GTK and Firefox' <<<"$notice" ||
   fail "GNOME is not on the re-login line over SSH: $notice"
-grep -q 'Updated live: WezTerm' <<<"$notice" || fail "WezTerm left the live line: $notice"
+grep -qE '^ *Updated live:.*\bWezTerm\b' <<<"$notice" || fail "WezTerm left the live line: $notice"
 
 printf 'theme GNOME tests passed\n'
