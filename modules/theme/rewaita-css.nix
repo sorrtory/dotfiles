@@ -7,18 +7,8 @@
 # `src/themes/dark/` in the Rewaita source.
 
 let
-  channels = hex: map (offset: lib.fromHexString (lib.substring offset 2 hex)) [ 1 3 5 ];
-
-  toHex = value:
-    let hex = lib.toHexString (builtins.floor (value + 0.5));
-    in lib.toLower (if lib.stringLength hex == 1 then "0${hex}" else hex);
-
-  # `ratio` of `to` mixed into `from`, for shades a palette does not name.
-  mix = from: to: ratio:
-    "#" + lib.concatStrings (lib.zipListsWith
-      (a: b: toHex (a + (b - a) * ratio))
-      (channels from)
-      (channels to));
+  # Shades a palette does not name.
+  inherit (import ./color.nix { inherit lib; }) mix;
 
   # Five steps from a color toward the theme's background: what Rewaita's own
   # palettes fill the -2 … -5 shades with, by hand, in no stated system.
