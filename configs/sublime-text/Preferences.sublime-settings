@@ -8,7 +8,7 @@
   // Editing, as in configs/vscode/settings.json.
   "tab_size": 4,
   "translate_tabs_to_spaces": true,
-  "rulers": [80, 120],
+  // "rulers": [80, 120],
   // Sublime's default wraps prose syntaxes such as Markdown. Long lines stay
   // unwrapped everywhere, as in VS Code; Alt+Z toggles wrapping per file.
   "word_wrap": false,
