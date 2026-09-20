@@ -75,7 +75,7 @@ Activation never restarts or signals a program.
 
 | App | After a switch | One-time setup |
 |---|---|---|
-| GNOME Shell, GTK, Firefox chrome | Live: activation runs Rewaita in the session | none |
+| GNOME Shell, GTK, Firefox chrome | Live: activation runs Rewaita in the session, though a GTK program reads its colors at startup, so open windows keep theirs (found on the VM, 2026-09-20) | none |
 | WezTerm, Sublime | Live: they watch their files | none |
 | Wallpaper, accent, icons | Live through dconf | none |
 | Neovim, VS Code, Spotify | Next start (VS Code: Reload Window) | none |

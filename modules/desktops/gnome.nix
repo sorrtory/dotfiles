@@ -8,16 +8,36 @@ let
   # guide. packages/rewaita.nix keeps the newer upstream pin local to the one
   # consumer that needs it.
   rewaita = pkgs.callPackage ../../packages/rewaita.nix { };
+
+  theme = config.dotfiles.theme;
+  themeColors = theme.forApp "gnome";
+  rewaitaCss = import ../theme/rewaita-css.nix { inherit lib; };
+
+  # One palette per theme, so Rewaita's own list shows them all and the
+  # declared one is simply the one activation selects. Rewaita names a theme
+  # by its file: lowercased, without the extension, spaces as dashes.
+  paletteFile = name: "Dotfiles ${name}.css";
+  paletteName = name: "dotfiles-${name}";
+
+  rewaitaPalettes = lib.listToAttrs (map
+    (name: lib.nameValuePair "rewaita/dark/${paletteFile name}" {
+      text = rewaitaCss {
+        colors = theme.forAppIn name "gnome";
+        gnomeAccent = (theme.assetsIn name).gnomeAccent or null;
+      };
+    })
+    (lib.attrNames theme.palettes));
+
   rewaitaPreferences = pkgs.writeText "rewaita-preferences.json" (builtins.toJSON {
-    light-theme = "Gruvbox Medium 🌴.css";
-    dark-theme = "Gruvbox Medium 🌴.css";
+    light-theme = paletteFile theme.name;
+    dark-theme = paletteFile theme.name;
     window-controls = "default";
     modify-gtk3-theme = true;
     modify-gnome-shell = true;
     run-in-background = false;
     # Rewaita's transparency toggle uses its built-in translucent surfaces;
     # the local package override sets those GTK surfaces to 90% opacity.
-    transparency = true;
+    transparency = theme.transparency;
     window = false;
     sharp = false;
     firefox-theme = true;
@@ -27,7 +47,8 @@ let
     dark-panel = false;
     trans-panel = false;
     no-pills = false;
-    accent = "'orange'";
+    # Only read off GNOME, which reads its own accent setting instead.
+    accent = "'${theme.assets.gnomeAccent or "blue"}'";
   });
 
   # Every image type nomacs's own .desktop file declares support for (see its
@@ -391,22 +412,27 @@ in
       # opacity would make the focused window opaque again. Sublime's WM class
       # varies in case between builds, as in its launcher above.
       "org/gnome/shell/extensions/blur-my-shell/applications" = {
-        blur = true;
+        blur = theme.transparency;
         whitelist = [ "Spotify" "Sublime_text" "sublime_text" ];
         opacity = 230;
         dynamic-opacity = false;
       };
 
-      # Rewaita reads GNOME's accent to choose within Gruvbox's palette. GTK 3
-      # starts from adw-gtk3 while Rewaita supplies its generated color override;
-      # icons remain a regular packaged theme rather than generated CSS.
+      # Rewaita reads GNOME's accent to choose within the theme's palette, so
+      # the theme declares which name to set and its generated palette puts
+      # its own accent on that name. GTK 3 starts from adw-gtk3 while Rewaita
+      # supplies its generated color override; icons remain a regular packaged
+      # theme rather than generated CSS. A theme that declares neither keeps
+      # what is set.
       "org/gnome/desktop/interface" = {
-        accent-color = "orange";
         clock-show-weekday = true;
         color-scheme = "prefer-dark";
         gtk-enable-primary-paste = true;
         gtk-theme = "adw-gtk3-dark";
-        icon-theme = "Yaru-wartybrown-dark";
+      } // lib.optionalAttrs (theme.assets ? gnomeAccent) {
+        accent-color = theme.assets.gnomeAccent;
+      } // lib.optionalAttrs (theme.assets ? iconTheme) {
+        icon-theme = theme.assets.iconTheme;
       };
 
       # Rewaita writes this Shell theme beneath ~/.local/share/themes. The User
@@ -414,6 +440,16 @@ in
       "org/gnome/shell/extensions/user-theme" = {
         name = "rewaita";
       };
+    }
+    // lib.optionalAttrs (theme.assets ? wallpaper) {
+      # A theme may bring its own background; one that does not leaves the
+      # picture alone.
+      "org/gnome/desktop/background" = {
+        picture-uri = "file://${theme.assets.wallpaper}";
+        picture-uri-dark = "file://${theme.assets.wallpaper}";
+      };
+    }
+    // {
 
       # Ptyxis's GNOME palette, with no opacity of its own: Rewaita's translucent
       # surfaces already style its window. Ptyxis generates a random profile
@@ -447,23 +483,68 @@ in
       yaru-theme
     ];
 
-    # Preferences stay mutable so the GUI's Fine Tune controls remain useful.
-    # Seed only a new installation; subsequent edits belong to Rewaita.
+    # One generated palette per theme, in the directory Rewaita reads user
+    # palettes from. Rewaita copies the selected one into GTK 4's gtk.css and
+    # feeds its values to the GTK 3 and GNOME Shell templates.
+    xdg.dataFile = rewaitaPalettes // {
+      # GLib's generic terminal launcher only considers desktop files
+      # registered below xdg-terminals (see the note on WezTerm below).
+      "xdg-terminals/org.wezfurlong.wezterm.desktop".source =
+        "${pkgs.wezterm}/share/applications/org.wezfurlong.wezterm.desktop";
+    };
+
+    # Preferences stay mutable so the GUI's Fine Tune controls remain useful:
+    # only the keys this repository owns are merged into whatever is there,
+    # and a fresh installation gets the whole file.
     home.activation.seedRewaitaPreferences = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       preferences="$HOME/.local/share/rewaita/prefs.json"
-      if [[ ! -e $preferences ]]; then
-        run mkdir -p "$(dirname "$preferences")"
+      run mkdir -p "$(dirname "$preferences")"
+      if [[ -e $preferences ]] && ${lib.getExe pkgs.jq} -e . "$preferences" >/dev/null 2>&1; then
+        merged=$(${lib.getExe pkgs.jq} -s '.[0] * (.[1] | {
+          "light-theme", "dark-theme", "transparency", "accent"
+        })' "$preferences" ${rewaitaPreferences})
+        printf '%s\n' "$merged" > "$preferences.new"
+        run mv "$preferences.new" "$preferences"
+      else
         run cp --no-preserve=mode ${rewaitaPreferences} "$preferences"
       fi
     '';
+
+    # Rewaita regenerates GTK, GNOME Shell and Firefox CSS in the running
+    # session, which needs that session: over plain SSH there is no display to
+    # talk to, so GNOME waits for the login autostart below and the notice
+    # says to log out and back in.
+    home.activation.applyRewaitaTheme = lib.hm.dag.entryAfter [
+      "dotfilesThemeInit"
+      "seedRewaitaPreferences"
+      "linkGeneration"
+      "dconfSettings"
+    ] ''
+      if (( dotfilesThemeChanged )); then
+        if [[ ''${XDG_CURRENT_DESKTOP-} == *GNOME* && -n ''${DBUS_SESSION_BUS_ADDRESS-}
+              && ( -n ''${WAYLAND_DISPLAY-} || -n ''${DISPLAY-} ) ]]; then
+          run ${lib.getExe rewaita} --theme=${paletteName theme.name} ||
+            dotfilesThemeApply[gnome]=relogin
+        else
+          dotfilesThemeApply[gnome]=relogin
+        fi
+      fi
+    '';
+
+    dotfiles.theme.apps.gnome = {
+      label = "GNOME Shell, GTK and Firefox";
+      apply = "live";
+      # The Shell, the accent and the icons change in place. GTK reads
+      # gtk.css when a program starts, so windows already open keep the
+      # colors they started with.
+      restartNote = "already-open windows keep their colors";
+    };
 
     # GLib's generic terminal launcher only considers desktop files registered
     # below xdg-terminals. This covers Terminal=true applications, but not
     # Nautilus's built-in "Open in Console", which hard-codes GNOME Console
     # (Ptyxis in Fedora's build). modules/programs/wezterm.nix redirects that
     # action to WezTerm.
-    xdg.dataFile."xdg-terminals/org.wezfurlong.wezterm.desktop".source =
-      "${pkgs.wezterm}/share/applications/org.wezfurlong.wezterm.desktop";
     xdg.configFile."xdg-terminals.list".text = "org.wezfurlong.wezterm.desktop\n";
 
     # Default apps stay mutable the same way: xdg-mime and "Open With → Set as
@@ -483,9 +564,9 @@ in
     xdg.configFile."autostart/rewaita-theme.desktop".text = ''
       [Desktop Entry]
       Type=Application
-      Name=Apply Rewaita autumn theme
-      Comment=Generate Gruvbox GTK, GNOME Shell and Firefox colors
-      Exec=${rewaita}/bin/rewaita --theme=gruvbox-medium
+      Name=Apply the Rewaita theme
+      Comment=Generate the theme's GTK, GNOME Shell and Firefox colors
+      Exec=${lib.getExe rewaita} --theme=${paletteName theme.name}
       OnlyShowIn=GNOME;
       X-GNOME-Autostart-enabled=true
       X-GNOME-Autostart-Delay=5

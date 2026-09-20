@@ -48,6 +48,19 @@ with gruvbox;
     info = brightBlue;
   };
 
+  # GNOME's accent picks the palette color the desktop highlights with, and
+  # Yaru's warty brown carries the same warmth into Files and launchers.
+  assets = {
+    gnomeAccent = "orange";
+    iconTheme = "Yaru-wartybrown-dark";
+  };
+
+  overrides = {
+    # Rewaita's Gruvbox Medium draws sidebar borders and GTK 3's named
+    # neutrals with bg2 rather than the lighter bg3 the terminal selects with.
+    gnome = { overlay = bg2; };
+  };
+
   ansi = {
     black = bg0;
     inherit red green yellow blue;

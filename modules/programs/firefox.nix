@@ -1,7 +1,16 @@
-{ lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  userJs = ../../configs/firefox/user.js;
+  # Everything in the file is live-editable except the one preference the
+  # theme owns: page transparency follows dotfiles.theme.transparency, since
+  # clearing page backgrounds only makes sense behind a translucent window.
+  userJs = pkgs.writeText "user.js" (builtins.readFile ../../configs/firefox/user.js + ''
+
+    // Managed by modules/theme: lets page content show the translucent window
+    // behind it instead of an opaque canvas. chrome/userContent.css
+    // (configs/firefox/userContent.css) then clears the page backgrounds.
+    user_pref("browser.tabs.allow_transparent_browser", ${lib.boolToString config.dotfiles.theme.transparency});
+  '');
   userContentCss = ../../configs/firefox/userContent.css;
 in
 {

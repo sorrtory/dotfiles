@@ -47,10 +47,10 @@ let
     else
       roles // ansi;
 
-  palette =
-    cfg.palettes.${cfg.name} or (throw "dotfiles.theme: no palette named \"${cfg.name}\"; known: ${lib.concatStringsSep ", " (lib.attrNames cfg.palettes)}");
+  paletteOf = name:
+    cfg.palettes.${name} or (throw "dotfiles.theme: no palette named \"${name}\"; known: ${lib.concatStringsSep ", " (lib.attrNames cfg.palettes)}");
 
-  global = checked cfg.name palette // {
+  globalIn = name: checked name (paletteOf name) // {
     alpha = if cfg.transparency then alphaOn else alphaOff;
   };
 
@@ -59,14 +59,16 @@ let
   applyOverride = colors: override:
     lib.recursiveUpdate colors (if lib.isFunction override then override colors else override);
 
-  forApp = app:
+  forAppIn = name: app:
     let
-      resolved = lib.foldl applyOverride global [
-        (palette.overrides.${app} or { })
+      resolved = lib.foldl applyOverride (globalIn name) [
+        ((paletteOf name).overrides.${app} or { })
         (cfg.overrides.${app} or { })
       ];
     in
     if cfg.transparency then resolved else resolved // { alpha = alphaOff; };
+
+  forApp = forAppIn cfg.name;
 
   overrideType = types.either (types.functionTo types.attrs) types.attrs;
 
@@ -76,7 +78,12 @@ let
   }) cfg.liveFiles;
 
   stateFile = "${config.xdg.stateHome}/dotfiles/theme";
-  stateValue = "${cfg.name} transparency=${lib.boolToString cfg.transparency}";
+  # The digest makes an edit to a palette count as a change too, so a switch
+  # is not the only thing that reaches an app.
+  stateValue = "${cfg.name} transparency=${lib.boolToString cfg.transparency} colors=${
+    lib.substring 0 12 (builtins.hashString "sha256"
+      (builtins.toJSON (lib.mapAttrs (app: _: forApp app) cfg.apps)))
+  }";
 in
 {
   options.dotfiles.theme = {
@@ -128,6 +135,34 @@ in
       readOnly = true;
       default = forApp;
       description = "The current theme's colors and alphas as the given app should use them.";
+    };
+
+    forAppIn = mkOption {
+      type = types.functionTo (types.functionTo types.attrs);
+      readOnly = true;
+      default = forAppIn;
+      description = ''
+        `forApp` for a named theme rather than the current one, for an app that
+        generates a file per theme instead of one that follows the switch.
+      '';
+    };
+
+    assetsIn = mkOption {
+      type = types.functionTo types.attrs;
+      readOnly = true;
+      default = name: (paletteOf name).assets or { };
+      description = ''
+        A theme's non-color assets, every one optional: `gnomeAccent`,
+        `iconTheme`, `wallpaper`, `telegramBackground`. An app falls back when
+        the theme declares none.
+      '';
+    };
+
+    assets = mkOption {
+      type = types.attrs;
+      readOnly = true;
+      default = (paletteOf cfg.name).assets or { };
+      description = "The current theme's non-color assets.";
     };
 
     dataDir = mkOption {
@@ -193,6 +228,13 @@ in
       declare -gA dotfilesThemeApply=(
         ${lib.concatStrings (lib.mapAttrsToList (name: app: "[${lib.escapeShellArg name}]=${app.apply} ") cfg.apps)}
       )
+      # Whether this activation changes the theme, for the steps that apply it
+      # to one app and for the notice at the end.
+      if [[ "$(cat ${lib.escapeShellArg stateFile} 2>/dev/null)" == ${lib.escapeShellArg stateValue} ]]; then
+        dotfilesThemeChanged=0
+      else
+        dotfilesThemeChanged=1
+      fi
     '';
 
     home.activation.dotfilesThemeFiles = lib.hm.dag.entryAfter [ "dotfilesThemeInit" ] (
@@ -214,7 +256,7 @@ in
     # theme or transparency differs from the previous activation.
     home.activation.dotfilesThemeHint = lib.hm.dag.entryAfter
       (lib.attrNames (removeAttrs config.home.activation [ "dotfilesThemeHint" ])) ''
-      if [[ "$(cat ${lib.escapeShellArg stateFile} 2>/dev/null)" != ${lib.escapeShellArg stateValue} ]]; then
+      if (( dotfilesThemeChanged )); then
         dotfilesThemeList() {
           local apply=$1 heading=$2 name line=
           for name in $(printf '%s\n' "''${!dotfilesThemeLabel[@]}" | sort); do

@@ -245,7 +245,12 @@ Two settings in `home.nix` choose the look of every themed app:
 file each under `modules/theme/palettes/`) and `dotfiles.theme.transparency`.
 Change them and run `home-manager switch`. When either changed, activation
 ends with a notice saying which apps recolored live and which need a restart.
-Apps moved onto the palette so far: WezTerm (live).
+Apps moved onto the palette so far: WezTerm, and GNOME Shell, GTK and
+Firefox through Rewaita. Both recolor without a restart, except that a GTK
+program reads its colors when it starts, so windows already open keep theirs.
+Activation outside a GNOME session — over SSH, say — cannot recolor the
+running desktop, so the notice moves GNOME to a "log out and back in" line and
+the login autostart applies it.
 
 To tweak one app without editing a palette, add an override. A hex pins a
 color; a function of the palette remaps one role to another and keeps doing so
@@ -281,17 +286,21 @@ or Spotify, and generators like Stylix take the per-app overrides away. A
 palette here is one file of hexes, pinned in this repository's history, and
 adding a theme is adding one more.
 
-### GNOME autumn theme
+### GNOME through Rewaita
 
-Rewaita applies its Gruvbox Medium palette to GTK, GNOME Shell and Firefox at
-graphical login. GTK surfaces use 90% opacity with accent borders disabled.
-GNOME's orange accent selects the warm highlight, and the Yaru warty-brown icon
-variant carries it into Files and application launchers.
+Rewaita applies a palette to GTK, GNOME Shell and Firefox, and that palette is
+generated from the theme: one file per theme in `~/.local/share/rewaita/dark/`,
+named `Dotfiles <theme>`. GTK surfaces use 90% opacity while transparency is
+on, with accent borders disabled. The theme also declares GNOME's accent,
+which is how Rewaita picks the color the desktop highlights with, and the icon
+theme that carries it into Files and application launchers.
 The first activation adds the User Themes extension, so log out and back in
 once; newly opened GTK applications and a fully restarted Firefox then use the
-generated theme. Rewaita's Fine Tune page remains mutable, but selecting a
-different palette is temporary because the declared Gruvbox preset is restored
-at the next login.
+generated theme. Rewaita's Fine Tune page remains mutable and its edits
+survive activation: only the theme, transparency and accent keys are merged
+into its preferences. Selecting a different palette in its window is therefore
+temporary, because the theme's own palette is restored at the next switch or
+login.
 
 Unlike the Flatpak path in the upstream guide, this setup needs no privileged
 filesystem override: Home Manager installs the native Nix package. Its mutable

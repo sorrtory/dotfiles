@@ -110,11 +110,11 @@ activate() {
   }").activationPackage" 2>/dev/null) || fail "activation package for $1"
   script=$(awk '/^_iNote "Activating %s" "dotfilesTheme/ { on = 1; next } /^_iNote |^# Create the "current generation"/ { on = 0 } on' \
     "$package/activate")
-  (run() { "$@"; }; eval "$script")
+  (export HOME="$TEST_ROOT/home"; run() { "$@"; }; eval "$script")
 }
 out=$(activate '{ name = "autumn-glass"; }')
 grep -qx 'Theme is now autumn-glass, transparency on.' <<<"$out" || fail "no notice on first switch: $out"
-grep -qx '  Updated live: WezTerm' <<<"$out" || fail "WezTerm not listed as live: $out"
+grep -q 'Updated live: .*WezTerm' <<<"$out" || fail "WezTerm not listed as live: $out"
 grep -q '"#261814"' "$TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua" || fail 'theme file not written'
 [[ ! -L $TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua ]] || fail 'theme file is a symlink'
 inode=$(stat -c %i "$TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua")

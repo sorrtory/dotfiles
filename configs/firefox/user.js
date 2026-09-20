@@ -14,11 +14,6 @@ user_pref("ui.key.menuAccessKey", 0);
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 user_pref("widget.gtk.rounded-bottom-corners.enabled", true);
 
-// Lets page content show the translucent window behind it instead of an
-// opaque canvas. chrome/userContent.css (configs/firefox/userContent.css)
-// then clears the page backgrounds themselves.
-user_pref("browser.tabs.allow_transparent_browser", true);
-
 // PROXY.PAC decides routing (a self-discipline blocklist with a weekday
 // exception). It is sops ciphertext at secrets/proxy.pac, decrypted by
 // sops-nix to its stable symlink path (docs/DECISIONS.md, "Secrets and

@@ -21,6 +21,11 @@
     info = "#79c9ba";
   };
 
+  assets = {
+    gnomeAccent = "orange";
+    iconTheme = "Yaru-wartybrown-dark";
+  };
+
   ansi = {
     black = "#282828";
     red = "#fb4934";
