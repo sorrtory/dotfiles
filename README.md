@@ -47,6 +47,7 @@ phases run unattended; the table says where one stops to ask you for something:
 | 12  | `fedora-amd-gpu`  | On Fedora with an AMD GPU, installs the Mesa VA-API freeworld driver, AMD firmware/kernel packages and GStreamer codecs. Does nothing elsewhere. | sudo password |
 | 13  | `native-toolchain` | Installs the host Clang, GTK 3 development files and `pkg-config` that native desktop builds link against, then proves them by compiling a GTK program with no Nix in the result. | sudo password |
 | 14  | `nix-gpu`         | Points `/run/opengl-driver` at the Nixpkgs GPU drivers from phase 05 and installs the boot rule that recreates it, so Nix programs such as WezTerm can open a window. Rerun after a `flake.lock` bump moves the drivers. | sudo password |
+| 15  | `nvim-plugins`    | Drives lazy.nvim and mason once, in advance: the plugin tree at the revisions `lazy-lock.json` pins, and the language servers and formatters the editor's own `ensure_installed` lists name. Roughly a gigabyte that would otherwise arrive during your first edit on a new machine. | — |
 
 **Then open a new login session.** The new shell, `PATH`, and Docker group
 membership only take effect there, as does any newly added libvirt membership.
@@ -243,8 +244,12 @@ match. Additional vaults also named `Notes` are indistinguishable by title.
 Two settings in `home.nix` choose the look of every themed app:
 `dotfiles.theme.name` (`gruvbox`, `autumn-glass` or `onedark`, one palette
 file each under `modules/theme/palettes/`) and `dotfiles.theme.transparency`.
-Change them and run `home-manager switch`. When either changed, activation
-ends with a notice saying which apps recolored live and which need a restart.
+Change them and re-activate with `./scripts/bootstrap.sh install home-manager`,
+or `home-manager switch --flake ~/Documents/dotfiles#z` to drive Home Manager
+directly. Bare `home-manager switch` looks for a channel configuration under
+`~/.config/home-manager`, which this repository deliberately does not have.
+When either changed, activation ends with a notice saying which apps recolored
+live and which need a restart.
 Apps moved onto the palette so far: WezTerm, Sublime Text, Neovim, and GNOME
 Shell, GTK and Firefox through Rewaita. Both recolor without a restart, except that a GTK
 program reads its colors when it starts, so windows already open keep theirs.
