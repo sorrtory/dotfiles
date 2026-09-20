@@ -21,11 +21,30 @@
     info = "#79c9ba";
   };
 
-  # No Neovim plugin carries these colors, so the editor generates a
-  # colorscheme from the palette instead.
+  # No Neovim plugin carries these colors, and no VS Code extension does
+  # either, so both editors generate a theme from the palette instead.
   assets = {
     gnomeAccent = "orange";
     iconTheme = "Yaru-wartybrown-dark";
+  };
+
+  overrides = {
+    # Spotify is where this palette came from, so it keeps the hand-picked
+    # shades of the theme it was taken from rather than the steps
+    # modules/theme/spotify-scheme.nix derives: the stock parchment text
+    # rather than the terminal's brighter one, and four surfaces the roles do
+    # not name, each within a few units of the derived value but chosen by
+    # eye. Every other slot comes from the roles.
+    spotify = {
+      text = "#f6e9da";
+      scheme = {
+        card = "#3a251f";
+        notification = "#3a251f";
+        shadow = "#0f0907";
+        misc = "#725046";
+        highlight-elevated = "#5a392f";
+      };
+    };
   };
 
   ansi = {
