@@ -139,7 +139,14 @@ let
     knowledge = {
       binding = "<Super>k";
       command = "obsidian ${knowledgeDatabaseUri}";
-      wmClass = "/^(obsidian|Obsidian|md\\.Obsidian)$/";
+      # Real Obsidian windows on Wayland report their app ID as
+      # md.obsidian.Obsidian (matching upstream's Flatpak/systemd identity,
+      # visible in `app-md.obsidian.Obsidian-<pid>.scope`), not the
+      # StartupWMClass in obsidian.desktop. Without this alternative, Run or
+      # Raise never matches the running window and instead relaunches the
+      # command every press, which Obsidian's single-instance lock turns into
+      # an unfocused "ready" notification rather than a raise.
+      wmClass = "/^(obsidian|Obsidian|md\\.Obsidian|md\\.obsidian\\.Obsidian)$/";
       title = "/(^| - )Knowledge-Database - Obsidian( v?[0-9.]+)?$/";
     };
     # Always check the mount: a forced lock can leave a Notes window behind.
@@ -149,7 +156,7 @@ let
       binding = "<Super>n";
       mode = "always-run";
       command = "vault notes ${lib.escapeShellArg desktopVault}";
-      wmClass = "/^(obsidian|Obsidian|md\\.Obsidian)$/";
+      wmClass = "/^(obsidian|Obsidian|md\\.Obsidian|md\\.obsidian\\.Obsidian)$/";
       title = "/(^| - )Notes - Obsidian( v?[0-9.]+)?$/";
     };
     spotify = {
