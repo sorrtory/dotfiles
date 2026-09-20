@@ -220,8 +220,8 @@ in
 {
   options.dotfiles.terminal = lib.mkOption {
     type = lib.types.enum (lib.attrNames terminals);
-    default = "ptyxis";
-    example = "wezterm";
+    default = "wezterm";
+    example = "ptyxis";
     description = "The terminal Ctrl+Alt+T runs or raises.";
   };
 
@@ -456,6 +456,15 @@ in
         run cp --no-preserve=mode ${rewaitaPreferences} "$preferences"
       fi
     '';
+
+    # GLib's generic terminal launcher only considers desktop files registered
+    # below xdg-terminals. This covers Terminal=true applications, but not
+    # Nautilus's built-in "Open in Console", which hard-codes GNOME Console
+    # (Ptyxis in Fedora's build). modules/programs/wezterm.nix redirects that
+    # action to WezTerm.
+    xdg.dataFile."xdg-terminals/org.wezfurlong.wezterm.desktop".source =
+      "${pkgs.wezterm}/share/applications/org.wezfurlong.wezterm.desktop";
+    xdg.configFile."xdg-terminals.list".text = "org.wezfurlong.wezterm.desktop\n";
 
     # Default apps stay mutable the same way: xdg-mime and "Open With → Set as
     # default" both rewrite mimeapps.list live, so this seeds it only when the
