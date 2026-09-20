@@ -151,3 +151,10 @@ vim.api.nvim_create_autocmd("BufReadPost", {
 
 -- https://lazy.folke.io/installation
 require("config.lazy")
+
+-- The theme chosen in home.nix decides which colorscheme is loaded: the one
+-- its plugin provides, or "dotfiles", drawn from the palette in
+-- colors/dotfiles.lua. Overrides from home.nix land on top of whichever it is.
+local theme = require("theme")
+pcall(vim.cmd.colorscheme, theme.colorscheme or "dotfiles")
+theme.apply_overrides()

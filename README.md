@@ -245,10 +245,10 @@ Two settings in `home.nix` choose the look of every themed app:
 file each under `modules/theme/palettes/`) and `dotfiles.theme.transparency`.
 Change them and run `home-manager switch`. When either changed, activation
 ends with a notice saying which apps recolored live and which need a restart.
-Apps moved onto the palette so far: WezTerm, and GNOME Shell, GTK and
+Apps moved onto the palette so far: WezTerm, Neovim, and GNOME Shell, GTK and
 Firefox through Rewaita. Both recolor without a restart, except that a GTK
 program reads its colors when it starts, so windows already open keep theirs.
-Activation outside a GNOME session — over SSH, say — cannot recolor the
+Neovim takes a switch at its next start. Activation outside a GNOME session — over SSH, say — cannot recolor the
 running desktop, so the notice moves GNOME to a "log out and back in" line and
 the login autostart applies it.
 
@@ -285,6 +285,27 @@ like Gogh give a terminal's 16 colors and nothing for GTK, Telegram, Obsidian
 or Spotify, and generators like Stylix take the per-app overrides away. A
 palette here is one file of hexes, pinned in this repository's history, and
 adding a theme is adding one more.
+
+#### Neovim
+
+A theme names the plugin that carries it — gruvbox.nvim for gruvbox,
+onedark.nvim for onedark — and gets the palette through that plugin's own
+override option. A theme that names none, as autumn-glass does, is drawn from
+the palette by `configs/nvim/colors/dotfiles.lua`, which is where to adjust
+how a generated colorscheme looks. Both plugins stay installed either way, so
+switching is a restart rather than an install.
+
+Transparency comes from transparent.nvim, set from the switch before the
+plugin loads so its remembered state cannot win at startup; `:TransparentToggle`
+still works for the rest of a session. Highlights can be overridden per group:
+
+```nix
+dotfiles.theme.overrides.neovim = { highlights.Comment = { fg = "#fabd2f"; }; };
+```
+
+On a machine with this configuration but no Home Manager — a remote host the
+Lua tree was copied to — there is no generated palette, and the editor starts
+in onedark rather than failing.
 
 ### GNOME through Rewaita
 

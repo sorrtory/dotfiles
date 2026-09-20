@@ -53,6 +53,8 @@ with gruvbox;
   assets = {
     gnomeAccent = "orange";
     iconTheme = "Yaru-wartybrown-dark";
+    # Gruvbox's own Neovim plugin, fed this palette's overrides.
+    neovim = { colorscheme = "gruvbox"; };
   };
 
   overrides = {

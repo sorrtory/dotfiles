@@ -1,7 +1,21 @@
-{ config, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   configRoot = "${config.home.homeDirectory}/Documents/dotfiles/configs/nvim";
+
+  theme = config.dotfiles.theme;
+  colors = theme.forApp "neovim";
+
+  # What configs/nvim/lua/theme.lua reads: the palette, whether to be
+  # transparent, and which native colorscheme the theme declares, if any. A
+  # theme that declares none is drawn from the colors instead.
+  themeData = {
+    name = theme.name;
+    transparency = theme.transparency;
+    colors = removeAttrs colors [ "alpha" "highlights" ];
+    alpha = colors.alpha;
+    highlights = colors.highlights or { };
+  } // (theme.assets.neovim or { });
 in
 {
   # programs.neovim owns the package; the Lua tree stays native and
@@ -27,6 +41,13 @@ in
 
   xdg.configFile."nvim".source =
     config.lib.file.mkOutOfStoreSymlink configRoot;
+
+  dotfiles.theme.liveFiles."nvim.lua" = pkgs.writeText "nvim-theme.lua"
+    "return ${lib.generators.toLua { } themeData}\n";
+  dotfiles.theme.apps.neovim = {
+    label = "Neovim";
+    apply = "restart";
+  };
 
   # .vimrc is a self-contained drop-in: it configures the Vim in
   # modules/packages.nix and is also what the operator copies to remote servers

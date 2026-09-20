@@ -22,6 +22,9 @@
   assets = {
     gnomeAccent = "blue";
     iconTheme = "Yaru-blue-dark";
+    # onedark.nvim's "darker" style, which the editor used before there was
+    # a palette.
+    neovim = { colorscheme = "onedark"; style = "darker"; };
   };
 
   ansi = {

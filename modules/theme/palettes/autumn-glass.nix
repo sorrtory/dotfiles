@@ -21,6 +21,8 @@
     info = "#79c9ba";
   };
 
+  # No Neovim plugin carries these colors, so the editor generates a
+  # colorscheme from the palette instead.
   assets = {
     gnomeAccent = "orange";
     iconTheme = "Yaru-wartybrown-dark";
