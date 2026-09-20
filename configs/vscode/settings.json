@@ -216,7 +216,7 @@
         "**/.metals": true
     },
     "chat.viewSessions.orientation": "stacked",
-    "workbench.colorTheme": "Gruvbox Dark Hard",
+    "workbench.colorTheme": "Dotfiles",
     "workbench.editor.useModal": "some",
     "yaml.disableSchemaDetection": [
         "**/.github/workflows/*.yml",

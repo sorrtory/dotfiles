@@ -25,6 +25,9 @@
     # onedark.nvim's "darker" style, which the editor used before there was
     # a palette.
     neovim = { colorscheme = "onedark"; style = "darker"; };
+    # One Dark Pro's own "One Dark Pro" variant: its editor background and
+    # sidebar are this palette's base and mantle exactly.
+    vscode = { extension = "zhuangtongfa.material-theme"; theme = "One Dark Pro"; };
   };
 
   ansi = {

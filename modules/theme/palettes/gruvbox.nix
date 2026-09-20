@@ -56,6 +56,10 @@ with gruvbox;
     iconTheme = "Yaru-wartybrown-dark";
     # Gruvbox's own Neovim plugin, fed this palette's overrides.
     neovim = { colorscheme = "gruvbox"; };
+    # The extension the editor ran before there was a palette. The label is
+    # the one the extension itself contributes; modules/programs/vscode.nix
+    # looks it up rather than guessing a file name.
+    vscode = { extension = "jdinhlife.gruvbox"; theme = "Gruvbox Dark Hard"; };
   };
 
   overrides = {
