@@ -299,6 +299,35 @@ in
         move-to-workspace-right = [ "<Control><Super>Right" ];
         switch-to-workspace-left = [ "<Control><Alt>Left" ];
         switch-to-workspace-right = [ "<Control><Alt>Right" ];
+
+        # Super+1..9 switches directly to that workspace.
+        switch-to-workspace-1 = [ "<Super>1" ];
+        switch-to-workspace-2 = [ "<Super>2" ];
+        switch-to-workspace-3 = [ "<Super>3" ];
+        switch-to-workspace-4 = [ "<Super>4" ];
+        switch-to-workspace-5 = [ "<Super>5" ];
+        switch-to-workspace-6 = [ "<Super>6" ];
+        switch-to-workspace-7 = [ "<Super>7" ];
+        switch-to-workspace-8 = [ "<Super>8" ];
+        switch-to-workspace-9 = [ "<Super>9" ];
+
+        # Shift+Super+1..9 moves the active window to that workspace. Was
+        # Ctrl+Super+N, but that chord races GNOME's overlay-key: if Super's
+        # release is seen before Ctrl+N land as a chord, mutter treats it as a
+        # bare Super tap and opens the Activities Overview, where 1..9 are
+        # hardcoded (outside org/gnome/shell/keybindings) to launch the
+        # dash's Nth pinned favorite instead of moving the window. This is
+        # GNOME's own default binding for the action, so it's exercised far
+        # more and less likely to still race.
+        move-to-workspace-1 = [ "<Shift><Super>1" ];
+        move-to-workspace-2 = [ "<Shift><Super>2" ];
+        move-to-workspace-3 = [ "<Shift><Super>3" ];
+        move-to-workspace-4 = [ "<Shift><Super>4" ];
+        move-to-workspace-5 = [ "<Shift><Super>5" ];
+        move-to-workspace-6 = [ "<Shift><Super>6" ];
+        move-to-workspace-7 = [ "<Shift><Super>7" ];
+        move-to-workspace-8 = [ "<Shift><Super>8" ];
+        move-to-workspace-9 = [ "<Shift><Super>9" ];
       };
 
       # GNOME's defaults would take the obsidian (<Super>n), spotify (<Super>s)
@@ -307,6 +336,17 @@ in
         focus-active-notification = [ "disabled" ];
         toggle-quick-settings = [ "disabled" ];
         toggle-message-tray = mkEmptyArray type.string;
+
+        # GNOME normally uses Super+1..9 for applications in the dash.
+        switch-to-application-1 = mkEmptyArray type.string;
+        switch-to-application-2 = mkEmptyArray type.string;
+        switch-to-application-3 = mkEmptyArray type.string;
+        switch-to-application-4 = mkEmptyArray type.string;
+        switch-to-application-5 = mkEmptyArray type.string;
+        switch-to-application-6 = mkEmptyArray type.string;
+        switch-to-application-7 = mkEmptyArray type.string;
+        switch-to-application-8 = mkEmptyArray type.string;
+        switch-to-application-9 = mkEmptyArray type.string;
       };
 
       # Both already match Ubuntu's defaults. They are declared so other distros
