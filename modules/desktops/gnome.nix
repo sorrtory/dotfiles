@@ -9,6 +9,20 @@ let
   # consumer that needs it.
   rewaita = pkgs.callPackage ../../packages/rewaita.nix { };
 
+  # Nixpkgs builds Extension Manager against libsoup3 but leaves
+  # glib-networking out of its inputs, so wrapGAppsHook4 writes a wrapper
+  # whose GIO_EXTRA_MODULES names only dconf. GIO then has no TLS backend,
+  # falls back to GDummyTlsBackend, and every request to extensions.gnome.org
+  # fails with "TLS support is unavailable": the Browse tab is empty and
+  # nothing installs. NixOS never sees this because its GNOME module exports
+  # glib-networking's module directory session-wide; targets.genericLinux has
+  # no equivalent, so on Fedora the missing input is load-bearing. Adding it
+  # here is enough: the hook picks it up and prefixes the path itself. Still
+  # absent from nixpkgs master as of 2026-09-20, with no issue or PR open.
+  gnome-extension-manager = pkgs.gnome-extension-manager.overrideAttrs (old: {
+    buildInputs = old.buildInputs ++ [ pkgs.glib-networking ];
+  });
+
   theme = config.dotfiles.theme;
   themeColors = theme.forApp "gnome";
   rewaitaCss = import ../theme/rewaita-css.nix { inherit lib; };
