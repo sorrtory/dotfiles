@@ -11,7 +11,8 @@ body {
  * Each rule leads with a stable hook (an id or data attribute) and keeps the
  * class seen in DevTools as a second selector; when a look comes back, find
  * the element in DevTools again and replace the class. */
-@-moz-document regexp("https://www\\.google\\.[a-z.]+/search.*") {
+@-moz-document regexp("https://www\\.google\\.[a-z.]+/search.*")
+{
   /* Header bar. It is sticky, so it blurs what scrolls beneath instead. */
   #searchform,
   .CvDJxb {
@@ -29,10 +30,18 @@ body {
 
   /* AI Mode's full-page result panels. */
   .DZ13He,
+  .zNsLfb,
+  .qEn1od,
   .SbLVJc {
     background: transparent !important;
   }
 
+  .Jzkafd > .in7vHe {
+    background-color: var(--xhUGwc) !important;
+    /*background: revert !important;*/
+    border: revert !important;
+    box-shadow: revert !important;
+  }
   /* Body revealed by the AI Overview's "Show more" toggle, and the AI Mode
    * history drawer opened from the header. */
   #m-x-content,
@@ -53,7 +62,8 @@ body {
 }
 
 /* Google's home page: the bare domain or /webhp, with any query. */
-@-moz-document regexp("https://www\\.google\\.[a-z.]+/(webhp)?([?#].*)?") {
+@-moz-document regexp("https://www\\.google\\.[a-z.]+/(webhp)?([?#].*)?")
+{
   /* Footer with the country and the About/Privacy/Settings links. */
   [role="contentinfo"],
   .Ij8KCd {
@@ -89,7 +99,8 @@ body {
   [class*="MarkdownEditor-module__header__"],
   [class*="FilteredListPageLayout-module__FilterBar"]
     [class*="-module__"]:not([class*="SuggestionsList-module__"]),
-  [class*="ListView-module__container__"] [class*="Metadata-module__container__"],
+  [class*="ListView-module__container__"]
+    [class*="Metadata-module__container__"],
   [class*="CollapsibleSidebar-module__sidebar__"],
   [class*="CollapsibleSidebar-module__footer__"] {
     background: transparent !important;
@@ -177,7 +188,11 @@ body {
   }
 
   [data-composer-surface] {
-    background: color-mix(in srgb, var(--composer-surface-primary) 55%, transparent) !important;
+    background: color-mix(
+      in srgb,
+      var(--composer-surface-primary) 55%,
+      transparent
+    ) !important;
     backdrop-filter: blur(24px) !important;
   }
 
