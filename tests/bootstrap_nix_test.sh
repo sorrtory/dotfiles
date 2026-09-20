@@ -87,4 +87,15 @@ fi
 [[ $result -eq 2 ]] ||
   fail 'an NSS lookup failure should be an inspection error'
 
+# A host with no Nix yet simply has no daemon profile, which is not an error.
+# A bare `return` after the existence test used to hand back that test's
+# status, so check() gave up before it could report "not installed" -- silent
+# on the one machine where the message matters most.
+# The stub near the top replaced the real function, so take it back to test it.
+eval "$(sed -n '/^load_nix_profile()/,/^}/p' "$SUBJECT")"
+# shellcheck disable=SC2329
+nix_daemon_profile_path() { printf '/nonexistent/nix-daemon.sh\n'; }
+load_nix_profile ||
+  fail 'a missing Nix daemon profile should not be reported as a failure'
+
 printf 'bootstrap Nix tests passed\n'

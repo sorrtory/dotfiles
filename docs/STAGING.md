@@ -32,13 +32,25 @@ mirrored tree, GNOME at its defaults.
 Verified on 2026-09-20 from that snapshot, with the mirroring command and sudo
 helper below:
 
-- `host-deps` installed `zsh` through `dnf`, and refreshed `ca-certificates`
-  until a CA bundle existed at `/etc/ssl/certs/ca-certificates.crt`.
+- `host-repos` pinned Fedora and RPM Fusion to Yandex, disabled the Cisco
+  OpenH264 repository, and reconciled the package set. **It took 109 minutes**
+  on 2 vCPUs: a `distro-sync` plus two full upgrades against release-media
+  packages is the dominant cost of a fresh bootstrap, and it is worth starting
+  before doing something else.
+- `host-deps` then found its CA bundle already in place, because that upgrade
+  brought `ca-certificates` current as a side effect, and installed `zsh`.
 - `nix` installed Fedora's `nix` 2.34.8 RPM, created the `nixbld` users and
-  enabled `nix-daemon.service`. Status re-reads it correctly.
+  enabled `nix-daemon.service`. A login shell exports
+  `NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt`.
 - `apparmor` reports `unprivileged user namespaces are not restricted; no
   profiles needed`, which is Fedora behaving as expected — that phase exists for
   Ubuntu.
+
+The 109-minute run also settled the ordering question. A whole-system upgrade
+fails outright on default mirrors, because Fedora Workstation enables Cisco's
+`openh264` repository and this network cannot reach it. The same upgrade
+succeeds once `host-repos` has pinned the mirrors and disabled that repository,
+which is the argument for repository policy being phase 01.
 
 `secret-recovery` is the next phase and is the operator's: it needs a GitHub
 sign-in and the KeePassXC vault password, so it has to be run with a terminal.
@@ -61,9 +73,10 @@ that bundle and refreshes the host packages it declares, so the fault is caught
 two phases before it used to appear. The operator's own host never hit it: an
 installed Fedora picks up the newer `ca-certificates` on its first update.
 
-The VM also settled how broad that repair should be. A whole-system upgrade in
-the phase fails here, because Fedora Workstation enables Cisco's `openh264`
-repository and this network cannot reach its mirrors:
+The VM also settled how broad that repair should be. A whole-system upgrade
+inside `host-deps` fails, because that phase runs before any mirror is pinned
+and Fedora Workstation enables Cisco's `openh264` repository, which this
+network cannot reach:
 
 ```
 Failed to download packages
@@ -71,7 +84,8 @@ Failed to download packages
 ```
 
 `--skip-unavailable` does not cover a download failure. Refreshing the declared
-packages instead completes in about 15 seconds from the same snapshot.
+packages instead completes in about 15 seconds from the same snapshot, and
+works on a distribution that has no repository phase at all.
 
 An earlier VM, `silverblue43`, ran Fedora 43 Silverblue and could not bootstrap
 at all: `common/packages.sh` maps `ID=fedora` to `dnf`, which an rpm-ostree

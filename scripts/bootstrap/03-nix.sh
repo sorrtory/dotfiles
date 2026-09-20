@@ -78,7 +78,13 @@ load_nix_profile() {
   local profile
 
   profile="$(nix_daemon_profile_path)"
-  [[ -e "$profile" ]] || return
+  # An explicit success: a bare `return` hands back the status of the failed
+  # test, so on a host with no Nix yet this reported failure and check() gave
+  # up before it could say "not installed" -- silent on the one machine where
+  # the message matters most.
+  if [[ ! -e "$profile" ]]; then
+    return 0
+  fi
 
   # shellcheck disable=SC1090
   if ! . "$profile"; then
