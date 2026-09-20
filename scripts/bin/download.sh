@@ -298,6 +298,15 @@ spotdl)
 esac
 
 if [[ -n $proxy ]]; then
+  # spotdl's --proxy covers only the audio download. Its lookups — Spotify
+  # through spotapi, YouTube Music through ytmusicapi — read the environment
+  # instead, and a desktop launcher's environment may carry no proxy at all,
+  # so PROXY is handed to them there. Both lookups are region-blocked here.
+  if [[ $backend == spotdl ]]; then
+    exec env HTTP_PROXY="$proxy" HTTPS_PROXY="$proxy" \
+      http_proxy="$proxy" https_proxy="$proxy" \
+      "${command[@]}" ${rest[@]+"${rest[@]}"}
+  fi
   exec "${command[@]}" ${rest[@]+"${rest[@]}"}
 fi
 

@@ -1,6 +1,6 @@
 # 02 — Diagnose Spotify download failure
 
-Status: needs-triage
+Status: done
 Priority: P1
 
 ## Evidence
@@ -27,3 +27,22 @@ proxy and with `PROXY=`.
   a concise actionable error naming the failed provider and bypass option.
 - Add a regression test at the command boundary; do not require network access
   in the test suite.
+
+## Resolution
+
+Two causes, both proxy propagation:
+
+- spotapi, which spotDL 4.5 uses to read Spotify without API credentials,
+  builds its TLS client with an empty proxy and ignores the environment. Direct,
+  Spotify redirects to `why-not-available`, and spotapi fails with an
+  `IndexError` parsing it. `modules/scripts.nix` patches it to fall back to the
+  environment's HTTPS proxy.
+- spotDL's `--proxy` covers only the audio download; ytmusicapi and spotapi read
+  the environment. `download` now sets `HTTP(S)_PROXY` from `PROXY` for spotdl,
+  so a run with no ambient proxy (a desktop launcher) still tunnels. The
+  `music.youtube.com` timeout in the evidence is what a direct lookup gets.
+
+`--use-official-api` is not a workaround: spotDL's shared client credentials
+are rate-limited, so it needs a personal Spotify app's `--client-id` and
+`--client-secret`. Some tracks, like the one above, resolve on Spotify but have
+no YouTube match; that is a spotDL matching limit, not this issue.

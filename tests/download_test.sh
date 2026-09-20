@@ -5,6 +5,9 @@ root=$(mktemp -d)
 trap 'rm -rf -- "$root"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
+# The session's own proxy would otherwise stand in for the test default below.
+unset PROXY HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
+
 # Every backend is a recorder: it writes its own name and each argument on its
 # own line, so an assertion reads exactly what the dispatcher built. Nothing
 # here touches the network.
@@ -190,9 +193,20 @@ HTTPS_PROXY=http://leak:3128 PROXY= run mp3 'spotify:track:a' >/dev/null
 [[ $(<"$root/recording.env") == 'unset' ]] ||
   fail "a direct run must not leave a proxy in spotdl's environment: $(<"$root/recording.env")"
 
-HTTPS_PROXY=http://kept:3128 run mp3 'spotify:track:a' >/dev/null
+# spotdl's metadata lookups read only the environment, and region blocks make
+# them fail direct, so a proxied run puts PROXY there — over whatever the
+# caller's environment held, or held nothing at all.
+HTTPS_PROXY=http://stale:3128 run mp3 'spotify:track:a' >/dev/null
+[[ $(<"$root/recording.env") == 'http://p:3128' ]] ||
+  fail "a proxied spotdl run should see PROXY in its environment: $(<"$root/recording.env")"
+
+run mp3 'spotify:track:a' >/dev/null
+[[ $(<"$root/recording.env") == 'http://p:3128' ]] ||
+  fail "PROXY should reach spotdl's lookups from an empty environment: $(<"$root/recording.env")"
+
+HTTPS_PROXY=http://kept:3128 run mp4 URL >/dev/null
 [[ $(<"$root/recording.env") == 'http://kept:3128' ]] ||
-  fail 'a proxied run should not disturb the environment'
+  fail 'the other backends take PROXY as an option and leave the environment alone'
 
 # --- a Spotify word inside an option value is not a Spotify URL ----------
 

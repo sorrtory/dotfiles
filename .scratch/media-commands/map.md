@@ -6,7 +6,7 @@ yt-dlp, gallery-dl, aria2c, spotdl and FFmpeg. See [spec.md](spec.md).
 
 ## Tickets
 
-- [01 — Support image targets in `convert-to`](issues/01-convert-image-targets.md)
+- [01 — Support image targets in `convert-to`](issues/01-convert-image-targets.md) — resolved: `jpg`/`png` targets added; colon paths fixed
 - [02 — Diagnose Spotify download failure](issues/02-spotify-download-fails.md)
 - [03 — Preserve the requested video format](issues/03-video-original-format.md)
 

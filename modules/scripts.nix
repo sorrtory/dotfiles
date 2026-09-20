@@ -20,6 +20,28 @@ let
     '' + builtins.readFile ../scripts/bin/archive.sh;
   };
 
+  # spotDL reads Spotify through spotapi, whose TLS client is built with an
+  # empty proxy and ignores the environment, so it always goes direct. Where
+  # Spotify is region-blocked that request lands on a "not available" page and
+  # spotapi dies with an IndexError parsing it. The patch falls back to the
+  # environment's HTTPS proxy, which `download` sets from PROXY; spotapi adds
+  # the scheme itself, hence the strip. Overriding it in the scope rather than
+  # on spotdl also reaches SpotipyFree, its other consumer.
+  spotdl = unstablePkgs.spotdl.override {
+    python3Packages = unstablePkgs.python3Packages.overrideScope (final: prev: {
+      spotapi = prev.spotapi.overridePythonAttrs (old: {
+        postPatch = (old.postPatch or "") + ''
+          substituteInPlace spotapi/http/request.py --replace-fail \
+            '        if proxy:' \
+            '        if not proxy:
+                      import urllib.request
+                      proxy = urllib.request.getproxies().get("https", "").removeprefix("http://")
+                  if proxy:'
+        '';
+      });
+    });
+  };
+
   # The one front door for fetching media. yt-dlp is deliberately absent from
   # runtimeInputs: it is the bootstrap-installed release binary rather than a
   # Nix package, so that `yt-dlp -U` keeps working, and the script resolves it
@@ -33,7 +55,7 @@ let
       pkgs.coreutils
       pkgs.imagemagick
       unstablePkgs.gallery-dl
-      unstablePkgs.spotdl
+      spotdl
     ];
     text = builtins.readFile ../scripts/bin/download.sh;
   };

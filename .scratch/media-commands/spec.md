@@ -37,7 +37,7 @@ Two commands, and nothing else.
 
 ```
 download <type|extension> [backend options] URL...
-convert-to <extension> [ffmpeg options] FILE...
+convert-to <extension> [ffmpeg or ImageMagick options] FILE...
 ```
 
 `download` fetches. `convert-to` converts files already on disk. They never
@@ -60,6 +60,7 @@ download file  URL     # aria2c
 convert-to mp3 *.m4a
 convert-to mp4 clip.mkv
 convert-to gif clip.mp4
+convert-to jpg image.png
 ```
 
 ## User stories
@@ -128,8 +129,9 @@ convert-to gif clip.mp4
     so that one broken input does not waste the rest of the run.
 29. As the operator, I want a non-zero exit when anything failed, so that a
     script calling this can tell.
-30. As the operator, I want `convert-to` never to delete my files, so that the
-    originals are still there when I dislike the result.
+30. As the operator, I want `convert-to` never to delete my files unless I pass
+    `-R`, so that the originals are still there when I dislike the result, and
+    so that re-tagging or converting a library in place stays one command.
 31. As the operator, I want a clear error when a format is impossible for the
     backend that has to serve it, so that I know to pick another.
 32. As the operator, I want `--help` to tell me which types and extensions
@@ -211,7 +213,8 @@ that existed for the seconds between download and conversion, and only after a
 conversion that both exited zero and wrote a non-empty file. A failure keeps the
 original and warns.
 
-`convert-to` never removes anything.
+`convert-to` never removes anything unless `-R`/`--replace` is given, which lets
+each output take its input's place once it is written and non-empty.
 
 ### Output and options
 
@@ -243,7 +246,7 @@ back to the environment. Its real opt-out is `-o proxy-env=false`.
 
 ### convert-to
 
-Targets are `mp3`, `mp4` and `gif`.
+Targets are `mp3`, `mp4`, `gif`, `jpg` and `png`.
 
 `mp4` probes with `ffprobe` and picks one of four recipes:
 
@@ -257,9 +260,35 @@ Targets are `mp3`, `mp4` and `gif`.
 Remuxing is correct here and wrong in `download` for one reason: here the
 codecs are read before anything is decided, where yt-dlp remuxes blind.
 
+`mp3` keeps the source's cover art as the attached picture, copied rather than
+re-encoded; a real video stream is not art and is dropped. The tag is ID3v2.3,
+which more players read than the default v2.4.
+
+`--cover PICTURE` applies to `mp3` and `mp4` only. For `mp3` it replaces any
+existing art, and when the input is already mp3 the audio is copied, so adding
+a picture costs no quality. JPEG and PNG are embedded as they are; anything
+else is encoded to JPEG. For `mp4` it is the still image, which also makes audio
+without art of its own convertible.
+
+The still video is cut at the audio's measured length. `-shortest` alone let
+x264's frame buffer run a 60 second song to a 117 second video. The picture is
+also embedded as the mp4's cover (`covr`), in a separate copy-only pass, since
+in the encoding pass a one-frame cover stream would end at once and cut the
+output short. Thumbnailers, phones and media servers show that cover. An input that already has video is refused,
+and so is a picture holding more than one frame: `-frames:v 1` cannot limit it,
+because in FFmpeg 8 that ends the whole output, audio included, after one frame.
+
 `gif` is two-pass `palettegen` / `paletteuse` at 15 fps scaled to 480px wide.
 One-pass GIF encoding bands visibly, which is also why `download gif` does not
 exist even though yt-dlp accepts `gif` as a recode target.
+
+`jpg` and `png` convert still images already on disk through ImageMagick,
+after the operator reported `convert-to jpg image.png` being refused (ticket
+01). Unlike `download png`, an explicit JPEG to PNG is honoured: the file is the
+operator's and they asked. Transparency is flattened onto white for `jpg`, EXIF
+orientation is applied, and anything holding more than one frame — an animated
+GIF or WebP, a multi-page TIFF, a video — is refused, because ImageMagick would
+exit zero while writing `name-0.jpg`, `name-1.jpg` instead of the one output.
 
 Every output path is checked before any encoding begins. If any target already
 exists and is not its own input, the whole batch is refused and nothing is
