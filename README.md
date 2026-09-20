@@ -242,20 +242,48 @@ match. Additional vaults also named `Notes` are indistinguishable by title.
 ### Themes
 
 Two settings in `home.nix` choose the look of every themed app:
-`dotfiles.theme.name` (`gruvbox`, `autumn-glass` or `onedark`, one palette
-file each under `modules/theme/palettes/`) and `dotfiles.theme.transparency`.
-Change them and re-activate with `./scripts/bootstrap.sh install home-manager`,
-or `home-manager switch --flake ~/Documents/dotfiles#z` to drive Home Manager
-directly. Bare `home-manager switch` looks for a channel configuration under
+`dotfiles.theme.name` — `gruvbox`, `autumn-glass` or `onedark`, one palette
+file each under `modules/theme/palettes/` — and `dotfiles.theme.transparency`.
+A switch is a Nix change, not a runtime command: edit either and re-activate.
+
+```bash
+./scripts/bootstrap.sh install home-manager
+# or, to drive Home Manager directly:
+home-manager switch --flake ~/Documents/dotfiles#z
+```
+
+Bare `home-manager switch` looks for a channel configuration under
 `~/.config/home-manager`, which this repository deliberately does not have.
-When either changed, activation ends with a notice saying which apps recolored
-live and which need a restart.
-Apps moved onto the palette so far: WezTerm, Sublime Text, Neovim, and GNOME
-Shell, GTK and Firefox through Rewaita. Both recolor without a restart, except that a GTK
-program reads its colors when it starts, so windows already open keep theirs.
-Neovim takes a switch at its next start. Activation outside a GNOME session — over SSH, say — cannot recolor the
-running desktop, so the notice moves GNOME to a "log out and back in" line and
-the login autostart applies it.
+
+| App | Takes a switch |
+|---|---|
+| WezTerm, Sublime Text | live: they watch their file |
+| GNOME Shell, GTK, Firefox | live, through Rewaita; a GTK program reads its colors at startup, so open windows keep theirs |
+| Wallpaper, accent, icons | live, through dconf |
+| Neovim, Spotify, Obsidian | next start |
+| VS Code | next Reload Window |
+
+Activation ends with a notice saying exactly that, printed only when the theme
+or transparency actually changed. Outside a GNOME session — over SSH, say —
+nothing can recolor the running desktop, so GNOME moves to a "log out and back
+in" line and the login autostart applies it at the next login. AyuGram is the
+one app still carrying its own theme rather than the palette.
+
+**Obsidian needs one manual step per vault.** A vault is machine-local and may
+be anywhere, so Home Manager cannot put a theme inside it; instead it keeps
+one at a fixed path and the vault is linked to that path, once:
+
+```bash
+vault=~/Documents/Knowledge-Database
+mkdir -p "$vault/.obsidian/themes"
+ln -sfn ~/.local/share/dotfiles/theme/obsidian "$vault/.obsidian/themes/Dotfiles"
+```
+
+Then pick **Dotfiles** under Settings → Appearance → Themes, with the base
+color scheme set to dark. That is the whole of it: Home Manager repoints what
+is behind that path at every generation, so the link keeps working through
+every later switch and never has to be remade. Until it exists, activation
+names the vault under "Needs attention".
 
 To tweak one app without editing a palette, add an override. A hex pins a
 color; a function of the palette remaps one role to another and keeps doing so
@@ -357,22 +385,16 @@ switch shows at the next Spotify launch.
 
 #### Obsidian
 
-The theme is generated to `~/.local/share/dotfiles/theme/obsidian/` and is
-called **Dotfiles**. Vaults are machine-local and Obsidian has to have created
-a vault's `.obsidian` directory first, so linking one is a one-time step per
-vault, done by hand:
+The theme is generated to `~/.local/share/dotfiles/theme/obsidian/` under the
+fixed name **Dotfiles**; linking a vault to it is the one-time step above.
+Activation reports any vault it knows about — the repositories
+`dotfiles.repositories` clones — that has no link yet, and Obsidian reads a
+theme once at launch, so a switch shows at its next start.
 
-```bash
-mkdir -p <vault>/.obsidian/themes
-ln -s ~/.local/share/dotfiles/theme/obsidian "<vault>/.obsidian/themes/Dotfiles"
-```
-
-Then pick **Dotfiles** under Settings → Appearance → Themes, with the base
-color scheme set to dark. The link never has to be made again: Home Manager
-repoints what is behind that path at every generation, and a switch shows at
-the next Obsidian start, because Obsidian reads a theme once at launch. After
-a switch, activation names any vault it knows about — the repositories
-`dotfiles.repositories` clones — that has no link yet.
+Its chrome sits a shade *above* the note rather than below it: ribbon, tabs
+and status bar are lighter than the page, which is the one app here that reads
+the roles that way, and is how the hand-made Autumn Glass theme it replaces
+was drawn.
 
 Solid colors only, and the transparency switch does not reach Obsidian: its
 window can be see-through on Linux, but Chromium redraws it with glitches on
