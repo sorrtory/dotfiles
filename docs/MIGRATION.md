@@ -20,9 +20,11 @@ practice rather than a deferred step.
 
 The feature migration is not complete. The core milestone slices below record
 what has moved; "Additional candidates" and "Fresh-machine flow" record what has
-not. The fresh-machine flow has been run on Fedora only as far as `host-deps`
-and `nix`; `secret-recovery` onward is unverified there. See
-[STAGING.md](STAGING.md#bootstrap-progress).
+not. The fresh-machine flow itself now runs end to end on Fedora: every phase
+was verified from a bare snapshot on the staging VM, with two caveats recorded
+in [STAGING.md](STAGING.md#bootstrap-progress) — an 18 GiB disk is too small,
+and nested virtualization needs its default network moved off the outer host's
+subnet first.
 
 ## Method
 

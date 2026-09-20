@@ -29,63 +29,63 @@ mirrored tree, GNOME at its defaults.
 
 ### Bootstrap progress
 
-Verified on 2026-09-20 from that snapshot, with the mirroring command and sudo
-helper below:
+The whole `bootstrap.sh install` chain is green on Fedora, verified 2026-09-20
+from the `fresh + ssh` snapshot. The result is kept as the `bootstrapped`
+snapshot, so it can be returned to without repeating the two-hour first phase:
 
-- `host-repos` pinned Fedora and RPM Fusion to Yandex, disabled the Cisco
-  OpenH264 repository, and reconciled the package set. **It took 109 minutes**
-  on 2 vCPUs: a `distro-sync` plus two full upgrades against release-media
-  packages is the dominant cost of a fresh bootstrap, and it is worth starting
-  before doing something else.
+```bash
+virsh -c qemu:///system snapshot-revert fedora bootstrapped
+```
+
+Timings and the two things that needed intervention:
+
+- `host-repos` took **109 minutes** on 2 vCPUs. A `distro-sync` plus two full
+  upgrades against release-media packages is the dominant cost of a fresh
+  bootstrap; start it before doing something else.
 - `host-deps` then found its CA bundle already in place, because that upgrade
-  brought `ca-certificates` current as a side effect, and installed `zsh`.
-- `nix` installed Fedora's `nix` 2.34.8 RPM, created the `nixbld` users and
-  enabled `nix-daemon.service`. A login shell exports
+  brings `ca-certificates` current as a side effect, and installed `zsh`.
+- `nix` installed Fedora's `nix` 2.34.8 RPM. A login shell exports
   `NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt`.
-- `apparmor` reports `unprivileged user namespaces are not restricted; no
-  profiles needed`, which is Fedora behaving as expected — that phase exists for
-  Ubuntu.
+- `secret-recovery` is the operator's: GitHub device flow plus the KeePassXC
+  vault password, so it needs `ssh -t`.
+- `home-manager` activated the `staging` generation in **8m21s**.
+- `yt-dlp`, `docker`, `login-shell`, `user-linger` took 29 seconds together.
+  `apparmor` correctly does nothing: Fedora does not restrict unprivileged user
+  namespaces.
+- `native-toolchain` and `nix-gpu` completed. `fedora-amd-gpu` correctly skips a
+  machine with no AMD GPU, which is the split working as intended.
 
-The 109-minute run also settled the ordering question. A whole-system upgrade
-fails outright on default mirrors, because Fedora Workstation enables Cisco's
-`openh264` repository and this network cannot reach it. The same upgrade
-succeeds once `host-repos` has pinned the mirrors and disabled that repository,
-which is the argument for repository policy being phase 01.
+Afterwards `zsh` is the login shell, the Nix profile carries `rg`, `bat`, `fzf`,
+`yazi`, `nvim`, `tmux`, `wezterm` and `vpn`, `convert-to`/`download`/`vault` are
+in `~/.local/bin`, sing-box is active and linger is enabled.
 
-`secret-recovery` is the next phase and is the operator's: it needs a GitHub
-sign-in and the KeePassXC vault password, so it has to be run with a terminal.
-Nothing past it has been exercised on Fedora yet.
+**An 18 GiB disk is too small.** The activated closure took the guest to 92%
+with 1.5 GiB free, before `virtualization` and `native-toolchain` had installed
+anything. `nix-collect-garbage` recovered 1.9 GiB and the rest fit, but give a
+new staging VM 30 GiB rather than repeating that.
 
-This VM has already paid for itself. On the first run `secret-recovery`
-authenticated to GitHub and then failed to clone:
-
-```
-fatal: unable to access 'https://github.com/sorrtory/keepass.git/':
-SSL certificate OpenSSL verify result: unable to get local issuer certificate (20)
-```
-
-Fedora 44's release media ships a `ca-certificates` too old to own
-`/etc/ssl/certs/ca-certificates.crt`, the first path Nix's profile script
-probes, so `NIX_SSL_CERT_FILE` was never exported and the flake's Nixpkgs-built
-`git` had no bundle — while `dnf`, `gh` and `/usr/bin/git` all worked, which is
-what made it look like anything but a trust problem. `host-deps` now probes for
-that bundle and refreshes the host packages it declares, so the fault is caught
-two phases before it used to appear. The operator's own host never hit it: an
-installed Fedora picks up the newer `ca-certificates` on its first update.
-
-The VM also settled how broad that repair should be. A whole-system upgrade
-inside `host-deps` fails, because that phase runs before any mirror is pinned
-and Fedora Workstation enables Cisco's `openh264` repository, which this
-network cannot reach:
+**`virtualization` needs the nested network moved first.** The guest's own
+`enp1s0` sits on the outer host's `192.168.122.0/24`, and Fedora's default
+network XML uses that same subnet, so libvirt refuses it:
 
 ```
-Failed to download packages
- Librepo error: Cannot download Packages/o/openh264-2.6.0-3.fc44.x86_64.rpm: All mirrors were tried
+error: Failed to start network default
+error: internal error: Network is already in use by interface enp1s0
 ```
 
-`--skip-unavailable` does not cover a download failure. Refreshing the declared
-packages instead completes in about 15 seconds from the same snapshot, and
-works on a distribution that has no repository phase at all.
+Ubuntu's packaging picked `192.168.123.0/24` by itself; Fedora's does not. The
+phase deliberately never rewrites an existing network definition, so redefine it
+by hand and rerun the phase:
+
+```bash
+sudo virsh net-dumpxml --inactive default > /tmp/net.xml
+sudo sed -i 's/192\.168\.122/192.168.123/g' /tmp/net.xml
+sudo virsh net-define /tmp/net.xml && sudo virsh net-start default
+sudo virsh net-autostart default
+```
+
+This is a nested-virtualization artifact, not a fault on a real machine, whose
+libvirt network does not collide with itself.
 
 An earlier VM, `silverblue43`, ran Fedora 43 Silverblue and could not bootstrap
 at all: `common/packages.sh` maps `ID=fedora` to `dnf`, which an rpm-ostree

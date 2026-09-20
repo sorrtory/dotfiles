@@ -71,8 +71,11 @@ virtualization through the host NixOS configuration instead.
 Installation preserves an existing libvirt daemon layout, enables its local
 Unix sockets and boot services, and starts the `default` network with autostart.
 An existing network definition is reused; a missing one uses the distro's XML.
-If its subnet conflicts with a host network (common with nested VMs), adjust
-the network in virt-manager and retry. The phase does not rewrite networks,
+If its subnet conflicts with a host network, adjust the network in virt-manager
+and retry. This is common with nested VMs and Fedora does not resolve it for
+you: a guest on the outer host's `192.168.122.0/24` fails with
+`Network is already in use by interface enp1s0`, and
+[docs/STAGING.md](docs/STAGING.md#bootstrap-progress) has the commands. The phase does not rewrite networks,
 VM definitions or storage pools, and it has no uninstall action that could
 remove VM data.
 
