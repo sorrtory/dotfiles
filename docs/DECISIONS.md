@@ -4,9 +4,36 @@
 
 Use Nix flakes, Home Manager, sops-nix, and age on generic Linux. Do not introduce chezmoi.
 
+The current host is Fedora, and Home Manager is the established user environment
+there: it is installed, activated, and used daily. That is a fact about the
+operator's machine, not a narrowing of the project. The repository stays
+cross-distribution, and the bootstrap keeps its Debian/Ubuntu, Fedora, and Arch
+branches. Nothing below changes because the current host changed.
+
 The host environment owns the kernel, hardware integration, display manager, NetworkManager, PipeWire, distro-coupled services, privileged networking prerequisites, and other low-level integration. The user environment owns user packages, development tools, shell and application configuration, personal scripts, GNOME preferences, and reproducible user secrets. The keyboard is split the same way: the user environment owns GNOME's input sources and XKB options, while the console and GDM keymap in `/etc/default/keyboard` stay host-owned.
 
 Normal Home Manager activation must not invoke `sudo`. Root-owned files and system integration use explicit bootstrap or deployment actions.
+
+The `host-deps` phase also guarantees a CA bundle at one of the four paths
+Nix's own profile script probes, because Nix only exports `NIX_SSL_CERT_FILE`
+when it finds one, and without it every Nixpkgs-built curl and git rejects TLS
+with `unable to get local issuer certificate`. Fedora 44's release media ships a
+`ca-certificates` too old to own `/etc/ssl/certs/ca-certificates.crt`, so a
+machine installed from it has a working trust store at a path Nix does not look
+at: `dnf`, `gh` and the distro's own `git` all succeed while the flake's `git`
+cannot clone. The phase declares a short list of host packages that must be current rather
+than merely present, and refreshes those. A whole-system upgrade in the phase
+was implemented and then rejected on evidence: it is hostage to every enabled
+repository, and on a fresh Fedora 44 Workstation `dnf upgrade` fails outright on
+Cisco's `openh264` mirror, which carries nothing this repository needs. That
+leaves the machine unbootstrapped, while refreshing the declared packages
+succeeds in about 15 seconds on the same network. When a package must be
+current, it joins that list; the phase does not grow another probe per package,
+and when to upgrade the whole host stays the operator's decision.
+
+On Arch the phase installs a missing package but never runs `-Sy`, because a
+partial upgrade is how an Arch host breaks. A stale package there needs a full
+`pacman -Syu`, and the check says so rather than guessing.
 
 ## Repository organization
 
@@ -75,14 +102,14 @@ The official stable `yt-dlp` binary is an intentional exception: bootstrap insta
 
 It comes from the unstable pin rather than the stable one because its extractors track the sites they scrape: releases land roughly weekly, and the stable channel sat eleven of them behind at the time of writing. A stale extractor is not a cosmetic lag but a site that no longer downloads.
 
-No downloader is a wrapped program of the local proxy, because none needs to be. The wrapper exists for Codex and Claude Code, which have no proxy flag or setting at all and read only the standard environment variables, so the sole lever is the environment they are started in. Every downloader here takes a proxy argument instead, which is the smaller tool: `download` reads `PROXY` and translates it into each backend's own spelling — `--proxy` for yt-dlp, gallery-dl and spotdl, `--all-proxy` for aria2c. `PROXY` is defined once by the local-proxy module, from the same binding the wrappers use, so a command cannot drift from the endpoint the service actually listens on. It is deliberately not `HTTP_PROXY` or `ALL_PROXY`: nothing reads `PROXY` implicitly, so naming it in the session tunnels nothing that did not ask.
+No downloader is a wrapped program of the local proxy, because none needs to be. The wrapper exists for Codex and Claude Code, which have no proxy flag or setting at all and read only the standard environment variables, so the sole lever is the environment they are started in. Every downloader here takes a proxy argument instead, which is the smaller tool: `download` reads `PROXY` and translates it into each backend's own spelling — `--proxy` for yt-dlp, gallery-dl and spotdl, `--all-proxy` for aria2c. `PROXY` is defined once by the local-proxy module, from the same binding the wrappers use, so a command cannot drift from the endpoint the service actually listens on. It is deliberately not `HTTP_PROXY` or `ALL_PROXY`: nothing reads `PROXY` implicitly, so naming it in the session tunnels nothing that did not ask. spotdl is the one backend whose flag is not enough: `--proxy` covers only its audio download, while its Spotify and YouTube Music lookups read the environment, and both are region-blocked on a direct connection. So `download` puts `PROXY` into spotdl's own environment as `HTTP(S)_PROXY`, scoped to that one process, and `modules/scripts.nix` patches spotapi — the Spotify scraper spotDL uses by default, whose TLS client ignored the environment entirely — to honour it.
 
 
 Fetching and converting are two commands, `download` and `convert-to`, and no aliases at all. An alias exists only in an interactive Zsh, which leaves it unavailable to a script, a desktop launcher or a non-interactive `ssh`, and a family of them copies the format into every name. One argument carries that instead: a type downloads in the source's own format, an extension asks for that format, and the same argument picks the backend, so no URL is ever matched against a table of supported sites — yt-dlp covers on the order of 1800 and gallery-dl hundreds, and any such table is wrong the week it is written. Spotify is the one exception the URL has to be read for, because nothing else can fetch it. Spotify has no untouched audio source — spotDL finds a matching provider and encodes its output — so its URLs and `saved` query require an explicit audio extension rather than the bare `audio` type. Everything after the type reaches the backend verbatim, so `download` owns no destination flag: each backend already has one, and `-o` means four incompatible things across them.
 
 The two commands never call each other. A downloader asked for a format is better at producing it than a later re-encode, because it still holds the source streams, chapters and metadata; `convert-to` is for files already on disk. Only images need our own converter, because gallery-dl has no image post-processor at all and upstream's documented answer is to drive ImageMagick through `--exec`.
 
-Neither command removes anything the operator already had. `download` converts images into a sibling temporary file and claims the final name without replacement, keeping the downloaded source when that name already exists or conversion fails. It removes only what it created during the same run, and only after a conversion that both exited zero and wrote a non-empty file; it also skips any source holding more than one frame, because ImageMagick exits zero while exploding an animated WebP or AVIF into numbered files. `convert-to` works out every output before encoding starts and refuses the whole batch if one exists, so a collision costs a second rather than the length of the run, and refuses two inputs that would claim the same output whatever `--force` says, since one result would be lost either way. When `--force` does overwrite, a failed encode leaves the previous file alone rather than cleaning up what it did not create. All of this fixes a real defect in the legacy `convert-to-mp4`, which overwrote an existing `clip.mp4` silently and only after the transcode had finished.
+Neither command removes anything the operator already had. `download` converts images into a sibling temporary file and claims the final name without replacement, keeping the downloaded source when that name already exists or conversion fails. It removes only what it created during the same run, and only after a conversion that both exited zero and wrote a non-empty file; it also skips any source holding more than one frame, because ImageMagick exits zero while exploding an animated WebP or AVIF into numbered files. `convert-to` works out every output before encoding starts and refuses the whole batch if one exists, so a collision costs a second rather than the length of the run, and refuses two inputs that would claim the same output whatever `--force` says, since one result would be lost either way. When `--force` does overwrite, a failed encode leaves the previous file alone rather than cleaning up what it did not create. All of this fixes a real defect in the legacy `convert-to-mp4`, which overwrote an existing `clip.mp4` silently and only after the transcode had finished. The one exception is explicit: `convert-to -R` (`--replace`) lets the output take the input's place, rewriting a same-format file in place or deleting a different-format original, because re-tagging an mp3 or converting a library otherwise leaves a `.converted` copy or a stale original behind by hand. The original is removed only after its replacement is installed and non-empty, keeps its file mode, and a failed or empty encode leaves it untouched; `-R` still respects collisions with files other than the input. The spelling is `-R` because everything else starting with a dash reaches ffmpeg, where `-r` and `-i` already mean frame rate and input.
 The per-run opt-outs differ between the backends, which is why `PROXY=` is the single bypass rather than a flag anyone has to remember. `yt-dlp --proxy ""` is documented to mean a direct connection and does, and `aria2c --all-proxy ""` overrides a previous proxy the same way. `gallery-dl --proxy ""` does not: it treats an empty value as unset and falls back to the environment, so an empty `PROXY` has to add `-o proxy-env=false`, the option that stops it reading proxy variables at all. `NO_PROXY` works for a single host in all of them. They also propagate to the FFmpeg they spawn when the variables are set rather than the flag, since FFmpeg reads `http_proxy` and `https_proxy` itself; all of this was verified against a local probe proxy.
 
 Two more findings are recorded here because they contradict what the flags look like they do. `yt-dlp --remux-video` fails outright when the target container does not support the codec rather than falling back to re-encoding, so `download mp4` always uses `--recode-video`, which is a no-op when the source already fits; `convert-to mp4` may remux only because it reads the codecs with `ffprobe` first. And `gallery-dl --proxy ""` is not a direct connection, as above.
@@ -124,7 +151,7 @@ services, and starts the default network with autostart. Existing VM and network
 definitions remain machine-local. It uses the distro's libvirt group and polkit
 policy; membership grants privileged VM management. There is no destructive
 uninstall action. Verification coverage is recorded in
-[STAGING.md](STAGING.md#virtualization-verification).
+[STAGING.md](STAGING.md#historical-ubuntu-verification).
 
 ## Configuration policy
 
@@ -205,7 +232,7 @@ Two Home Manager modules generate the very file a native configuration must occu
 
 `!` opens a real `$SHELL` in the hovered directory, which Yazi's `;` and `:` are not: those are command-input boxes for a single command, with no history, aliases or job control. Both stay bound; they are a different tool, not a worse one.
 
-This is also why `xclip` is now declared next to `wl-clipboard`. Both the tmux copy chain and Yazi's clipboard plugin choose their tool by session type, so an X11 session without it copies nothing — and the staging VM is an X11 session, which would have left the feature unverifiable. `xsel` stays undeclared: it is only the third branch of the tmux chain, which reaches `xclip` first.
+This is also why `xclip` is now declared next to `wl-clipboard`. Both the tmux copy chain and Yazi's clipboard plugin choose their tool by session type, so an X11 session without it copies nothing — and the Ubuntu staging VM it was verified on ran X11, which would otherwise have left the feature unverifiable. `xsel` stays undeclared: it is only the third branch of the tmux chain, which reaches `xclip` first.
 
 Git is the one program whose configuration is Nix-ified rather than kept native, and the reasoning inverts the tmux and Yazi cases. The file is eleven lines, the operator does not edit it in place, and `git config --global` writes to it, which a read-only store symlink would break rather than preserve.
 
@@ -254,6 +281,17 @@ Each phase enables `set -euo pipefail`, sources `scripts/bootstrap/common/phase.
 Shared implementation lives under `scripts/bootstrap/common/` and is excluded from phase discovery. `phase.sh` owns the phase command contract, `output.sh` prefixes human-facing output with the logical phase name, `packages.sh` owns host package-manager adapters, and `sops-config.sh` reads the configured age recipient back out of `.sops.yaml`. That last one is also used outside the phases, by the recovery app under `scripts/repo/`: it lives here anyway because a phase may only source from `common/`, so the alternative would have a phase reaching into `scripts/repo/` instead, which crosses the sharper boundary. The packaged recovery app has no repository beside it, so its build copies `sops-config.sh` and `.sops.yaml` into the store by content and points the script at them; that keeps one implementation of the lookup rather than a second copy of the recipient. `require_commands` only validates; the explicitly mutating `ensure_commands` installs missing same-named packages through APT, DNF, or Pacman and fails clearly on unsupported hosts. Phase files use the common output helpers rather than calling `printf` directly.
 
 The initial numbered flow starts with the ensure-only `host-deps` phase, installs Nix, runs `03-secret-recovery`, and then uses `04-home-manager` to activate the complete secret-bearing profile without privilege. `05-yt-dlp` installs the verified user-owned release binary, and the deliberately privileged `06-docker` phase establishes host Docker integration with an explicit full-reset uninstall. `scripts/bootstrap/01-host-deps.sh` is the authoritative inventory of commands required by later phases; documentation describes that responsibility without duplicating its changing contents. The Home Manager phase records a fingerprint of the flake source it activated, allowing its read-only status check to detect repository changes without evaluating Nix or using the network. Migrate the LXD proxy as its own ticketed Bash task.
+
+Nautilus's built-in console action is not a default-terminal interface: upstream
+hard-codes GNOME Console's D-Bus identity, and Fedora patches that identity to
+Ptyxis. The generic `xdg-terminals.list` preference therefore remains useful
+for GLib callers but cannot redirect Nautilus. Nautilus-Python menu providers
+only add further items beside the built-in one, so WezTerm replaces Ptyxis on
+the session bus instead: Home Manager installs a user D-Bus service file for
+`org.gnome.Ptyxis` that starts `wezterm-console`, which opens WezTerm in the
+requested folder. The user service directory takes precedence over the host's,
+so no host file is modified and nothing needs root. This deliberately replaces
+Ptyxis for every D-Bus caller, including its DBusActivatable desktop entry.
 
 ## Secrets and authentication
 
@@ -537,7 +575,7 @@ Legacy sources are evidence, not specifications. Select a behavior baseline, the
 
 Use the Matt flow per slice: `/grill-with-docs` then `/implement` for small work; add `/to-spec` and `/to-tickets` for substantial work.
 
-The working repository is authoritative. The staging VM is disposable and may be activated after a successful build. Host evaluation and non-activating builds are allowed; host activation requires explicit approval.
+The working repository on the current host is authoritative. Activating a generation there is now ordinary operator practice rather than a deferred step, but it stays a decision the operator makes: an agent evaluates and builds freely and activates only after explicit approval. A staging VM, when one exists, is disposable and may be activated after a successful build; it is not a precondition for host activation.
 
 The documented staging credential is intentionally public test data, not a secret. It must never be reused by a trusted machine or service.
 

@@ -1,8 +1,20 @@
-# Dotfiles Migration
+# Dotfiles Context
 
 This repository defines a cross-distribution Linux user environment while leaving low-level system integration to the host distribution.
 
 ## Language
+
+**Current host**:
+The operator's daily machine, where this user environment is installed and in normal use. It runs Fedora. Naming it does not narrow the repository to one distribution.
+_Avoid_: Only supported host, reference machine
+
+**Supported host**:
+A distribution the bootstrap phases have a branch for: Debian/Ubuntu, Fedora, and Arch. NixOS is excluded and configures the host itself.
+_Avoid_: Current host, tested host
+
+**Staging evidence**:
+A recorded verification result, attributable to the machine and distribution it was measured on. Evidence from one host is never restated as evidence from another.
+_Avoid_: General verification, current behavior
 
 **Host environment**:
 The operating-system layer owned by the installed Linux distribution, including hardware integration and system services.
@@ -81,7 +93,7 @@ SOPS ciphertext or non-sensitive metadata that is safe to publish in repository 
 _Avoid_: Plaintext secret, private identity, potentially sensitive file
 
 **Staging VM**:
-A disposable execution target used to build and activate changes without making it the source of repository truth.
+A disposable execution target used to build and activate changes without making it the source of repository truth. One is available only when the operator has provisioned it; the working repository on the current host is authoritative either way.
 _Avoid_: Development source, production host
 
 **Staging credential**:
@@ -89,7 +101,7 @@ An intentionally public login used only by the disposable staging VM and never r
 _Avoid_: Secret, production credential
 
 **Core milestone**:
-The first prioritized migration set defined in `docs/MIGRATION.md`.
+The first prioritized migration set defined in `docs/MIGRATION.md`. It is the feature migration, distinct from the completed host cutover to Fedora.
 _Avoid_: Complete migration
 
 **Additional candidate**:
@@ -127,6 +139,14 @@ _Avoid_: Archive folder, backup destination
 **Archive plan**:
 What the command shows before it moves anything: the source, the destination, the largest entries, the totals, and every symlink pointing out of the tree.
 _Avoid_: Dry run, preview
+
+**Junk directory**:
+`~/Junk`, created by activation, where things on their way out are staged instead of being deleted outright. Nothing in the repository reads or empties it; emptying it is the operator's manual decision.
+_Avoid_: Archive root, trash, temporary directory
+
+**Memos directory**:
+`~/Memos`, created by activation, where quick notes written in the editor are saved when a scratch buffer is worth keeping.
+_Avoid_: Notes app, knowledge database, scratch directory
 
 **Package baseline**:
 The package requirements declared by the legacy installation sources, translated into user-owned and host-owned responsibilities during migration.

@@ -12,19 +12,31 @@ Consolidate selected replacements under `~/Documents/dotfiles/`. Treat every leg
 
 VS Code snapshots move to Archive, browser userscripts move to the separate `monkeys` repository, and KeePassXC remains outside public dotfiles.
 
+## Status
+
+The host cutover is complete. The operator runs Fedora with this Home Manager
+environment installed and in daily use, so activating a generation is ordinary
+practice rather than a deferred step.
+
+The feature migration is not complete. The core milestone slices below record
+what has moved; "Additional candidates" and "Fresh-machine flow" record what has
+not. The fresh-machine flow has been run on Fedora only as far as `host-deps`
+and `nix`; `secret-recovery` onward is unverified there. See
+[STAGING.md](STAGING.md#bootstrap-progress).
+
 ## Method
 
 For each migration slice:
 
 1. identify the behavior baseline and ownership boundary
 2. make the smallest coherent change
-3. evaluate and build without activating on the host
-4. synchronize to and activate on the staging VM
-5. perform objective checks and any required normal-use check
-6. present the result for operator review
-7. activate on the host only after explicit approval
-8. commit only after review
-9. remove legacy machinery only after its replacement survives normal use
+3. evaluate and build on the host without activating
+4. perform objective checks and any required normal-use check, on a staging VM
+   when one is available and the check needs a machine that can be thrown away
+5. present the result for operator review
+6. activate on the host after explicit approval
+7. commit only after review
+8. remove legacy machinery only after its replacement survives normal use
 
 Prioritize security and dependency blockers first, then daily value, then legacy removal. Use difficulty to break ties. Cleanup can accompany a slice when it is local and verifiable; major redesign remains separate.
 
@@ -110,7 +122,7 @@ entry and `discord://` handler always go through the VPN. `docs/DECISIONS.md`
 records the design and [VESKTOP-APPARMOR.md](VESKTOP-APPARMOR.md) the Ubuntu
 policy it needs.
 
-Verified on a staging VM bootstrapped through every phase: tunneled launches
+Verified on the Ubuntu staging VM, bootstrapped through every phase: tunneled launches
 from all three entry points, a voice call, private DNS, IPv6 through the tunnel,
 refusal of an untunneled Vesktop, backend restart, capture failure, relaunch
 and a dropped link. A change to a different network and a real suspend-to-RAM
@@ -201,7 +213,7 @@ configuration asks GitHub first. And nvim-treesitter's 36 parallel grammar
 installs flood the message area with hit-enter prompts, which Neovim 0.12's
 experimental `ui2` message UI replaces.
 
-Shipped on staging. A bootstrapped VM installed every plugin, and the fixed
+Shipped on the Ubuntu staging VM. A bootstrapped VM installed every plugin, and the fixed
 configuration then installed all 36 grammars and all 25 mason packages there
 with no prompt, run from a copy of `configs/nvim/` against empty data
 directories. A start from the mirrored repository itself was not seen before
@@ -225,7 +237,7 @@ names resurrect's own `save.sh` beneath a directory nothing ever created.
 Neovim one; the tmux `is_vim` bindings and `vim-tmux-navigator` are each half
 of it.
 
-Shipped on staging, where the operator found tmux working. `Ctrl+h/j/k/l` was
+Shipped on the Ubuntu staging VM, where the operator found tmux working. `Ctrl+h/j/k/l` was
 never pressed across a real Neovim split and tmux pane: its tmux condition was
 checked on the host, and the operator closed the slice on that. Continuum's
 save hook cannot be observed while another tmux server runs, and is left to the
@@ -253,7 +265,7 @@ which Yazi's `;` and `:` command boxes are not. `xclip` joins `wl-clipboard`,
 because both the tmux copy chain and the clipboard plugin pick their tool by
 session type.
 
-Shipped and confirmed on staging, where the operator copied file contents with
+Shipped and confirmed on the Ubuntu staging VM, where the operator copied file contents with
 `Ctrl+y`. That VM has no snapd, so `snap list yazi` means something only on a
 host that has it.
 
@@ -277,7 +289,7 @@ on tmpfs at startup, and use it for both entry points. The initial local proxy
 does not require TUN support or a sing-box upgrade; §7's namespace capture
 does. The explicit `user-linger` phase enables startup before login.
 
-The local proxy service is implemented and verified on staging, including
+The local proxy service is implemented and verified on the Ubuntu staging VM, including
 restart, cleanup and startup before login after reboot. Namespace capture and
 Discord UDP are delivered by §7.
 
@@ -335,8 +347,9 @@ The intended flow is:
 13. authenticate any remaining mutable sessions once on that machine
 
 The virtualization phase is implemented. Ubuntu 24.04 staging passed install,
-status, repeat-run and transient KVM guest startup checks. Other distro branches
-have command-flow tests only; desktop GUI and full guest-OS checks remain open.
-See [the staging verification record](STAGING.md#virtualization-verification).
+status, repeat-run and transient KVM guest startup checks. Other distro branches,
+Fedora included, have command-flow tests only; desktop GUI and full guest-OS
+checks remain open. See
+[the staging verification record](STAGING.md#historical-ubuntu-verification).
 
 The repository currently targets the `z` user on `x86_64-linux`; broader host/user parameterization is a later migration decision.

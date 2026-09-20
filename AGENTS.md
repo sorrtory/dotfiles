@@ -1,6 +1,10 @@
 # Agent Instructions
 
-This repository is being migrated into a cross-distro Linux user environment based on Nix, Home Manager, and sops-nix.
+A cross-distro Linux user environment based on Nix, Home Manager, and sops-nix.
+The current host is Fedora, where this environment is installed and in daily
+use; Home Manager is the normal way the operator's own machine is configured.
+The repository stays cross-distro, and feature migration from the legacy
+configuration is still in progress.
 
 Read these before making architectural changes:
 
@@ -22,10 +26,17 @@ Use the default five-role triage vocabulary. See `docs/agents/triage-labels.md`.
 
 This is a single-context repository. See `docs/agents/domain.md`.
 
+## Staging
+
+`z@192.168.122.21` is a disposable Fedora 44 Workstation VM (libvirt domain
+`fedora`, password `z`) running GNOME on Wayland, so it suits both bootstrap and
+GNOME checks. `host-deps` and `nix` are verified there; `secret-recovery` is the
+operator's and nothing past it has run. See [docs/STAGING.md](docs/STAGING.md)
+for the mirroring command, the sudo helper, and what a VM cannot judge.
+
 ## Local validation
 
-The current host is Fedora and Home Manager is the normal user-environment
-manager. Run repository checks and builds on the host:
+Run repository checks and builds on the host:
 
 ```bash
 nix flake check
@@ -49,17 +60,21 @@ that loads but draws nothing.
 ├── CLAUDE.md               # pointer to AGENTS.md
 ├── CONTEXT.md
 ├── README.md
+├── flake.nix
+├── home.nix                # the profile, per-machine options included
 ├── docs/
 │   ├── DECISIONS.md
-│   └── MIGRATION.md
-├── home/
+│   ├── MIGRATION.md
+│   ├── SOFTWARE.md
+│   ├── STAGING.md
+│   └── agents/
 ├── modules/
-│   ├── desktops/
-│   │   ├── gnome.nix        # eventually: GNOME/dconf configuration
-│   │   └── hyprland.nix     # eventually: Hyprland environment/config
-│   ├── programs/            # eventually: per-program Home Manager modules
-│   ├── packages.nix         # eventually: general user packages
-│   ├── scripts.nix          # eventually: expose scripts/bin commands
+│   ├── desktops/            # GNOME; Hyprland if it is ever migrated
+│   ├── programs/            # per-program Home Manager modules
+│   ├── theme/               # the palette-driven theme core
+│   ├── packages.nix         # general user packages
+│   ├── scripts.nix          # exposes scripts/bin commands
+│   ├── apparmor.nix         # generated userns allowances
 │   └── secrets.nix          # sops-nix declarations
 ├── configs/                 # mutable native configs kept in the repo
 ├── packages/                # local Nix packages only when nixpkgs is insufficient
@@ -74,7 +89,7 @@ that loads but draws nothing.
     └── wireguard/           # encrypted WireGuard configs
 ```
 
-The `.nix` names shown in the map are destinations, not files that must already exist. During migration, create them only when the corresponding responsibility is actually moved.
+Create a file only when the corresponding responsibility is actually moved.
 
 ## Working rules
 

@@ -1,56 +1,117 @@
-# Bootstrapping the staging VM over SSH
+# Staging VM
 
-The staging VM (`Lubuntu24.04` in libvirt, `z@192.168.122.214`) proves the
-fresh-machine flow: every bootstrap phase in order, from a snapshot with no
-Nix. This is the procedure used from the host, including the parts that only
-exist because the session has no terminal. For mirroring the working tree and
-what the VM cannot verify, see [AGENTS.md](../AGENTS.md#staging).
+A staging VM is a disposable machine used to check the fresh-machine flow and
+anything that must not be tried first on the operator's own host. The working
+tree on the host is always the source of truth; the VM mirrors it and never
+syncs back.
 
-## 1. Reset the VM
+## Current VM
 
-Revert to the `ssh-server` snapshot (SSH enabled, no Nix), then grow the disk.
-Revert first: an internal qcow2 snapshot restores the disk size it was taken
-with, so a resize made before reverting is undone.
+`fedora` in libvirt, reachable at `z@192.168.122.21`. It runs **Fedora 44
+Workstation** with 2 vCPUs, about 3.8 GiB of RAM and 14 GiB free on `/`. Its
+session is GNOME on Wayland with gdm active, the same session type as the
+operator's desktop, so GNOME work — dconf settings, launchers, Shell extensions,
+session environment variables — can be judged here rather than only on the host.
+
+Log in with the `id_ed25519_servers` key; `ssh-add
+~/.config/sops-nix/secrets/id_ed25519_servers` first if the agent does not have
+it. The login and `sudo` password is `z`, an intentionally public [staging
+credential](../CONTEXT.md) that no trusted machine or service reuses.
+
+Reset it rather than cleaning up by hand:
 
 ```bash
-virsh -c qemu:///system snapshot-revert Lubuntu24.04 ssh-server
-virsh -c qemu:///system blockresize Lubuntu24.04 vda 40G
+virsh -c qemu:///system snapshot-revert fedora 'fresh + ssh'
 ```
 
-The snapshot's 15 GiB disk cannot hold the full environment: the staging
-closure alone is about 10 GiB, on top of Ubuntu and the build itself. Then grow
-the partition and filesystem inside the guest (step 2 provides sudo):
+The snapshot is a fresh install with only the SSH server added: no Nix, no
+mirrored tree, GNOME at its defaults.
 
-```bash
-sudo -A env DEBIAN_FRONTEND=noninteractive apt-get install -y cloud-guest-utils
-sudo -A growpart /dev/vda 1
-sudo -A resize2fs /dev/vda1
+### Bootstrap progress
+
+Verified on 2026-09-20 from that snapshot, with the mirroring command and sudo
+helper below:
+
+- `host-deps` installed `zsh` through `dnf`, and refreshed `ca-certificates`
+  until a CA bundle existed at `/etc/ssl/certs/ca-certificates.crt`.
+- `nix` installed Fedora's `nix` 2.34.8 RPM, created the `nixbld` users and
+  enabled `nix-daemon.service`. Status re-reads it correctly.
+- `apparmor` reports `unprivileged user namespaces are not restricted; no
+  profiles needed`, which is Fedora behaving as expected — that phase exists for
+  Ubuntu.
+
+`secret-recovery` is the next phase and is the operator's: it needs a GitHub
+sign-in and the KeePassXC vault password, so it has to be run with a terminal.
+Nothing past it has been exercised on Fedora yet.
+
+This VM has already paid for itself. On the first run `secret-recovery`
+authenticated to GitHub and then failed to clone:
+
+```
+fatal: unable to access 'https://github.com/sorrtory/keepass.git/':
+SSL certificate OpenSSL verify result: unable to get local issuer certificate (20)
 ```
 
-`virsh` against `qemu:///system` works from the operator's account without
-sudo. Write `virsh -c qemu:///system` out in full: zsh does not word-split an
-unquoted variable holding the command.
+Fedora 44's release media ships a `ca-certificates` too old to own
+`/etc/ssl/certs/ca-certificates.crt`, the first path Nix's profile script
+probes, so `NIX_SSL_CERT_FILE` was never exported and the flake's Nixpkgs-built
+`git` had no bundle — while `dnf`, `gh` and `/usr/bin/git` all worked, which is
+what made it look like anything but a trust problem. `host-deps` now probes for
+that bundle and refreshes the host packages it declares, so the fault is caught
+two phases before it used to appear. The operator's own host never hit it: an
+installed Fedora picks up the newer `ca-certificates` on its first update.
 
-A revert also restores the clock the snapshot was taken with, and `apt` rejects
-repository metadata that is not valid yet, so `host-deps` fails on a snapshot
-older than a day with `Release file ... is not valid yet`. `timedatectl set-ntp`
-reports the clock as synchronized without stepping it, and the image has no
-`hwclock`, so set it from the host before the first phase:
+The VM also settled how broad that repair should be. A whole-system upgrade in
+the phase fails here, because Fedora Workstation enables Cisco's `openh264`
+repository and this network cannot reach its mirrors:
 
-```bash
-now=$(date -u '+%Y-%m-%d %H:%M:%S')
-ssh z@192.168.122.214 "SUDO_ASKPASS=\$HOME/.staging-askpass /usr/bin/sudo -A date -u -s '$now'"
+```
+Failed to download packages
+ Librepo error: Cannot download Packages/o/openh264-2.6.0-3.fc44.x86_64.rpm: All mirrors were tried
 ```
 
-## 2. Allow sudo without a terminal (VM only)
+`--skip-unavailable` does not cover a download failure. Refreshing the declared
+packages instead completes in about 15 seconds from the same snapshot.
 
-Non-interactive `ssh` has no TTY, so phases that call `sudo` cannot prompt.
-Plain `sudo` ignores `SUDO_ASKPASS` unless given `-A`, so put a wrapper first
-on `PATH` for bootstrap runs. This stores the disposable VM's password in its
-home directory; never do this on a real machine.
+An earlier VM, `silverblue43`, ran Fedora 43 Silverblue and could not bootstrap
+at all: `common/packages.sh` maps `ID=fedora` to `dnf`, which an rpm-ostree
+image does not ship, and `02-nix` installs Nix onto a read-only `/`. It was
+replaced by this Workstation VM rather than fixed. Supporting rpm-ostree remains
+unstarted work with no effort opened.
+
+## Mirroring the working tree
+
+The guest copy is a plain directory, not a clone, so every edit, commit and Git
+operation stays on the host. Run this from the repository root:
 
 ```bash
-ssh z@192.168.122.214 '
+rsync -ai --delete \
+  --exclude='.git/' --exclude='.scratch/' --exclude='result' --exclude='result-*' \
+  ./ z@192.168.122.21:~/Documents/dotfiles/
+```
+
+`-a` preserves modes, timestamps and symlinks; `-i` reports exactly what
+changed, which is what makes an unexpected transfer visible; `--delete` is what
+makes the guest a mirror rather than a pile of leftovers. Repeat with `-n` first
+whenever the delete list matters. Do not add `-z`: it is small text over a local
+bridge.
+
+Each exclusion is load-bearing. `.git/` keeps history on the host. `.scratch/`
+is host-side coordination material. `result` and `result-*` point into the
+guest's own `/nix/store` and cannot come from the host — without excluding them,
+`--delete` removes the very symlink `./result/activate` needs. `--delete` never
+removes an excluded path, so a stale excluded directory from an earlier sync has
+to be deleted by hand.
+
+## sudo without a terminal
+
+Non-interactive `ssh` has no TTY, and plain `sudo` ignores `SUDO_ASKPASS`
+without `-A`, so put a wrapper first on `PATH` for bootstrap runs. This writes
+the disposable VM's password into its home directory; never do this on a real
+machine.
+
+```bash
+ssh z@192.168.122.21 '
   printf "#!/bin/sh\necho z\n" > ~/.staging-askpass && chmod 700 ~/.staging-askpass
   mkdir -p ~/.staging-bin
   printf "#!/bin/sh\nexec /usr/bin/sudo -A \"\$@\"\n" > ~/.staging-bin/sudo
@@ -58,101 +119,51 @@ ssh z@192.168.122.214 '
 ```
 
 Prefix bootstrap commands with
-`SUDO_ASKPASS=$HOME/.staging-askpass PATH=$HOME/.staging-bin:$PATH`.
+`SUDO_ASKPASS=$HOME/.staging-askpass PATH=$HOME/.staging-bin:$PATH`, and remove
+both helpers when testing is done.
 
-## 3. Send the tree
+Phases that need a real terminal are the operator's: `secret-recovery` wants a
+GitHub sign-in and the KeePassXC vault password, so run it with `ssh -t`.
 
-Create `~/Documents/dotfiles` on the guest, then use the rsync command from
-AGENTS.md.
+## What a VM cannot verify
 
-## 4. Unattended phases
+The guest has no usable GPU, so anything reaching a real driver — the `nix-gpu`
+phase, hardware decode, WezTerm opening a window — has to be judged on the host.
 
-```bash
-ssh z@192.168.122.214 'cd ~/Documents/dotfiles &&
-  SUDO_ASKPASS=$HOME/.staging-askpass PATH=$HOME/.staging-bin:$PATH \
-  ./scripts/bootstrap.sh install host-deps nix'
-```
+Settings a session only reads at login still need a real re-login, not a
+reconnect: `environment.d`, newly installed GNOME extensions and XKB options.
+This VM can give one, since its session is GNOME on Wayland like the host's.
 
-## 5. Secret recovery (the operator)
+A VM running alongside the host must use the `staging` configuration and its own
+VPN identity. Never run the same identity in two places at once.
 
-This phase needs a GitHub sign-in and the KeePassXC vault password, so the
-operator runs it with a terminal and approves the printed sign-in code on the
-host:
+## Historical Ubuntu verification
 
-```bash
-ssh -t z@192.168.122.214 'cd ~/Documents/dotfiles && ./scripts/bootstrap.sh install secret-recovery'
-```
+These results were measured on Ubuntu VMs that no longer exist. They remain
+valid records of what was checked on Ubuntu, and are not evidence about Fedora.
 
-## 6. Everything else, as staging
-
-The VM runs alongside the host, so it must use the `staging` configuration and
-its own VPN identity. The home-manager phase remembers the choice, so the
-variable is only required on this first run:
-
-```bash
-ssh z@192.168.122.214 'cd ~/Documents/dotfiles &&
-  export DOTFILES_HOME_CONFIGURATION=staging &&
-  SUDO_ASKPASS=$HOME/.staging-askpass PATH=$HOME/.staging-bin:$PATH \
-  ./scripts/bootstrap.sh install'
-```
-
-This runs the remaining phases in order, skipping satisfied ones, including
-`apparmor`, which the VM needs because Ubuntu restricts unprivileged user
-namespaces, and `virtualization`, which installs a host virtualization stack
-inside the staging VM. KVM acceleration there requires nested virtualization
-from the outer host.
-
-### Virtualization verification
-
-The `virtualization` phase can be tested independently of Nix and secret
-recovery after mirroring the tree and preparing the sudo helper:
-
-```bash
-ssh z@192.168.122.214 'cd ~/Documents/dotfiles &&
-  SUDO_ASKPASS=$HOME/.staging-askpass PATH=$HOME/.staging-bin:$PATH \
-  ./scripts/bootstrap.sh install virtualization'
-ssh z@192.168.122.214 'cd ~/Documents/dotfiles &&
-  ./scripts/bootstrap.sh status virtualization &&
-  virt-host-validate qemu &&
-  virsh --readonly --connect qemu:///system net-info default'
-```
-
-Repeat installation to check that a configured machine reports
-`already satisfied; skipping`. Use a fresh login before checking write access
-through `virsh` or virt-manager after a group change.
-
-Verified on 2026-09-16 against the Ubuntu 24.04.3 staging VM:
+**Virtualization, 2026-09-16, Ubuntu 24.04.3:**
 
 - Distro package installation completed. Ubuntu's `qemu-kvm` virtual package
   resolves to `qemu-system-x86`, which the phase checks directly.
 - Status succeeded without sudo; repeat installation skipped without changes.
 - The default network was active with autostart. Ubuntu's package setup detected
   the outer network's `192.168.122.0/24` subnet and selected `192.168.123.0/24`.
-- `virt-host-validate qemu` passed hardware virtualization and KVM-device access.
-  It warned about the devices cgroup controller, IOMMU and secure-guest support.
+- `virt-host-validate qemu` passed hardware virtualization and KVM-device
+  access. It warned about the devices cgroup controller, IOMMU and secure-guest
+  support.
 - A transient, diskless domain with `type='kvm'`, 128 MiB RAM, one vCPU and a
-  virtio interface on the default network reached `running`, under AppArmor
-  enforcement. The test domain was destroyed afterward.
+  virtio interface on the default network reached `running` under AppArmor
+  enforcement, and was destroyed afterward.
 
-This verifies installation and accelerated guest startup, not guest-OS boot,
-guest internet access, PCI passthrough or the virt-manager desktop workflow.
-The GUI still needs a normal-use check. Debian, Fedora, Arch and the modular
-daemon layout are covered by `tests/bootstrap_virtualization_test.sh` using
-command stubs, and have not been installed on real test machines.
+That covers installation and accelerated guest startup, not guest-OS boot, guest
+internet access, PCI passthrough or the virt-manager workflow. Debian, Fedora,
+Arch and the modular daemon layout are covered only by
+`tests/bootstrap_virtualization_test.sh` with command stubs. On distros that do
+not resolve overlapping subnets automatically, adjust the default network before
+retrying; the phase does not replace an existing network definition. A missing
+`/dev/kvm` produces a warning even when installation and service checks succeed,
+so a successful phase alone does not prove acceleration.
 
-On distros that do not resolve overlapping subnets automatically, adjust the
-default network before retrying; the phase does not replace an existing network
-definition. A missing `/dev/kvm` produces a warning even when installation and
-service checks succeed, so a successful phase alone does not prove acceleration.
-
-## 7. Clean up
-
-Remove the sudo helpers once testing is done:
-
-```bash
-ssh z@192.168.122.214 'rm -rf ~/.staging-askpass ~/.staging-bin'
-```
-
-## Known issues
-
-None tracked for recovery.
+The slice records in [MIGRATION.md](MIGRATION.md) name the other Ubuntu staging
+results: the VPN command, Neovim, tmux, Yazi and the local proxy.
