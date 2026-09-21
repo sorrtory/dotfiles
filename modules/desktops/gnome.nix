@@ -458,8 +458,10 @@ in
       #
       # Blur my Shell fades the whole window, text included, and blurs what is
       # behind it. Opacity is out of 255; dynamic opacity would make the
-      # focused window opaque again. Sublime's WM class varies in case between
-      # builds, as in its launcher above; VS Code's, Obsidian's and Vesktop's
+      # focused window opaque again. Static blur only paints a blurred copy of
+      # the wallpaper under every window, so a faded window showed the one
+      # behind it sharp; dynamic blur blurs what is actually there. Sublime's
+      # WM class varies in case between builds, as in its launcher above; VS Code's, Obsidian's and Vesktop's
       # differ between their X11 class and their Wayland app id, so each is
       # listed both ways.
       "org/gnome/shell/extensions/blur-my-shell/applications" = {
@@ -477,6 +479,7 @@ in
         ];
         opacity = 230;
         dynamic-opacity = false;
+        static-blur = false;
       };
 
       # Rewaita reads GNOME's accent to choose within the theme's palette, so
