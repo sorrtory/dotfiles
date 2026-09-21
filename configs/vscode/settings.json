@@ -77,9 +77,7 @@
     "git.confirmSync": false,
     "editor.stickyScroll.enabled": false,
     "docker.extension.enableComposeLanguageServer": false,
-    "editor.pasteAs.preferences": [
-      "markdown.link"
-    ],
+    "editor.pasteAs.preferences": ["markdown.link"],
     "python.analysis.typeCheckingMode": "standard",
     "github.copilot.nextEditSuggestions.enabled": true,
     "[jsonc]": {
@@ -213,7 +211,7 @@
     "http.proxy": "http://127.0.0.1:3128",
     "files.watcherExclude": {
         "**/.bloop": true,
-        "**/.metals": true
+        "**/.metals": true,
     },
     "chat.viewSessions.orientation": "stacked",
     "workbench.editor.useModal": "some",
@@ -223,21 +221,40 @@
         "**/.gitea/workflows/*.yml",
         "**/.gitea/workflows/*.yaml",
         "**/.forgejo/workflows/*.yml",
-        "**/.forgejo/workflows/*.yaml"
+        "**/.forgejo/workflows/*.yaml",
     ],
     "terminal.integrated.initialHint": false,
     // use keyCode to map capslock to escape, see
     "keyboard.dispatch": "keyCode",
-    "dart.flutterCreatePlatforms": [
-        "android",
-        "linux",
-        "web"
-    ],
-    "terminal.integrated.commandsToSkipShell": [
-        "language-julia.interrupt"
-    ],
+    "dart.flutterCreatePlatforms": ["android", "linux", "web"],
+    "terminal.integrated.commandsToSkipShell": ["language-julia.interrupt"],
     "julia.symbolCacheDownload": true,
     "julia.enableTelemetry": true,
     "workbench.colorTheme": "Dotfiles",
-
+    "claudeCode.preferredLocation": "panel",
+    "claudeCode.environmentVariables": [
+        {
+            "name": "HTTP_PROXY",
+            "value": "http://127.0.0.1:3128",
+        },
+        {
+            "name": "HTTPS_PROXY",
+            "value": "http://127.0.0.1:3128",
+        },
+    ],
+    "nix.enableLanguageServer": true,
+    "nix.serverPath": "nixd",
+    "nix.serverSettings": {
+        "nixd": {
+            "formatting": { "command": ["nixfmt"] },
+            "nixpkgs": {
+                "expr": "import (builtins.getFlake \"/home/z/Documents/dotfiles\").inputs.nixpkgs { }",
+            },
+            "options": {
+                "home-manager": {
+                    "expr": "(builtins.getFlake \"/home/z/Documents/dotfiles\").homeConfigurations.\"z\".options",
+                },
+            },
+        },
+    },
 }
