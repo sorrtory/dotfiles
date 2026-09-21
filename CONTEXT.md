@@ -129,7 +129,7 @@ The user environment's tunnel entry point for applications that explicitly send 
 _Avoid_: VPN command, whole-application tunneling
 
 **Archive command**:
-The command that retires a directory's contents by moving them under the archive root, keeping the directory itself.
+The command that retires a directory's contents by moving them under the archive root, keeping the directory itself. With `--keep` it copies them instead and the contents stay too, which is a snapshot rather than a retirement.
 _Avoid_: Backup, cleanup, delete
 
 **Archive root**:
@@ -137,7 +137,7 @@ The one configured directory every archive is written beneath, created by activa
 _Avoid_: Archive folder, backup destination
 
 **Archive plan**:
-What the command shows before it moves anything: the source, the destination, the largest entries, the totals, and every symlink pointing out of the tree.
+What the command shows before it moves or copies anything: the source, the destination, the largest entries, the totals, every symlink pointing out of the tree, and whether the run will remove the source or leave it.
 _Avoid_: Dry run, preview
 
 **Junk directory**:

@@ -439,4 +439,178 @@ if PATH="$TEST_ROOT/bin:$PATH" bash "$archive" --force --to "$cross" "$HOME/Fail
 fi
 [[ -f $HOME/Failed/file ]] || fail 'failed verification removed source data'
 
+# --- keeping the source ------------------------------------------------------
+
+# The rsync stub from the verification test above must not shadow the real one.
+rm -f "$TEST_ROOT/bin/rsync"
+
+# --keep copies: the destination has everything and the source still does too.
+rm -rf -- "$HOME/Kept" "$HOME/Archive/Kept"
+mkdir -p "$HOME/Kept/nested/empty"
+printf 'data\n' >"$HOME/Kept/nested/a file"
+printf 'hidden\n' >"$HOME/Kept/.hidden"
+ln -s missing "$HOME/Kept/link"
+ln "$HOME/Kept/nested/a file" "$HOME/Kept/hardlink"
+kept_inode=$(stat -c %i "$HOME/Kept/nested/a file")
+bash "$archive" --force --keep "$HOME/Kept" >/dev/null
+kept=("$HOME"/Archive/Kept/*)
+copy=${kept[0]}
+[[ $(cat "$copy/nested/a file") == data ]] || fail 'kept copy lost a file'
+[[ -f $copy/.hidden && -L $copy/link ]] || fail 'kept copy lost a hidden file or symlink'
+[[ -d $copy/nested/empty ]] || fail 'kept copy lost an empty directory'
+[[ $(cat "$HOME/Kept/nested/a file") == data ]] || fail '--keep removed the source'
+[[ -f $HOME/Kept/.hidden && -L $HOME/Kept/link ]] || fail '--keep removed part of the source'
+
+# One cp for the whole tree, so a hard-linked pair stays a pair in the copy.
+[[ $copy/hardlink -ef "$copy/nested/a file" ]] || fail '--keep broke hard links'
+
+# A reflink shares extents, not inodes, and it must diverge when either side is
+# written. An archive that changed with its source would be worthless.
+[[ $(stat -c %i "$copy/nested/a file") != "$kept_inode" ]] ||
+  fail '--keep renamed or hard-linked the source instead of copying it'
+printf 'changed\n' >"$HOME/Kept/nested/a file"
+[[ $(cat "$copy/nested/a file") == data ]] || fail 'writing the source changed the archive'
+
+# Nothing is removed, so nothing is staged: no holding or mirror directory is
+# left beside the source, and none is created in the first place.
+compgen -G "$HOME/.archive-holding.*" >/dev/null && fail '--keep left a holding directory'
+compgen -G "$HOME/.archive-mirror.*" >/dev/null && fail '--keep left a mirror directory'
+
+# The plan says a copy is coming and the question asks about copying, because
+# "Move" in front of a run that moves nothing is the wrong thing to confirm.
+rm -rf -- "$HOME/KeptPlan" "$HOME/Archive/KeptPlan"
+mkdir -p "$HOME/KeptPlan"; printf 'p\n' >"$HOME/KeptPlan/file"
+plan=$(bash "$archive" --keep "$HOME/KeptPlan" </dev/null 2>&1) || fail 'kept plan run failed'
+[[ $plan == *'the source is kept'* ]] || fail "kept plan does not say the source is kept: $plan"
+[[ $plan == *'Copy the contents'* ]] || fail "kept plan still asks about moving: $plan"
+[[ -f $HOME/KeptPlan/file ]] || fail 'cancelled kept run touched the source'
+[[ $plan == *'nothing was copied'* ]] || fail "cancelled kept run reported a move: $plan"
+
+# Across filesystems --keep is the same verified rsync copy with the removal
+# left out, so the source survives a run that reports the filesystem split.
+mkdir -p "$HOME/KeptCross"; printf 'c\n' >"$HOME/KeptCross/file"
+out=$(bash "$archive" --force --keep --to "$cross" "$HOME/KeptCross")
+compgen -G "$cross/KeptCross/*/file" >/dev/null || fail 'cross-device kept archive missing'
+[[ -f $HOME/KeptCross/file ]] || fail 'cross-device --keep removed the source'
+[[ $out == *filesystem* ]] || fail "cross-device kept run did not mention the filesystem: $out"
+
+# -z with --keep writes the archive and leaves the tree it read.
+rm -rf -- "$HOME/KeptZip" "$HOME/Archive/KeptZip"
+mkdir -p "$HOME/KeptZip/sub"
+printf 'alpha\n' >"$HOME/KeptZip/a.txt"
+printf 'beta\n' >"$HOME/KeptZip/sub/b.txt"
+bash "$archive" --force --keep -z "$HOME/KeptZip" >/dev/null
+kept_zips=("$HOME"/Archive/KeptZip/*.7z)
+[[ ${#kept_zips[@]} == 1 ]] || fail "expected one kept .7z, found ${#kept_zips[@]}"
+[[ -f $HOME/KeptZip/a.txt && -f $HOME/KeptZip/sub/b.txt ]] || fail '-z --keep emptied the source'
+rm -rf "$TEST_ROOT/keptout" && mkdir -p "$TEST_ROOT/keptout"
+(cd "$TEST_ROOT/keptout" && 7zz x -snl -y "${kept_zips[0]}" </dev/null >/dev/null)
+[[ $(cat "$TEST_ROOT/keptout/a.txt") == alpha ]] || fail 'kept archive lost a file'
+[[ $(cat "$TEST_ROOT/keptout/sub/b.txt") == beta ]] || fail 'kept archive lost a nested file'
+
+# -e with --keep round-trips and still leaves the source.
+rm -rf -- "$HOME/KeptSecret" "$HOME/Archive/KeptSecret"
+mkdir -p "$HOME/KeptSecret"; printf 'classified\n' >"$HOME/KeptSecret/secret.txt"
+ARCHIVE_ASKPASS="$TEST_ROOT/bin/askpass" \
+  bash "$archive" --force --keep -e "$HOME/KeptSecret" >/dev/null
+kept_secrets=("$HOME"/Archive/KeptSecret/*.7z)
+[[ -f $HOME/KeptSecret/secret.txt ]] || fail '-e --keep removed the source'
+7zz l "${kept_secrets[0]}" </dev/null >/dev/null 2>&1 &&
+  fail 'kept encrypted archive listed without a password'
+rm -rf "$TEST_ROOT/keptsecret" && mkdir -p "$TEST_ROOT/keptsecret"
+(cd "$TEST_ROOT/keptsecret" && 7zz x -pcorrect-horse -y "${kept_secrets[0]}" </dev/null >/dev/null)
+[[ $(cat "$TEST_ROOT/keptsecret/secret.txt") == classified ]] ||
+  fail 'kept encrypted archive did not round-trip'
+
+# --- the mirror is built only when a symlink needs resolving ------------------
+
+# The mirror exists to turn qualifying symlinks into real files. With none to
+# turn, cp -al is work that buys nothing, so it must not run at all.
+real_cp=$(command -v cp)
+cat >"$TEST_ROOT/bin/cp" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$CP_LOG"
+exec "$REAL_CP" "$@"
+STUB
+chmod +x "$TEST_ROOT/bin/cp"
+
+rm -rf -- "$HOME/NoMirror" "$HOME/Archive/NoMirror"
+mkdir -p "$HOME/NoMirror"
+printf 'plain\n' >"$HOME/NoMirror/file.txt"
+ln -s file.txt "$HOME/NoMirror/in.link"
+: >"$TEST_ROOT/cp.log"
+REAL_CP=$real_cp CP_LOG="$TEST_ROOT/cp.log" PATH="$TEST_ROOT/bin:$PATH" \
+  bash "$archive" --force -z "$HOME/NoMirror" >/dev/null
+grep -q -- '-al' "$TEST_ROOT/cp.log" && fail 'a mirror was built with no symlink to resolve'
+no_mirror=("$HOME"/Archive/NoMirror/*.7z)
+no_mirror_listing=$(7zz l -snl "${no_mirror[0]}" </dev/null)
+[[ $no_mirror_listing == *file.txt* && $no_mirror_listing == *in.link* ]] ||
+  fail 'the unmirrored archive lost an entry'
+rm -rf "$TEST_ROOT/nomirror" && mkdir -p "$TEST_ROOT/nomirror"
+(cd "$TEST_ROOT/nomirror" && 7zz x -snl -y "${no_mirror[0]}" </dev/null >/dev/null)
+[[ -L $TEST_ROOT/nomirror/in.link ]] || fail 'the unmirrored archive resolved an in-tree link'
+
+# One qualifying link and the mirror comes back, resolving it as it always did.
+rm -rf -- "$HOME/Mirrored" "$HOME/Archive/Mirrored" "$HOME/Far"
+mkdir -p "$HOME/Mirrored" "$HOME/Far"
+printf 'far\n' >"$HOME/Far/far.txt"
+ln -s "$HOME/Far/far.txt" "$HOME/Mirrored/out.link"
+: >"$TEST_ROOT/cp.log"
+REAL_CP=$real_cp CP_LOG="$TEST_ROOT/cp.log" PATH="$TEST_ROOT/bin:$PATH" \
+  bash "$archive" --force --keep -z "$HOME/Mirrored" >/dev/null
+grep -q -- '-al' "$TEST_ROOT/cp.log" || fail 'no mirror was built for a qualifying symlink'
+mirrored=("$HOME"/Archive/Mirrored/*.7z)
+rm -rf "$TEST_ROOT/mirrored" && mkdir -p "$TEST_ROOT/mirrored"
+(cd "$TEST_ROOT/mirrored" && 7zz x -snl -y "${mirrored[0]}" </dev/null >/dev/null)
+[[ -f $TEST_ROOT/mirrored/out.link && ! -L $TEST_ROOT/mirrored/out.link ]] ||
+  fail '--keep did not resolve a qualifying out-of-tree symlink'
+[[ $(cat "$TEST_ROOT/mirrored/out.link") == far ]] || fail 'resolved kept link has wrong contents'
+[[ -L $HOME/Mirrored/out.link ]] || fail '--keep replaced the source symlink'
+rm -f "$TEST_ROOT/bin/cp"
+
+# A source that is its own mount — an unlocked vault is the real case — has no
+# filesystem to hold the mirror beside it. Resolving a link there would write
+# the tree out next to the mount in cleartext, so it is refused instead. An
+# unprivileged mount namespace is what makes that testable without root.
+if unshare -rm true 2>/dev/null; then
+  cat >"$TEST_ROOT/mounted.sh" <<'INNER'
+set -euo pipefail
+archive=$1
+export HOME="$2/mounted-home"
+mkdir -p "$HOME/Mounted" "$HOME/Far"
+printf 'far\n' >"$HOME/Far/far.txt"
+mount -t tmpfs none "$HOME/Mounted"
+printf 'inside\n' >"$HOME/Mounted/note.txt"
+ln -s "$HOME/Far/far.txt" "$HOME/Mounted/out.link"
+[[ $(stat -c %d "$HOME/Mounted") != $(stat -c %d "$HOME") ]] ||
+  { printf 'the tmpfs did not become its own device\n'; exit 1; }
+
+if out=$(bash "$archive" --force --keep -z "$HOME/Mounted" 2>&1); then
+  printf 'resolving a link off a foreign mount was not refused\n'; exit 1
+fi
+[[ $out == *'mount of its own'* ]] ||
+  { printf 'the refusal does not explain itself: %s\n' "$out"; exit 1; }
+[[ -f $HOME/Mounted/note.txt && -L $HOME/Mounted/out.link ]] ||
+  { printf 'the refused run damaged the source\n'; exit 1; }
+compgen -G "$HOME/.archive-"'*' >/dev/null &&
+  { printf 'the refused run staged the tree beside the mount\n'; exit 1; }
+
+# With no link to resolve there is no mirror to place, so the same run works
+# straight off the mount and stages nothing next to it.
+rm -f "$HOME/Mounted/out.link"
+bash "$archive" --force --keep -z "$HOME/Mounted" >/dev/null 2>&1 ||
+  { printf 'archiving a foreign mount with no qualifying link failed\n'; exit 1; }
+compgen -G "$HOME/Archive/Mounted/"'*.7z' >/dev/null ||
+  { printf 'no archive was written from the mount\n'; exit 1; }
+compgen -G "$HOME/.archive-"'*' >/dev/null &&
+  { printf 'archiving the mount staged the tree beside it\n'; exit 1; }
+[[ -f $HOME/Mounted/note.txt ]] || { printf 'the kept mount lost its contents\n'; exit 1; }
+umount "$HOME/Mounted" 2>/dev/null || true
+INNER
+  mounted_out=$(unshare -rm bash "$TEST_ROOT/mounted.sh" "$archive" "$TEST_ROOT" 2>&1) ||
+    fail "foreign-mount source: $mounted_out"
+else
+  fail 'this test needs unprivileged mount namespaces (unshare -rm) to exercise a source that is its own mount'
+fi
+
 printf 'archive tests passed\n'

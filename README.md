@@ -533,6 +533,7 @@ archive                        # the current directory's contents
 archive --force ~/Downloads    # no question, for scripts and keybindings
 archive -z ~/Downloads         # one .7z instead of a directory
 archive -e ~/Downloads         # encrypted, file names included
+archive -k ~/Downloads         # copy instead of moving; the source stays
 archive --to /run/media/z/backup ~/Downloads
 ```
 
@@ -574,6 +575,21 @@ name: a second run in the same second becomes `<date-and-time>-2` rather than
 merging into the first. An empty directory is not archived at all. Archiving
 the root itself, its children or its ancestors is rejected.
 
+`--keep` (`-k`) copies the contents instead of moving them, leaving the source
+exactly as it was. Within one filesystem the copy is `cp --reflink=auto`, so on
+a copy-on-write filesystem — btrfs here — it shares storage with the source
+until one of them changes, and costs no time and almost no space; on ext4 or xfs
+it falls back to a real copy. Across filesystems it is the same verified rsync
+copy as a move, with the removal left out. Hard links between archived files
+survive either way, because one `cp` covers the whole tree and
+`--preserve=links` only relates the files of a single invocation.
+
+`--keep` is for a snapshot taken before a risky change. It is **not a backup**:
+every run is a full copy under its own timestamp, with no versioning,
+deduplication, pruning or scheduling, and a copy on the same disk survives
+nothing that disk does not. See
+[docs/DECISIONS.md](docs/DECISIONS.md) for the direction backups take instead.
+
 For cross-filesystem and compressed runs, the entries shown in the plan are
 moved first into a temporary holding directory on the source filesystem. This
 freezes the set that is copied or compressed. A file arriving at the original
@@ -581,6 +597,12 @@ directory after that point stays there for the next run instead of being
 deleted with the current archive. A failed run restores held entries whenever
 their original names are still free and reports the holding path for any name
 that a newly arrived entry has occupied.
+
+`--keep` removes nothing, so it freezes nothing: no holding directory is
+created, and an entry arriving mid-run may be included in the archive. Nothing
+is verified on a same-filesystem kept copy either — the originals are still
+there to compare against, and re-reading every byte would throw away exactly
+what `--reflink` just saved.
 
 `-z` writes one `<date-and-time>.7z`; `-e` encrypts it and its file names, and
 implies `-z`. Open either with `7zz x`. Compression **does not preserve hard
@@ -593,6 +615,13 @@ outside becomes a real file, so the archive stands alone, but only when its
 target is a regular file under `$HOME` on the same filesystem. That bound is
 what stops a stray link pulling in a mounted vault, a removable disk or a
 system path. Every out-of-tree link is named in the plan before you answer.
+
+Resolving a link needs a staging mirror on the source's own filesystem, which a
+moved source always has beside it. A directory that is its own mount — an
+unlocked vault is the case that matters — does not, so `--keep` refuses such a
+run by name rather than writing the tree out beside the mount in cleartext.
+Where no link qualifies for resolution, which is the ordinary case, no mirror is
+built at all and the archive is read straight from the tree.
 
 `-e` asks for the password on the terminal, twice, because 7-Zip asks once with
 no confirmation and nothing can open the archive afterwards without that exact

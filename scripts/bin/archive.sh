@@ -11,7 +11,7 @@ readonly MAX_ATTEMPTS=99
 
 usage() {
   cat <<'USAGE'
-Usage: archive [--force] [--compress] [--encrypt] [--to DIR] [DIRECTORY]
+Usage: archive [--force] [--keep] [--compress] [--encrypt] [--to DIR] [DIRECTORY]
 
 Move a directory's contents, including hidden files, into
 <root>/<name>/<date-and-time>/. The directory itself stays where it is.
@@ -22,6 +22,10 @@ caller has set it.
 
   --force, -f     Archive without asking, for scripts and keybindings, where
                   there is nobody to answer. It never skips the password.
+  --keep, -k      Copy the contents instead of moving them, leaving the source
+                  exactly as it was. For a snapshot taken before a risky
+                  change, not for backups: every run is a full copy under its
+                  own timestamp, with no versioning, deduplication or pruning.
   --compress, -z  Write one <date-and-time>.7z instead of a directory.
   --encrypt, -e   Encrypt the archive and its file names. Implies --compress,
                   and asks for the password on the terminal, twice.
@@ -35,6 +39,12 @@ Within one filesystem a move is rename(2), so it is instant at any size and
 hard links survive. Across filesystems it copies, verifies the copy against
 the frozen source set, and only then removes that set. Files arriving in the
 source directory after a run starts stay there for the next run.
+
+With --keep nothing is removed, so nothing has to be frozen first. Within one
+filesystem the copy is cp --reflink=auto, which on a copy-on-write filesystem
+shares storage with the source until one of them changes; elsewhere it is a
+real copy. Across filesystems it is the same rsync copy as a move, verified
+the same way, with the removal left out.
 
 Compression cannot preserve hard links, which no archive format stores. A
 symlink pointing inside the archived directory stays a symlink, because it
@@ -124,11 +134,16 @@ measure() {
   ITEM_COUNT=$(find "$source_dir" -mindepth 1 -printf '.' | wc -c)
 
   OUTSIDE_LINKS=()
+  # A mirror exists only to turn qualifying symlinks into real files. When no
+  # link qualifies there is nothing to materialise, so 7z can read the tree
+  # itself and the mirror is skipped entirely.
+  RESOLVED_LINKS=()
   while IFS= read -r -d '' link; do
     target=$(realpath -m -- "$source_dir/${link#./}")
     case "$target/" in "$source_dir/"*) continue ;; esac
     if should_resolve "$source_dir" "$target"; then
       OUTSIDE_LINKS+=("${link#./} -> $target (copied in)")
+      RESOLVED_LINKS+=("${link#./}")
     else
       OUTSIDE_LINKS+=("${link#./} -> $target (kept as a link)")
     fi
@@ -165,8 +180,15 @@ show_plan() {
       printf '    %s\n' "$outside"
     done
   fi
-  ((SAME_DEVICE == 1)) ||
+  if ((keep == 1)); then
+    if ((SAME_DEVICE == 1)); then
+      printf '\n  the source is kept: this copies and removes nothing\n'
+    else
+      printf '\n  the destination is on another filesystem: this copies, verifies, and removes nothing\n'
+    fi
+  elif ((SAME_DEVICE == 0)); then
     printf '\n  the destination is on another filesystem: this copies, verifies, then removes\n'
+  fi
 }
 
 # --- asking ----------------------------------------------------------------------
@@ -174,9 +196,10 @@ show_plan() {
 # No is the default, and end of input is a No: the answer that moves nothing
 # is the one an unattended run gets.
 confirm() {
-  local source_dir=$1 answer
+  local source_dir=$1 answer verb=Move
 
-  printf '\nMove the contents of %s? [y/N] ' "$source_dir" >&2
+  ((keep == 0)) || verb=Copy
+  printf '\n%s the contents of %s? [y/N] ' "$verb" "$source_dir" >&2
   read -r answer || answer=
   [[ -t 0 ]] || printf '%s\n' "$answer" >&2
   [[ $answer == [yY] || $answer == [yY][eE][sS] ]]
@@ -286,6 +309,19 @@ move_within_filesystem() {
   done
 }
 
+# One cp for the whole tree rather than one per entry, because --preserve=links
+# only relates the files of a single invocation: copying entry by entry would
+# turn a hard-linked pair into two independent files. --reflink=auto asks the
+# filesystem to share the extents and silently falls back to a real copy where
+# it cannot, so btrfs and ext4 both get the best they can do without a test
+# here. Nothing is removed, so there is no frozen set to work from: an entry
+# arriving mid-run may be copied in, and that costs nothing when the source
+# stays.
+copy_within_filesystem() {
+  local source_dir=$1 destination=$2
+  cp -a --reflink=auto -- "$source_dir/." "$destination/"
+}
+
 # Cross-device copies and archives must operate on a stable set of names. Move
 # the selected top-level entries aside on the source filesystem first. Anything
 # created at the original path afterwards is a new entry and is never removed
@@ -383,16 +419,16 @@ build_mirror() {
 }
 
 build_archive() {
-  local built=$1 mirror=$2
+  local built=$1 tree=$2
   local -a opts=(a -snl)
 
   interactive || opts+=(-bso0 -bsp0)
   if ((encrypt == 1)); then
     # Only `a` reads a password from stdin; every reading operation needs it
     # on the command line. This is the one place a pipe works, so it is used.
-    printf '%s\n' "$PASSWORD" | 7zz "${opts[@]}" -p -mhe=on "$built" "$mirror/."
+    printf '%s\n' "$PASSWORD" | 7zz "${opts[@]}" -p -mhe=on "$built" "$tree/."
   else
-    7zz "${opts[@]}" "$built" "$mirror/."
+    7zz "${opts[@]}" "$built" "$tree/."
   fi
 }
 
@@ -432,6 +468,7 @@ cleanup() {
 # --- the run itself --------------------------------------------------------------
 
 force=0
+keep=0
 compress=0
 encrypt=0
 source_arg=
@@ -441,6 +478,10 @@ while (($# > 0)); do
   case $1 in
     -f | --force)
       force=1
+      shift
+      ;;
+    -k | --keep)
+      keep=1
       shift
       ;;
     -z | --compress)
@@ -534,7 +575,11 @@ fi
 if ((force == 0)); then
   show_plan "$source_dir" "$destination"
   if ! confirm "$source_dir"; then
-    printf 'archive: cancelled; nothing was moved\n'
+    if ((keep == 1)); then
+      printf 'archive: cancelled; nothing was copied\n'
+    else
+      printf 'archive: cancelled; nothing was moved\n'
+    fi
     exit 0
   fi
 fi
@@ -543,7 +588,20 @@ fi
 
 if ((compress == 0)); then
   printf 'Archiving %s to %s\n' "$(human "$TOTAL_BYTES")" "$destination"
-  if ((SAME_DEVICE == 1)); then
+  if ((keep == 1)); then
+    # Nothing is deleted, so nothing has to be frozen and the verification pass
+    # protects nothing: the originals are still there to compare against. Within
+    # one filesystem that keeps a reflink copy as cheap as it should be, instead
+    # of re-reading every byte to check a clone the kernel made.
+    if ((SAME_DEVICE == 1)); then
+      copy_within_filesystem "$source_dir" "$destination" ||
+        die 'the copy failed; nothing was removed'
+    else
+      printf 'Destination is on another filesystem: copying and verifying.\n'
+      copy_across_filesystems "$source_dir" "$destination" || exit 1
+    fi
+    printf 'Copied %s to %s\n' "$(human "$TOTAL_BYTES")" "$destination"
+  elif ((SAME_DEVICE == 1)); then
     move_within_filesystem "$destination"
   else
     printf 'Destination is on another filesystem: copying, verifying, then removing the source.\n'
@@ -556,18 +614,40 @@ fi
 
 printf 'Archiving %s to %s\n' "$(human "$TOTAL_BYTES")" "$destination"
 
-freeze_source "$source_dir" || die 'could not freeze the source; restored what had moved'
+# Freezing exists to keep a deletion honest. With --keep there is no deletion,
+# so 7z reads the source where it stands and the holding directory — and the
+# cross-device copy of the whole tree that filling it would mean — is skipped.
+if ((keep == 1)); then
+  tree=$source_dir
+else
+  freeze_source "$source_dir" || die 'could not freeze the source; restored what had moved'
+  tree=$HOLDING
+fi
 
-# The mirror lives beside the source so that cp -al can hard-link into it;
-# next to the destination it would be a real copy whenever the two differ.
-MIRROR=$(mktemp -d -- "$(dirname -- "$source_dir")/.archive-mirror.XXXXXX") ||
-  die "cannot create a staging directory beside $source_dir"
-build_mirror "$HOLDING" "$MIRROR"
+# The mirror is the only way to apply a policy per symlink, since 7z follows
+# every link or none, so it is built only when a link actually qualifies for
+# resolution. With none, that work buys nothing and the tree is archived as it
+# is.
+if ((${#RESOLVED_LINKS[@]} > 0)); then
+  # It lives beside the source so that cp -al can hard-link into it; next to the
+  # destination it would be a real copy whenever the two differ. A frozen tree
+  # is already beside the source. A kept one that is its own mount is not, and
+  # falling back to a real copy there would write the tree out beside its own
+  # filesystem — in cleartext, if that mount is an unlocked vault — so this is
+  # refused rather than worked around.
+  if [[ $(stat -c %d -- "$tree") != "$(stat -c %d -- "$(dirname -- "$source_dir")")" ]]; then
+    die "cannot resolve ${RESOLVED_LINKS[0]} with --keep: doing so needs a staging copy on the same filesystem as $source_dir, which is a mount of its own. Remove the symlink or point it inside the directory, then run again."
+  fi
+  MIRROR=$(mktemp -d -- "$(dirname -- "$source_dir")/.archive-mirror.XXXXXX") ||
+    die "cannot create a staging directory beside $source_dir"
+  build_mirror "$tree" "$MIRROR"
+  tree=$MIRROR
+fi
 
 STAGING=$(mktemp -d -- "$parent/.archive-build.XXXXXX") ||
   die "cannot create a staging directory in $parent"
 built="$STAGING/archive.7z"
-if ! build_archive "$built" "$MIRROR"; then
+if ! build_archive "$built" "$tree"; then
   die 'the archive could not be written; nothing was removed'
 fi
 

@@ -416,6 +416,50 @@ next archive instead of being deleted without ever reaching this one. Deleting
 as rsync goes would leave the verification pass with nothing to compare
 against, and the cost is needing room for both copies until it finishes.
 
+`--keep` copies instead of moving, and the mechanism differs per case because
+the three available ones are not interchangeable. Within a filesystem it is `cp
+-a --reflink=auto`: on btrfs, which is what `/home` is here, that shares extents
+with the source and diverges on write, so a 64 MiB tree clones in hundredths of
+a second and occupies nothing until something changes; on ext4 or xfs the same
+flag degrades to a real copy, so no filesystem test is needed in the script.
+It is one `cp` for the whole tree rather than one per entry, because
+`--preserve=links` only relates the files of a single invocation and copying
+entry by entry would turn a hard-linked pair into two independent files. Across
+filesystems it reuses the move path's `rsync -aH` and its `rsync -c --dry-run`
+comparison unchanged. `mv` is what `--keep` can never use, which is the whole
+point of the flag.
+
+Nothing is frozen on a kept run and nothing is verified on a kept
+same-filesystem copy. Both exist to make a deletion honest — the holding
+directory so that a file arriving mid-run is not deleted without being archived,
+the checksum pass so that originals are never removed against an archive nobody
+read back. A run that removes nothing needs neither, and verifying a reflink
+clone would re-read every byte the reflink was created to avoid. The accepted
+cost is that an entry arriving mid-run may be included in a kept archive, and
+that a kept archive's completeness rests on `cp` and `rsync` exit statuses
+rather than on a comparison; the source is still present to compare against.
+
+`--keep` is deliberately not a backup and is documented as not being one. It
+produces a full copy under a dated path with no versioning, deduplication,
+pruning or scheduling, which is the shape this repository already rejected in
+favour of Restic over rclone. The flag exists for a snapshot before a risky
+change. Naming it `--keep` rather than `--preserve` avoids the false friend:
+in `cp`, `rsync` and `tar` that word means attribute preservation, so
+`--preserve` would read as a statement about mtimes rather than about the
+originals.
+
+The staging mirror is now built only when a symlink actually qualifies for
+resolution, which is what makes `--keep` usable on a directory that is its own
+mount. The mirror must sit on the source's filesystem for `cp -al` to link into
+it, and it is placed beside the source; a frozen tree is already there, but a
+kept one on its own mount is not. Falling back to a real copy in that case would
+write the whole tree out next to the mount — in cleartext, when the mount is an
+unlocked gocryptfs vault — so the run is refused by naming the offending link
+instead. With no link to resolve, the common case, the archive is read straight
+from the tree, which also removes the `cp -al` pass from every ordinary `-z`
+run. Measured: `7zz a -snl` over `dir/.` stores the same entries at the archive
+root as it did over the mirror, symlinks included.
+
 Compression is a flag, never the default, because no archive format preserves
 hard links: 7z and zip both turn a two-link inode into two independent files. A
 move preserves them, so the faithful behaviour stays the one you get without
