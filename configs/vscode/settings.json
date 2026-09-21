@@ -251,6 +251,12 @@
                 "expr": "import (builtins.getFlake \"/home/z/Documents/dotfiles\").inputs.nixpkgs { }",
             },
             "options": {
+                // nixd always adds a default "nixos" worker that looks up <nixpkgs> in
+                // NIX_PATH. That lookup fails here, and the broken worker then hangs
+                // option completion. Pointing it at the dotfiles nixpkgs fixes that.
+                "nixos": {
+                    "expr": "(import \"${(builtins.getFlake \"/home/z/Documents/dotfiles\").inputs.nixpkgs}/nixos/lib/eval-config.nix\" { system = \"x86_64-linux\"; modules = [ ]; }).options",
+                },
                 "home-manager": {
                     "expr": "(builtins.getFlake \"/home/z/Documents/dotfiles\").homeConfigurations.\"z\".options",
                 },
