@@ -52,6 +52,9 @@ return {
 				-- Go
 				go = { "goimports", "gofumpt" },
 
+				-- Nix: nixfmt comes from Home Manager, not mason
+				nix = { "nixfmt" },
+
 				-- Shell
 				sh = { "shfmt" },
 				bash = { "shfmt" },

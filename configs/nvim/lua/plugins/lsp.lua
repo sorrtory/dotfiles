@@ -286,6 +286,14 @@ return {
 			})
 
 			require("mason-lspconfig").setup(opts)
+
+			-- Nix. Absent from the `servers` list above because mason has no
+			-- nixd package to install, so mason-lspconfig never enables it:
+			-- its automatic_enable walks mason's own installed set. The
+			-- binary comes from Home Manager instead (modules/packages.nix),
+			-- and lspconfig's bundled lsp/nixd.lua supplies cmd and root
+			-- markers, so enabling it by name is all that is left to do.
+			vim.lsp.enable("nixd")
 		end,
 	},
 }

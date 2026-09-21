@@ -1,4 +1,11 @@
-{ claudeCode, codex, config, pkgs, unstablePkgs, ... }:
+{
+  claudeCode,
+  codex,
+  config,
+  pkgs,
+  unstablePkgs,
+  ...
+}:
 
 let
   # Toolchains that install and update themselves under $HOME rather than
@@ -31,7 +38,8 @@ in
     # plain package, not a proxy-wrapped program: it takes `--proxy`, so the
     # download aliases in the Zsh module pass one. See docs/DECISIONS.md.
     unstablePkgs.gallery-dl
-  ] ++ (with pkgs; [
+  ]
+  ++ (with pkgs; [
     # 7-Zip upstream rather than the p7zip fork, which trails it by years. The
     # archive command writes .7z and needs it at runtime; it is here as well
     # because opening an archive again is `7zz x`, and a command that creates
@@ -98,6 +106,16 @@ in
     # to the Make beside it.
     ninja
 
+    # The Nix language server, for Neovim. Not from mason like the other
+    # servers in configs/nvim/lua/plugins/lsp.lua: mason's registry carries no
+    # nixd at all, only the unmaintained rnix-lsp, so this is the only source.
+    # The editor spec enables it by hand for the same reason.
+    nixd
+
+    # The Nix formatter Neovim's conform runs on save and `nix fmt` runs over
+    # the repository. The official one, the RFC 166 style.
+    nixfmt
+
     # Global rather than per-project because mason installs ten of Neovim's
     # language servers as npm packages, and they need Node at runtime, not
     # only to install. Without it the editor looks subtly broken rather than
@@ -105,7 +123,6 @@ in
     nodejs
 
     obs-studio
-
 
     qbittorrent
     # pkg-config is deliberately absent: the Nixpkgs binary searches only its

@@ -88,6 +88,8 @@
         meta.description = "Recover the dotfiles age identity from KeePassXC";
       };
 
+      formatter.${system} = pkgs.nixfmt;
+
       devShells.${system}.default = pkgs.mkShellNoCC {
         # sops is here for the staged secret gate, which asks it whether a file
         # under secrets/ is genuinely encrypted.
