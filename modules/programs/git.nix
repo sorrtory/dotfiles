@@ -4,6 +4,8 @@
   programs.git = {
     enable = true;
 
+    lfs.enable = true; # Automatically configures git hooks for LFS
+
     # Nix-ified rather than kept native: the file is eleven lines, the operator
     # does not edit it in place, and `git config --global` writing back into a
     # store symlink would fail. The tmux/Yazi live-editable argument does not
@@ -33,11 +35,10 @@
   # Home Manager writes the XDG path, so leaving the legacy file in place would
   # make everything above silently inert. Moved aside rather than deleted, and
   # only when it is a real file, so an already-migrated home is left alone.
-  home.activation.retireLegacyGitconfig =
-    lib.hm.dag.entryBefore [ "writeBoundary" ] ''
-      if [[ -f "$HOME/.gitconfig" && ! -L "$HOME/.gitconfig" ]]; then
-        run mv $VERBOSE_ARG "$HOME/.gitconfig" "$HOME/.gitconfig.pre-home-manager"
-        warnEcho "Moved ~/.gitconfig to ~/.gitconfig.pre-home-manager; it would have shadowed ~/.config/git/config."
-      fi
-    '';
+  home.activation.retireLegacyGitconfig = lib.hm.dag.entryBefore [ "writeBoundary" ] ''
+    if [[ -f "$HOME/.gitconfig" && ! -L "$HOME/.gitconfig" ]]; then
+      run mv $VERBOSE_ARG "$HOME/.gitconfig" "$HOME/.gitconfig.pre-home-manager"
+      warnEcho "Moved ~/.gitconfig to ~/.gitconfig.pre-home-manager; it would have shadowed ~/.config/git/config."
+    fi
+  '';
 }
