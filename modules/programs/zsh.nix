@@ -60,6 +60,8 @@ in
     shellAliases = {
       "p!" = "PAGER=less";
       path = "readlink -f";
+      lg = "lazygit";
+      lzd = "lazydocker";
       dps = ''docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Ports}}"'';
       dpss = ''docker ps --format "table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.RunningFor}}\t{{.Status}}\t{{.Size}}\t{{.Ports}}"'';
     };

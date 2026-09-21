@@ -91,7 +91,10 @@ in
     jq
     keepassxc
 
+    lazydocker
     lazygit
+
+    ncdu
 
     # Patches Meslo with the glyphs Neovim's completion menu, lualine, neo-tree
     # and Yazi's file-type icons all assume are present in whatever font the
