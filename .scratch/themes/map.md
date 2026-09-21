@@ -14,10 +14,11 @@ app follows, generated from a single palette with per-app overrides. See
 - [06: Spotify](issues/06-spotify.md) — resolved; the Spicetify scheme is generated, with autumn-glass pinning the four shades no role names.
 - [07: Telegram](issues/07-telegram.md) — needs-info; blocked by 01 and by a decision recorded in its Comments: 544 hand-tuned keys, so fallback roots or a full mapping table.
 - [08: Obsidian](issues/08-obsidian.md) — resolved; generated to a fixed path named "Dotfiles"; the existing vault link must be remade once.
-- [09: Canonical docs and cleanup](issues/09-docs-and-cleanup.md) — ready-for-agent; blocked by 02–08.
+- [09: Canonical docs and cleanup](issues/09-docs-and-cleanup.md) — ready-for-agent; blocked by 02–08 and 11.
 - [10: Instant Telegram apply](issues/10-instant-telegram-apply.md) — needs-info; blocked by 07 and upstream AyuGram.
+- [11: Vesktop](issues/11-vesktop.md) — resolved; the six families Discord derives its tokens from are generated, live through Vencord's themes directory, and the window is faded by Blur my Shell rather than drawn translucent.
 
-Tickets 02–08 are independent of each other once 01 lands.
+Tickets 02–08 and 11 are independent of each other once 01 lands.
 
 ## Context
 

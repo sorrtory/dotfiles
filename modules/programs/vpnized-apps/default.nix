@@ -3,6 +3,7 @@
 let
   proxy = config.dotfiles.localProxy;
   cfg = config.dotfiles.vpnizedApps;
+  theme = config.dotfiles.theme;
   configRoot = "${config.home.homeDirectory}/Documents/dotfiles/configs/vesktop";
 
   captureConfig = pkgs.writeShellApplication {
@@ -153,6 +154,29 @@ in
           run cp --no-preserve=mode ${pkgs.writeText "vesktop-state.json" ''{ "firstLaunch": false }''} "$state"
         fi
       '';
+
+      # Vencord reads every stylesheet in its themes directory and re-reads
+      # one whenever that directory changes, so a switch recolors the running
+      # client. The name never changes; what is behind it does. Which themes
+      # are enabled is Vencord's own settings file, machine-local state this
+      # does not own, so enabling it is a one-time step like Obsidian's.
+      dotfiles.theme.liveFiles."${config.xdg.configHome}/vesktop/themes/Dotfiles.css" =
+        pkgs.writeText "Dotfiles.css"
+          (import ../../theme/vesktop-theme.nix { inherit lib; } (theme.forApp "vesktop"));
+
+      dotfiles.theme.apps.vesktop = {
+        label = "Vesktop";
+        apply = "live";
+        setup = "enable Dotfiles under Settings → Themes";
+        # Vencord rewrites this file itself, so the enabled list is read back
+        # rather than assumed. No file means Vesktop has never started.
+        check = ''
+          settings=${lib.escapeShellArg "${config.xdg.configHome}/vesktop/settings/settings.json"}
+          [[ -e $settings ]] || exit 0
+          ${lib.getExe pkgs.jq} -e '(.enabledThemes // []) | index("Dotfiles.css")' "$settings" >/dev/null \
+            || echo "Dotfiles is not enabled under Settings → Themes"
+        '';
+      };
     })
 
     (lib.mkIf (proxy.enable && cfg.ayugram.enable) {

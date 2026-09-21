@@ -146,7 +146,8 @@ Vesktop and AyuGram are installed this way: each one's command, menu entry
 and deep-link handler (`discord://`, `tg://`) always start it through the
 VPN, and a copy already running outside the VPN is refused rather than
 silently reused. Vesktop's preferences live in `configs/vesktop/settings.json`,
-which Vesktop edits in place; AyuGram keeps its own settings. Vesktop's
+which Vesktop edits in place, and its colors come from the palette like every
+other themed app ([Themes](#themes)); AyuGram keeps its own settings. Vesktop's
 Electron needs phase 10 on Ubuntu; see
 [docs/VESKTOP-APPARMOR.md](docs/VESKTOP-APPARMOR.md). AyuGram is a native Qt
 binary and needs no such allowance.
@@ -257,7 +258,7 @@ Bare `home-manager switch` looks for a channel configuration under
 
 | App | Takes a switch |
 |---|---|
-| WezTerm, Sublime Text | live: they watch their file |
+| WezTerm, Sublime Text, Vesktop | live: they watch their file |
 | GNOME Shell, GTK, Firefox | live, through Rewaita; a GTK program reads its colors at startup, so open windows keep theirs |
 | Wallpaper, accent, icons | live, through dconf |
 | Neovim, Spotify, Obsidian | next start |
@@ -407,6 +408,30 @@ rather than through the theme — the compositor fades and blurs it from
 outside, so Obsidian keeps drawing an ordinary opaque window and the blur
 settles the wallpaper that was too busy to write over. Text fades with it, as
 it does for every window on that list.
+
+#### Vesktop
+
+Discord names a few hundred CSS variables, but every one of them is a step of
+a numbered family: `--background-primary` is `var(--primary-600)`, a hovered
+row is `hsl(var(--primary-500-hsl)/0.3)`. So
+`modules/theme/vesktop-theme.nix` writes the six families rather than the
+tokens, and everything Discord derives from them follows, including whatever
+it renames next. A step number is a lightness, 100 near white to 900 near
+black, which is the order the roles are already in: text at 230, muted at 360,
+the message box at 560, the window at 600, the darkest panel at 660. The
+accent sits at 500, where Discord paints its buttons, and error, warning,
+success and the second accent at 360, where it reads them as text.
+
+The theme is written to `~/.config/vesktop/themes/Dotfiles.css`. **Enable
+`Dotfiles` once** under Settings → Themes; Vencord keeps that list in its own
+settings file, which it rewrites itself, so activation never touches it and
+the notice names Vesktop until it is enabled. After that it is live: Vencord
+watches that directory, so a switch recolors a running client with no restart.
+
+Solid colors only, like Obsidian, and for the same reason with one more on
+top: Vencord can make the window translucent, but that is the same Chromium on
+GNOME Wayland, and its own setting warns it "stops the window from being
+resizable as a side effect". Blur my Shell fades the window instead.
 
 ### GNOME through Rewaita
 
