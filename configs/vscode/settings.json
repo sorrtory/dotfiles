@@ -216,7 +216,6 @@
         "**/.metals": true
     },
     "chat.viewSessions.orientation": "stacked",
-    "workbench.colorTheme": "Dotfiles",
     "workbench.editor.useModal": "some",
     "yaml.disableSchemaDetection": [
         "**/.github/workflows/*.yml",
@@ -239,5 +238,6 @@
     ],
     "julia.symbolCacheDownload": true,
     "julia.enableTelemetry": true,
+    "workbench.colorTheme": "Dotfiles",
 
 }
