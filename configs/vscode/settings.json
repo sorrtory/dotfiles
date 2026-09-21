@@ -221,7 +221,7 @@
         "**/.gitea/workflows/*.yml",
         "**/.gitea/workflows/*.yaml",
         "**/.forgejo/workflows/*.yml",
-        "**/.forgejo/workflows/*.yaml",
+        "**/.forgejo/workflows/*.yaml"
     ],
     "terminal.integrated.initialHint": false,
     // use keyCode to map capslock to escape, see
@@ -263,4 +263,6 @@
             },
         },
     },
+    "julia.juliaup.install.hint": false,
+    "julia.enableCrashReporter": false,
 }
