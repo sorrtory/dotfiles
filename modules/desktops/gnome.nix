@@ -441,16 +441,40 @@ in
         transparency-mode = "FIXED";
       };
 
-      # Spotify's window has no alpha channel, even with Chromium's
+      # These windows are faded from outside because none of them will do it
+      # themselves. Spotify's window has no alpha channel, even with Chromium's
       # --enable-transparent-visuals, so its CSS cannot make it see-through the
-      # way Rewaita does for GTK and Firefox. Sublime Text has no opacity
-      # setting at all. Blur my Shell fades the whole window instead, text
-      # included, and blurs what is behind it. Opacity is out of 255; dynamic
-      # opacity would make the focused window opaque again. Sublime's WM class
-      # varies in case between builds, as in its launcher above.
+      # way Rewaita does for GTK and Firefox. VS Code is in the same position:
+      # Electron gives a window an alpha channel only when the application asks
+      # at creation, which VS Code never does and exposes no setting for.
+      # Sublime Text has no opacity setting at all. Obsidian and Vesktop are
+      # the two that could — Obsidian's own translucent-window setting and
+      # Vencord's stay off because Chromium redraws such a window with
+      # glitches on GNOME Wayland while it moves, and Vencord's also stops the
+      # window being resizable. Fading from the compositor leaves both drawing
+      # an ordinary opaque window, so there is nothing to redraw wrongly, and
+      # the blur also settles the wallpaper the hand-made theme found too busy
+      # to write over.
+      #
+      # Blur my Shell fades the whole window, text included, and blurs what is
+      # behind it. Opacity is out of 255; dynamic opacity would make the
+      # focused window opaque again. Sublime's WM class varies in case between
+      # builds, as in its launcher above; VS Code's, Obsidian's and Vesktop's
+      # differ between their X11 class and their Wayland app id, so each is
+      # listed both ways.
       "org/gnome/shell/extensions/blur-my-shell/applications" = {
         blur = theme.transparency;
-        whitelist = [ "Spotify" "Sublime_text" "sublime_text" ];
+        whitelist = [
+          "Spotify"
+          "Sublime_text"
+          "sublime_text"
+          "Code"
+          "code"
+          "md.Obsidian"
+          "obsidian"
+          "Vesktop"
+          "vesktop"
+        ];
         opacity = 230;
         dynamic-opacity = false;
       };

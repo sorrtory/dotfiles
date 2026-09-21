@@ -63,5 +63,7 @@ names no extension in `modules/theme/vscode-theme.nix`;
 - Role overrides still work as everywhere else and reach a generated theme;
   they cannot reach a native one, which is what declaring a native theme
   means.
-- Transparency does not reach VS Code: Electron draws an opaque window and the
-  spec's transparency switch has nothing to act on here.
+- Transparency reaches VS Code only from outside: Electron gives a window an
+  alpha channel only when the application asks at creation, which VS Code never
+  does, so the theme has nothing to act on and Blur my Shell fades the window
+  instead (`modules/desktops/gnome.nix`), text included.

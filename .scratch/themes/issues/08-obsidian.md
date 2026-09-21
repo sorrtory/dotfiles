@@ -56,6 +56,9 @@ has it.
   evaluated home directory, so it is testable and correct in the session that
   prints it. Locked or unknown vaults are the README's business, as the ticket
   said.
-- Transparency does not reach Obsidian, for the reason the hand-made theme
+- Obsidian's own translucency stays off, for the reason the hand-made theme
   already recorded: Chromium redraws a see-through window with glitches on
-  GNOME Wayland while it moves.
+  GNOME Wayland while it moves. That objection is about the window Obsidian
+  draws, so it does not carry to fading the window from the compositor: Blur
+  my Shell whitelists it alongside Spotify, Sublime Text and VS Code
+  (`modules/desktops/gnome.nix`), text included.

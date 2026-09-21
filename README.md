@@ -362,6 +362,10 @@ palette by `modules/theme/vscode-theme.nix`. Both upstream extensions stay
 installed, so they can also be selected directly, and extensions installed by
 hand are untouched.
 
+Transparency reaches VS Code the same way it reaches Spotify, Sublime Text
+and Obsidian: Electron never gives the window an alpha channel, so Blur my
+Shell fades it from the compositor, text included.
+
 The editor reads a theme only at startup, so a switch applies at the next
 Reload Window. VS Code's own color keys are an override of their own, which is
 merged into the contributed theme rather than written into the settings file
@@ -396,10 +400,13 @@ and status bar are lighter than the page, which is the one app here that reads
 the roles that way, and is how the hand-made Autumn Glass theme it replaces
 was drawn.
 
-Solid colors only, and the transparency switch does not reach Obsidian: its
-window can be see-through on Linux, but Chromium redraws it with glitches on
-GNOME Wayland while the window moves, and a wallpaper behind the panels was
-too busy for writing.
+Solid colors only: Obsidian's own translucent-window setting stays off,
+because Chromium redraws that window with glitches on GNOME Wayland while it
+moves. The transparency switch still reaches the window, through Blur my Shell
+rather than through the theme — the compositor fades and blurs it from
+outside, so Obsidian keeps drawing an ordinary opaque window and the blur
+settles the wallpaper that was too busy to write over. Text fades with it, as
+it does for every window on that list.
 
 ### GNOME through Rewaita
 
