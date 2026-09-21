@@ -22,13 +22,26 @@ let
   # identity; the runtime directory, like the interface, is gone after reboot.
   prepare = pkgs.writeShellScript "sing-box-prepare" ''
     interface=$(cat -- "$1/whole-host-vpn" 2>/dev/null || true)
-    exec ${lib.getExe generator} ${config.sops.secrets."sing-box-wireguard".path} "$1/sing-box/config.json" ''${interface:+"$interface"}
+    exec ${lib.getExe generator} ${lib.optionalString (!cfg.ipv6.enable) "--no-ipv6"} \
+      ${config.sops.secrets."sing-box-wireguard".path} "$1/sing-box/config.json" ''${interface:+"$interface"}
   '';
 in
 {
   options.dotfiles.localProxy = {
     enable = lib.mkEnableOption "the per-machine sing-box local proxy";
     package = lib.mkPackageOption pkgs "sing-box" { };
+    # A property of the VPN server, not of one identity: every profile keeps
+    # its IPv6 address and route, so turning this on needs no secret edit.
+    ipv6.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Use IPv6 through the tunnel. Off, names resolve to IPv4 only, IPv6
+        destinations are refused at once instead of timing out, and tunneled
+        programs get no IPv6 address. IPv6 still never leaves outside the
+        tunnel either way.
+      '';
+    };
     wrappedPrograms = lib.mkOption {
       default = [ ];
       description = ''

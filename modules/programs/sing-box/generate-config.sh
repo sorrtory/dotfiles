@@ -5,8 +5,16 @@ set +x
 set -euo pipefail
 umask 077
 
+# --no-ipv6 is for a server whose tunnel carries no IPv6: names resolve to
+# IPv4 only and IPv6 destinations are refused at once instead of timing out.
+# They still never leave outside the tunnel.
+ipv6=true
+if [[ ${1-} == --no-ipv6 ]]; then
+  ipv6=false
+  shift
+fi
 if [[ $# -lt 2 || $# -gt 3 ]]; then
-  printf 'usage: sing-box-config PROFILE OUTPUT [INTERFACE]\n' >&2
+  printf 'usage: sing-box-config [--no-ipv6] PROFILE OUTPUT [INTERFACE]\n' >&2
   exit 64
 fi
 
@@ -24,7 +32,8 @@ trap 'rm -f -- "$temporary"' EXIT
 
 # jq reads the profile itself: no key travels through argv or the environment.
 # Suppress parser/checker diagnostics because they may quote secret input.
-if ! jq -n --rawfile profile "$profile" --arg bind "$interface" '
+if ! jq -n --rawfile profile "$profile" --arg bind "$interface" \
+  --argjson ipv6 "$ipv6" '
   def trim: gsub("^\\s+|\\s+$"; "");
   def items: split(",") | map(trim) | select(length > 0 and all(. != ""));
   def key: select(test("^[A-Za-z0-9+/]{43}=$"));
@@ -57,7 +66,9 @@ if ! jq -n --rawfile profile "$profile" --arg bind "$interface" '
     capture("^(?:\\[(?<ipv6>[^]]+)\\]|(?<host>[^:]+)):(?<port>[0-9]+)$")) as $remote |
   ($remote.port | tonumber | select(. >= 1 and . <= 65535)) as $port |
   (($interface.MTU // "1420") | tonumber | select(. >= 1280 and . <= 65535)) as $mtu |
-  (($interface.DNS // "1.1.1.1") | items) as $dns |
+  (($interface.DNS // "1.1.1.1") | items |
+    map(select($ipv6 or (contains(":") | not))) |
+    if length == 0 then error("no usable resolver") else . end) as $dns |
   (if $peer.PresharedKey then ($peer.PresharedKey | key) else null end) as $psk |
   {
     log: {level: "warn"},
@@ -68,7 +79,7 @@ if ! jq -n --rawfile profile "$profile" --arg bind "$interface" '
           server: .value, detour: "tunnel"
         }]),
       final: "tunnel-dns-0"
-    }
+    } + (if $ipv6 then {} else {strategy: "ipv4_only"} end)
   } + if $bind != "" then {
     outbounds: [{type: "direct", tag: "tunnel", bind_interface: $bind}]
   } else {
@@ -87,7 +98,8 @@ if ! jq -n --rawfile profile "$profile" --arg bind "$interface" '
       {type: "mixed", tag: "mixed", listen: "127.0.0.1", listen_port: 1080},
       {type: "http", tag: "http", listen: "127.0.0.1", listen_port: 3128}
     ],
-    route: {final: "tunnel", default_domain_resolver: "tunnel-dns-0"}
+    route: ({final: "tunnel", default_domain_resolver: "tunnel-dns-0"} +
+      if $ipv6 then {} else {rules: [{ip_version: 6, action: "reject"}]} end)
   }
 ' >"$temporary" 2>/dev/null || [[ ! -s "$temporary" ]]; then
   printf 'sing-box-config: invalid or unsupported WireGuard profile\n' >&2

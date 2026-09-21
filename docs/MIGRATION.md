@@ -128,7 +128,9 @@ Verified on the Ubuntu staging VM, bootstrapped through every phase: tunneled la
 from all three entry points, a voice call, private DNS, IPv6 through the tunnel,
 refusal of an untunneled Vesktop, backend restart, capture failure, relaunch
 and a dropped link. A change to a different network and a real suspend-to-RAM
-are not yet verified.
+are not yet verified. IPv6 is now off by default
+(`dotfiles.localProxy.ipv6.enable`): on the laptop every IPv6 connection
+through the server timed out, stalling programs for minutes before fallback.
 
 Machines are bootstrapped fresh rather than migrated, so the legacy launcher and
 the native `/opt/Vesktop` retire with the reinstall instead of coexisting.

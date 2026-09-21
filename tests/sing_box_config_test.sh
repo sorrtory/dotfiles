@@ -63,6 +63,29 @@ jq -e '.endpoints[0].mtu == 1420 and .dns.servers[1].server == "1.1.1.1" and
   (.endpoints[0].peers[0] | has("pre_shared_key") | not)' \
   "$TEST_ROOT/config.json" >/dev/null || fail 'defaults and hostname bootstrap'
 
+# Without IPv6, lookups and resolvers are IPv4 only and IPv6 destinations are
+# refused, while the endpoint keeps its IPv6 address and route: IPv6 stays in
+# the tunnel rather than falling back to the host's own network.
+bash "$REPO_ROOT/modules/programs/sing-box/generate-config.sh" --no-ipv6 \
+  "$TEST_ROOT/valid.conf" "$TEST_ROOT/config.json"
+jq -e '
+  .dns.strategy == "ipv4_only" and
+  [.dns.servers[] | select(.tag != "bootstrap") | .server] == ["1.1.1.1"] and
+  .route.rules == [{ip_version: 6, action: "reject"}] and
+  .route.final == "tunnel" and
+  .endpoints[0].address == ["10.0.0.2/32", "fd00::2/128"] and
+  .endpoints[0].peers[0].allowed_ips == ["0.0.0.0/0", "::/0"]
+' "$TEST_ROOT/config.json" >/dev/null || fail 'IPv4-only contract'
+sed 's/^DNS = .*/DNS = 2606:4700:4700::1111/' "$TEST_ROOT/valid.conf" >"$TEST_ROOT/v6dns.conf"
+if bash "$REPO_ROOT/modules/programs/sing-box/generate-config.sh" --no-ipv6 \
+  "$TEST_ROOT/v6dns.conf" "$TEST_ROOT/config.json" 2>/dev/null; then
+  fail 'accepted IPv4-only config without an IPv4 resolver'
+fi
+bash "$REPO_ROOT/modules/programs/sing-box/generate-config.sh" \
+  "$TEST_ROOT/valid.conf" "$TEST_ROOT/config.json"
+jq -e '(.dns | has("strategy") | not) and (.route | has("rules") | not)' \
+  "$TEST_ROOT/config.json" >/dev/null || fail 'IPv6 left on by default in the generator'
+
 expect_rejected() {
   if generate >"$TEST_ROOT/stdout" 2>"$TEST_ROOT/stderr"; then
     fail 'unsafe profile accepted'
