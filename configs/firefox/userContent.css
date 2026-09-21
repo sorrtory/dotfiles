@@ -3,8 +3,34 @@
  * them, and background images stay. Needs browser.tabs.allow_transparent_browser
  * in user.js. */
 html,
+nav,
+.nav,
+header,
+footer,
+main,
 body {
   background-color: transparent !important;
+}
+
+/*
+*
+* ANKI
+*/
+@-moz-document regexp("https://ankiweb.*")
+{
+  /* first collection header*/
+  .current.svelte-p9sq8d.light-bottom-border.row {
+    background-color: transparent !important;
+  }
+
+  /*footer*/
+  .justify-content-center.nav {
+    background-color: transparent !important;
+  }
+
+  .container-fluid.bg-gray {
+    background: transparent !important;
+  }
 }
 
 /* Google's class names are build-generated and change when Google redeploys.
@@ -55,10 +81,110 @@ body {
    * this box, so clearing it outright leaves the text running through the
    * placeholder. Darkening what is behind reads the same under every theme,
    * which naming a color would not. */
+
+  /*
   [data-xid="aim-mars-input-plate"] > * > [aria-hidden="true"]::before,
   [data-xid="aim-mars-input-plate"] .d4HWzd::before {
     background-color: rgba(0, 0, 0, 0.35) !important;
     backdrop-filter: blur(24px) !important;
+  }
+*/
+
+  /* ==========================================
+   Google AI Mode — matching glass composer
+   ========================================== */
+
+  /* 1. Outer wrapper: fully transparent */
+
+  [data-xid="aim-mars-input-plate"] {
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  [data-xid="aim-mars-input-plate"]::before,
+  [data-xid="aim-mars-input-plate"]::after {
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* 2. Main input: the actual glass surface */
+
+  [data-xid="aim-mars-input-plate"] > .AgWCw {
+    background: rgba(24, 26, 30, 0.25) !important;
+    background-image: none !important;
+
+    -webkit-backdrop-filter: blur(36px) brightness(0.55) saturate(120%) !important;
+
+    backdrop-filter: blur(36px) brightness(0.55) saturate(120%) !important;
+
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 32px !important;
+
+    box-shadow: none !important;
+  }
+
+  /* 3. Clear the original opaque background layers */
+
+  [data-xid="aim-mars-input-plate"] > .AgWCw::before,
+  [data-xid="aim-mars-input-plate"] > .AgWCw::after,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .Zze5V,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .Zze5V::before,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .Zze5V::after,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .esoFne,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .esoFne::before,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .esoFne::after {
+    background: transparent !important;
+    background-image: none !important;
+
+    border: none !important;
+    box-shadow: none !important;
+
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* 4. Clear the decorative background layer */
+
+  [data-xid="aim-mars-input-plate"] > .d4HWzd,
+  [data-xid="aim-mars-input-plate"] > .d4HWzd::before,
+  [data-xid="aim-mars-input-plate"] > .d4HWzd::after {
+    background: transparent !important;
+    background-image: none !important;
+
+    border: none !important;
+    box-shadow: none !important;
+
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* 5. Keep the actual text input transparent */
+
+  [data-xid="aim-mars-input-plate"] textarea {
+    background: transparent !important;
+    background-image: none !important;
+
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  /* 
+* -- I think this is about plain search
+* Black shadows that read as dirt on a cleared page. */
+  .esoFne,
+  .hh3ttd.t0ITR {
+    box-shadow: none !important;
+    filter: none !important;
+  }
+
+  /* The pill inside the composer keeps Google's own fill, from the page's
+   * palette variable, as the removed .Jzkafd > .in7vHe rule did. */
+  .sjVJQd.FR7ZSc.NQYJvc.btku5b.oQOpie.in7vHe > .SlP8xc.VDgVie.niO4u,
+  .Jzkafd > .in7vHe {
+    background-color: var(--xhUGwc) !important;
   }
 
   /* Body revealed by the AI Overview's "Show more" toggle, and the AI Mode
