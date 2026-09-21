@@ -133,9 +133,11 @@ spelling its backend uses. See [Downloading and converting](#downloading-and-con
 Use `systemctl --user status sing-box` to inspect the service and
 `systemctl --user restart sing-box` after changing its encrypted profile.
 `vpn-up` and `vpn-down` bring this machine's identity up and down as a
-whole-host WireGuard interface. sing-box uses the same identity, so `vpn-up`
-refuses while it runs: stop sing-box first, and run `vpn-down` before starting
-it again.
+whole-host WireGuard interface. sing-box uses the same identity, so while the
+interface is up it restarts without it and only passes traffic into the
+interface: Firefox, the proxy wrappers and `vpn` programs keep working through
+the whole-host tunnel, and lose networking rather than going direct if it
+disappears. `vpn-down` gives the identity back to sing-box.
 
 `vpn PROGRAM [ARGUMENT...]` runs one program with all of its traffic, UDP and
 DNS included, inside a namespace that reaches the network only through this

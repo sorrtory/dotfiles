@@ -193,9 +193,13 @@ with their respective future slices. The exception is a pair of `vpn-up` and
 `vpn-down` functions, beside `proxy-on` and `proxy-off`, which exist because
 invoking `wg-quick` by hand needs both an absolute path for `sudo` and a config
 path rather than an interface name. They follow `dotfiles.vpn.identity`, the
-one device configuration this machine decrypts, so they take no argument, and
-`vpn-up` refuses while sing-box holds the same identity. They wrap an existing
-command rather than implementing privileged networking. They remain whole-host
+one device configuration this machine decrypts, so they take no argument.
+Because sing-box holds the same identity, `vpn-up` hands it over instead of
+requiring sing-box to stop, which would break every consumer of the local
+proxy: a runtime marker restarts sing-box without a key, with a direct
+outbound bound to the interface, before `wg-quick` claims the key, and
+`vpn-down` reverses that only once the interface is gone. They wrap an
+existing command rather than implementing privileged networking. They remain whole-host
 controls; the application VPN command does not replace them. The custom
 tmux and file-navigation helpers, unused Powerlevel10k setup, and zsh-lazyload
 setup are retired rather than reproduced. The host package supplies a stable

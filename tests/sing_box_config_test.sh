@@ -90,4 +90,26 @@ for invalid in duplicate unknown_section hook bad_key bad_port missing_key secon
   esac
   expect_rejected
 done
+
+# While a whole-host tunnel owns the identity, the backend carries no key and
+# reaches the network only through that interface, resolvers included.
+cp "$TEST_ROOT/valid.conf" "$TEST_ROOT/profile.conf"
+bash "$REPO_ROOT/modules/programs/sing-box/generate-config.sh" \
+  "$TEST_ROOT/profile.conf" "$TEST_ROOT/config.json" laptop
+jq -e '
+  (has("endpoints") | not) and
+  .outbounds == [{type: "direct", tag: "tunnel", bind_interface: "laptop"}] and
+  ([.dns.servers[] | select(.tag != "bootstrap") | .detour] == ["tunnel", "tunnel"]) and
+  .route.final == "tunnel" and
+  [.inbounds[].listen_port] == [1080, 3128]
+' "$TEST_ROOT/config.json" >/dev/null || fail 'passthrough contract'
+if grep -F -e "$private" -e "$psk" "$TEST_ROOT/config.json" >/dev/null; then
+  fail 'passthrough config carries credentials'
+fi
+cp "$TEST_ROOT/config.json" "$TEST_ROOT/last-good.json"
+if bash "$REPO_ROOT/modules/programs/sing-box/generate-config.sh" \
+  "$TEST_ROOT/profile.conf" "$TEST_ROOT/config.json" 'bad name' 2>/dev/null; then
+  fail 'invalid interface name accepted'
+fi
+cmp -s "$TEST_ROOT/config.json" "$TEST_ROOT/last-good.json" || fail 'invalid interface replaced working config'
 printf 'sing-box config tests passed\n'

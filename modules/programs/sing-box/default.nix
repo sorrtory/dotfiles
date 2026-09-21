@@ -18,6 +18,12 @@ let
     runtimeInputs = [ pkgs.coreutils pkgs.jq cfg.package ];
     text = builtins.readFile ./generate-config.sh;
   };
+  # vpn-up leaves the whole-host interface's name here while it owns the
+  # identity; the runtime directory, like the interface, is gone after reboot.
+  prepare = pkgs.writeShellScript "sing-box-prepare" ''
+    interface=$(cat -- "$1/whole-host-vpn" 2>/dev/null || true)
+    exec ${lib.getExe generator} ${config.sops.secrets."sing-box-wireguard".path} "$1/sing-box/config.json" ''${interface:+"$interface"}
+  '';
 in
 {
   options.dotfiles.localProxy = {
@@ -85,7 +91,7 @@ in
         RuntimeDirectory = "sing-box";
         RuntimeDirectoryMode = "0700";
         UMask = "0077";
-        ExecStartPre = "${lib.getExe generator} ${config.sops.secrets."sing-box-wireguard".path} %t/sing-box/config.json";
+        ExecStartPre = "${prepare} %t";
         ExecStart = "${cfg.package}/bin/sing-box run -c %t/sing-box/config.json";
         Restart = "on-failure";
         RestartSec = 5;

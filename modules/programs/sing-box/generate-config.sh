@@ -5,19 +5,26 @@ set +x
 set -euo pipefail
 umask 077
 
-if [[ $# -ne 2 ]]; then
-  printf 'usage: sing-box-config PROFILE OUTPUT\n' >&2
+if [[ $# -lt 2 || $# -gt 3 ]]; then
+  printf 'usage: sing-box-config PROFILE OUTPUT [INTERFACE]\n' >&2
   exit 64
 fi
 
 profile=$1
 output=$2
+# With INTERFACE, a whole-host tunnel owns the identity: sing-box only passes
+# traffic to that interface, and fails closed while it is absent.
+interface=${3-}
+if [[ -n $interface && ! $interface =~ ^[A-Za-z0-9_=+.-]{1,15}$ ]]; then
+  printf 'sing-box-config: invalid interface name\n' >&2
+  exit 64
+fi
 temporary=$(mktemp "${output}.XXXXXX")
 trap 'rm -f -- "$temporary"' EXIT
 
 # jq reads the profile itself: no key travels through argv or the environment.
 # Suppress parser/checker diagnostics because they may quote secret input.
-if ! jq -n --rawfile profile "$profile" '
+if ! jq -n --rawfile profile "$profile" --arg bind "$interface" '
   def trim: gsub("^\\s+|\\s+$"; "");
   def items: split(",") | map(trim) | select(length > 0 and all(. != ""));
   def key: select(test("^[A-Za-z0-9+/]{43}=$"));
@@ -61,7 +68,10 @@ if ! jq -n --rawfile profile "$profile" '
           server: .value, detour: "tunnel"
         }]),
       final: "tunnel-dns-0"
-    },
+    }
+  } + if $bind != "" then {
+    outbounds: [{type: "direct", tag: "tunnel", bind_interface: $bind}]
+  } else {
     endpoints: [{
       type: "wireguard", tag: "tunnel", system: false,
       address: $addresses, private_key: $private, mtu: $mtu,
@@ -71,7 +81,8 @@ if ! jq -n --rawfile profile "$profile" '
         public_key: $public, allowed_ips: $allowed,
         persistent_keepalive_interval: 25
       } + (if $psk then {pre_shared_key: $psk} else {} end)]
-    }],
+    }]
+  } end + {
     inbounds: [
       {type: "mixed", tag: "mixed", listen: "127.0.0.1", listen_port: 1080},
       {type: "http", tag: "http", listen: "127.0.0.1", listen_port: 3128}

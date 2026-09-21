@@ -79,19 +79,39 @@ in
 
       # Whole-host WireGuard on this machine's VPN identity. sudo cannot
       # resolve a bare name from the Nix profile, and wg-quick wants the config
-      # path because the configuration does not live in /etc/wireguard. The
-      # sing-box backend uses the same identity, and two clients on one peer
-      # key make the server's endpoint roam, so vpn-up refuses while it runs.
+      # path because the configuration does not live in /etc/wireguard; it
+      # names the interface after the file. The sing-box backend uses the same
+      # identity, and two clients on one peer key make the server's endpoint
+      # roam, so the backend hands it over rather than stopping: the marker
+      # restarts it keyless, bound to the interface, so the local proxy and
+      # tunneled programs keep working through the whole-host tunnel and fail
+      # closed without it. The backend lets go before wg-quick claims the key
+      # and takes it back only after the interface is gone.
       "vpn-up" = ''
-        if systemctl --user is-active --quiet sing-box.service; then
-          print -u2 "vpn-up: sing-box is using the ${config.dotfiles.vpn.identity} identity; stop it first: systemctl --user stop sing-box"
+        local interface=${config.dotfiles.vpn.identity} marker=$XDG_RUNTIME_DIR/whole-host-vpn
+        if [[ -e /sys/class/net/$interface ]]; then
+          print -u2 "vpn-up: $interface is already up"
           return 1
         fi
-        sudo "$(command -v wg-quick)" up ${wireguardConfig}
+        sudo -v || return
+        print -r -- $interface >| $marker
+        if ! systemctl --user try-restart sing-box.service ||
+          ! sudo "$(command -v wg-quick)" up ${wireguardConfig}; then
+          if [[ ! -e /sys/class/net/$interface ]]; then
+            rm -f -- $marker
+            systemctl --user try-restart sing-box.service
+          fi
+          return 1
+        fi
       '';
 
       "vpn-down" = ''
-        sudo "$(command -v wg-quick)" down ${wireguardConfig}
+        local interface=${config.dotfiles.vpn.identity}
+        if [[ -e /sys/class/net/$interface ]]; then
+          sudo "$(command -v wg-quick)" down ${wireguardConfig} || return
+        fi
+        rm -f -- $XDG_RUNTIME_DIR/whole-host-vpn
+        systemctl --user try-restart sing-box.service
       '';
     };
   };
