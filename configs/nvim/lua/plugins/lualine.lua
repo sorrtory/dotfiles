@@ -108,6 +108,15 @@ return {
     -- reload. Only the middle sections: a and z are the mode and the
     -- position, which are meant to carry a color of their own.
     config = function(_, opts)
+      if not theme.colorscheme then
+        -- The generated scheme uses the accent for both PmenuSel and Special.
+        -- Lualine's auto theme samples those for Normal and Visual, so give
+        -- Visual the palette's secondary accent explicitly.
+        local lualine_theme = vim.deepcopy(require("lualine.themes.auto"))
+        lualine_theme.visual.a.bg = theme.colors.accent2
+        lualine_theme.visual.b.fg = theme.colors.accent2
+        opts.options.theme = lualine_theme
+      end
       require("lualine").setup(opts)
       if theme.transparency then
         local transparent = require("transparent")
