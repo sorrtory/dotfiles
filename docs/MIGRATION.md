@@ -188,8 +188,9 @@ the required re-login after first activation.
 
 Let Home Manager own the Neovim package and expose the native Lua
 configuration through `mkOutOfStoreSymlink`. Nix does not own the plugin set:
-`lazy.nvim` keeps its `lazy-lock.json` pins and mason keeps installing
-language servers and formatters, because translating a working 16-plugin
+`lazy.nvim` keeps its `lazy-lock.json` pins, mason keeps installing
+language servers and formatters, and nvim-treesitter keeps installing parsers,
+because translating a working plugin
 configuration into Nix would trade live editability for reproducibility this
 repository does not need for an editor.
 
@@ -218,10 +219,15 @@ installs flood the message area with hit-enter prompts, which Neovim 0.12's
 experimental `ui2` message UI replaces.
 
 Shipped on the Ubuntu staging VM. A bootstrapped VM installed every plugin, and the fixed
-configuration then installed all 36 grammars and all 25 mason packages there
+configuration then installed all 36 parsers and all 25 mason packages there
 with no prompt, run from a copy of `configs/nvim/` against empty data
 directories. A start from the mirrored repository itself was not seen before
 that VM was reset.
+
+The later move to Neovim 0.12 also moves nvim-treesitter from the frozen
+0.11-era `master` branch to its rewritten `main` branch. Home Manager adds the
+required `tree-sitter` CLI to Neovim's wrapper; the bootstrap phase now checks
+and installs the parser list explicitly, while Neovim itself owns highlighting.
 
 ### 11. tmux
 

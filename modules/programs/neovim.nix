@@ -31,6 +31,11 @@ in
     enable = true;
     defaultEditor = true;
 
+    # nvim-treesitter's Neovim-0.12 branch builds parsers through the CLI.
+    # Keep that program-specific runtime input in the wrapper rather than in
+    # the global development baseline.
+    extraPackages = [ pkgs.tree-sitter ];
+
     # Home Manager writes its own generated init.lua into nvim/ by default,
     # which cannot coexist with owning the whole directory below. Sideloading
     # hands the same generated Lua to the wrapper instead of to a file, so the

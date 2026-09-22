@@ -7,11 +7,11 @@ readonly BOOTSTRAP_DIR
 # shellcheck disable=SC1091
 . "$BOOTSTRAP_DIR/common/phase.sh"
 
-# Neovim's own two package managers, run once here instead of on the operator's
-# first real edit. lazy.nvim clones the plugin tree and mason downloads the
-# language servers and formatters, together around a gigabyte from a couple of
-# dozen upstreams; left alone, all of it lands the first time a file is opened
-# on a new machine, while the editor is being used.
+# Neovim's own package managers, run once here instead of on the operator's
+# first real edit. lazy.nvim clones the plugin tree, mason downloads the
+# language servers and formatters, and nvim-treesitter builds the parsers.
+# Together they fetch around a gigabyte from a couple of dozen upstreams; left
+# alone, all of it lands while the editor is first being used on a new machine.
 #
 # This is a phase rather than a Home Manager activation step on purpose.
 # Activation runs on every switch and must stay fast, offline and unprivileged;
@@ -42,7 +42,7 @@ readonly CHECK_TIMEOUT="${BOOTSTRAP_NVIM_CHECK_TIMEOUT:-120}"
 readonly PLUGIN_TIMEOUT="${BOOTSTRAP_NVIM_PLUGIN_TIMEOUT:-900}"
 readonly TOOL_TIMEOUT="${BOOTSTRAP_NVIM_TOOL_TIMEOUT:-2700}"
 
-# Inspects or drives both managers from outside the editor, in `check` or
+# Inspects or drives all three managers from outside the editor, in `check` or
 # `install` mode. Started with -u NONE and an explicit runtimepath rather than
 # the real configuration: the wanted sets and mason's own options are read from
 # the plugin specs as data, so the run has no colorscheme, no autocommands, no
@@ -55,7 +55,8 @@ nvim_driver() (
   timeout_seconds="$2"
 
   workdir="$(mktemp -d)" || return 2
-  trap 'rm -rf -- "$workdir"' EXIT
+  NVIM_DRIVER_WORKDIR="$workdir"
+  trap 'rm -rf -- "$NVIM_DRIVER_WORKDIR"' EXIT
 
   cat >"$workdir/driver.lua" <<'DRIVER'
 local mode = (arg and arg[1]) or "check"
@@ -68,14 +69,14 @@ local function die(message)
   os.exit(2)
 end
 
--- The wanted sets, read from the editor's specs as plain data. Both files
+-- The wanted sets, read from the editor's specs as plain data. These files
 -- return a table and evaluate nothing at their top level, so dofile yields the
 -- spec without loading a plugin. Any spec carrying ensure_installed
 -- contributes to the union mason is asked for: mason-lspconfig's servers and
 -- mason-tool-installer's formatters and linters alike, named the way each
 -- names them. mason-tool-installer maps lspconfig names to package names
 -- itself, which is why one undifferentiated list is enough.
-local mason_opts, wanted = {}, {}
+local mason_opts, wanted, wanted_parsers = {}, {}, {}
 for _, file in ipairs({ "lsp.lua", "format.lua" }) do
   local ok, spec = pcall(dofile, conf .. "/lua/plugins/" .. file)
   if not ok then
@@ -93,6 +94,21 @@ for _, file in ipairs({ "lsp.lua", "format.lua" }) do
 end
 if #wanted == 0 then
   die("no ensure_installed entries found; the plugin specs have changed shape")
+end
+
+local ok, tree_spec = pcall(dofile, conf .. "/lua/plugins/treesitter.lua")
+if not ok then
+  die("cannot read treesitter.lua as a plugin spec: " .. tree_spec)
+end
+for _, plugin in ipairs(tree_spec) do
+  if plugin[1] == "nvim-treesitter/nvim-treesitter"
+      and type(plugin.opts) == "table"
+      and plugin.opts.ensure_installed then
+    wanted_parsers = plugin.opts.ensure_installed
+  end
+end
+if #wanted_parsers == 0 then
+  die("no Tree-sitter parsers found; the plugin spec has changed shape")
 end
 
 -- lazy.nvim's own bootstrap checks for the file it requires rather than the
@@ -144,6 +160,16 @@ if mason_ready then
   require("mason").setup(mason_opts)
 end
 
+-- main has this module; the frozen legacy branch does not. Treat an old
+-- checkout as not ready so status can request the migration instead of dying
+-- while trying to call the rewritten API on it.
+local treesitter_ready = uv.fs_stat(
+  data .. "/lazy/nvim-treesitter/lua/nvim-treesitter/init.lua"
+) ~= nil
+if treesitter_ready then
+  vim.opt.rtp:prepend(data .. "/lazy/nvim-treesitter")
+end
+
 -- The lspconfig-name to package-name map is derived from the registry cached
 -- under mason/registries, so it answers offline once a machine has installed
 -- anything at all. Before that it is empty and every mapped name resolves to
@@ -155,6 +181,21 @@ local function missing_tools()
   for _, name in ipairs(wanted) do
     local package_name = map[name] or name
     if not registry.has_package(package_name) or not registry.is_installed(package_name) then
+      table.insert(missing, name)
+    end
+  end
+  table.sort(missing)
+  return missing
+end
+
+local function missing_parsers()
+  if not treesitter_ready then
+    return wanted_parsers
+  end
+
+  local missing = {}
+  for _, name in ipairs(wanted_parsers) do
+    if not uv.fs_stat(data .. "/site/parser/" .. name .. ".so") then
       table.insert(missing, name)
     end
   end
@@ -182,9 +223,19 @@ if mode == "install" then
   -- job; updating what is already there is the operator's, through :Mason.
   -- The second argument blocks until every package has closed.
   require("mason-tool-installer").check_install(false, true)
+
+  if not treesitter_ready then
+    die("nvim-treesitter is not installed; plugins must be fetched first")
+  end
+  require("nvim-treesitter").setup({ install_dir = data .. "/site" })
+  local task = require("nvim-treesitter").install(wanted_parsers, { summary = true })
+  if not task:wait() then
+    die("one or more Tree-sitter parsers failed to install")
+  end
 end
 
 local missing = mason_ready and missing_tools() or wanted
+local parsers_missing = missing_parsers()
 -- Written to stdout by hand: under --headless, print() is routed to stderr,
 -- where the phase would never see it.
 for _, name in ipairs(missing_plugins) do
@@ -193,7 +244,12 @@ end
 for _, name in ipairs(missing) do
   io.stdout:write("missing tool " .. name .. "\n")
 end
-io.stdout:write(("summary %d %d\n"):format(vim.tbl_count(locked), #wanted))
+for _, name in ipairs(parsers_missing) do
+  io.stdout:write("missing parser " .. name .. "\n")
+end
+io.stdout:write(("summary %d %d %d\n"):format(
+  vim.tbl_count(locked), #wanted, #wanted_parsers
+))
 DRIVER
 
   NVIM_CONFIG_DIR="$NVIM_CONFIG_ROOT" NVIM_DATA_DIR="$NVIM_DATA_ROOT" \
@@ -240,20 +296,21 @@ check() {
     return 2
   fi
 
-  summary="$(awk '$1 == "summary" { print $2, $3 }' <<<"$report")"
+  summary="$(awk '$1 == "summary" { print $2, $3, $4 }' <<<"$report")"
   if [[ -z "$summary" ]]; then
     phase_error 'the inspection produced no summary'
     return 2
   fi
 
-  local locked wanted
-  read -r locked wanted <<<"$summary"
+  local locked wanted wanted_parsers
+  read -r locked wanted wanted_parsers <<<"$summary"
 
   local result=0
   report_missing plugin "$report" || result=1
   report_missing tool "$report" || result=1
+  report_missing parser "$report" || result=1
   if [[ $result -eq 0 ]]; then
-    phase_info "$locked plugins and $wanted language servers and formatters are installed"
+    phase_info "$locked plugins, $wanted language servers and formatters, and $wanted_parsers Tree-sitter parsers are installed"
   fi
   return "$result"
 }
@@ -267,11 +324,13 @@ install() {
   fi
 
   phase_info 'fetching the plugin tree at the revisions lazy-lock.json pins'
-  # install first because restore has nothing to check out otherwise, and both
-  # take the bang so each finishes before the editor exits. restore rather than
-  # sync: sync updates plugins and rewrites the lock file, which is the
-  # opposite of reproducing a pinned tree on a new machine.
-  timeout "$PLUGIN_TIMEOUT" nvim --headless "+Lazy! install" "+Lazy! restore" +qa
+  # Restore existing checkouts before install gets a chance to rewrite the
+  # lock from their current branches. Missing plugins are then cloned by
+  # install. The bootstrap flag keeps eager plugins unloaded while an old
+  # checkout is being replaced; a fresh Nvim process below loads the result.
+  timeout "$PLUGIN_TIMEOUT" nvim --headless \
+    --cmd 'let g:dotfiles_bootstrap = v:true' \
+    "+Lazy! restore" "+Lazy! install" +qa
 
   # lazy.nvim prunes the lock file to whatever the spec currently declares, so
   # a spec and a lock that disagree leave this phase having edited a
@@ -284,24 +343,28 @@ install() {
     phase_info 'lazy.nvim rewrote lazy-lock.json to match the plugin spec; it is version-controlled, so review the change'
   fi
 
-  phase_info 'installing the language servers and formatters; this is the slow part'
+  phase_info 'installing the language servers, formatters and Tree-sitter parsers; this is the slow part'
   nvim_driver install "$TOOL_TIMEOUT" >/dev/null
 }
 
-# The two managers' trees are the whole of this phase's state. Everything else
+# These three managers' trees are the whole of this phase's state. Everything else
 # under the data directory belongs to the editor's own use of it: shada,
 # telescope history, neo-tree's log.
 is_uninstalled() {
-  if [[ -d "$NVIM_DATA_ROOT/lazy" || -d "$NVIM_DATA_ROOT/mason" ]]; then
+  if [[ -d "$NVIM_DATA_ROOT/lazy" || -d "$NVIM_DATA_ROOT/mason" \
+    || -d "$NVIM_DATA_ROOT/site/parser" || -d "$NVIM_DATA_ROOT/site/queries" \
+    || -d "$NVIM_DATA_ROOT/site/parser-info" ]]; then
     return 1
   fi
-  phase_info 'no plugin or mason tree is present'
+  phase_info 'no plugin, mason or Tree-sitter tree is present'
 }
 
 uninstall() {
-  phase_info "removing the plugin and mason trees under $NVIM_DATA_ROOT"
+  phase_info "removing the plugin, mason and Tree-sitter trees under $NVIM_DATA_ROOT"
   rm -rf -- "$NVIM_DATA_ROOT/lazy" "$NVIM_DATA_ROOT/mason" \
-    "$NVIM_DATA_ROOT/mason-tool-installer-debounce"
+    "$NVIM_DATA_ROOT/mason-tool-installer-debounce" \
+    "$NVIM_DATA_ROOT/site/parser" "$NVIM_DATA_ROOT/site/queries" \
+    "$NVIM_DATA_ROOT/site/parser-info"
 }
 
 phase_main "$@"

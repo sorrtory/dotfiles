@@ -47,7 +47,7 @@ phases run unattended; the table says where one stops to ask you for something:
 | 12  | `fedora-amd-gpu`  | On Fedora with an AMD GPU, installs the Mesa VA-API freeworld driver, AMD firmware/kernel packages and GStreamer codecs. Does nothing elsewhere. | sudo password |
 | 13  | `native-toolchain` | Installs the host Clang, GTK 3 development files and `pkg-config` that native desktop builds link against, then proves them by compiling a GTK program with no Nix in the result. | sudo password |
 | 14  | `nix-gpu`         | Points `/run/opengl-driver` at the Nixpkgs GPU drivers from phase 05 and installs the boot rule that recreates it, so Nix programs such as WezTerm can open a window. Rerun after a `flake.lock` bump moves the drivers. | sudo password |
-| 15  | `nvim-plugins`    | Drives lazy.nvim and mason once, in advance: the plugin tree at the revisions `lazy-lock.json` pins, and the language servers and formatters the editor's own `ensure_installed` lists name. Roughly a gigabyte that would otherwise arrive during your first edit on a new machine. | — |
+| 15  | `nvim-plugins`    | Drives lazy.nvim, mason and nvim-treesitter once, in advance: the pinned plugin tree, language servers, formatters and parsers named by the editor's own specs. Roughly a gigabyte that would otherwise arrive during your first edit on a new machine. | — |
 
 **Then open a new login session.** The new shell, `PATH`, and Docker group
 membership only take effect there, as does any newly added libvirt membership.
