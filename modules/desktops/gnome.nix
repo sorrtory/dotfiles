@@ -505,12 +505,17 @@ in
         name = "rewaita";
       };
     }
-    // lib.optionalAttrs (theme.assets ? wallpaper) {
-      # A theme may bring its own background; one that does not leaves the
-      # picture alone.
+    // {
+      # Each theme's wallpaper, by the name of the theme. GNOME reads the
+      # file when the key changes, so a picture edited in place needs the
+      # switch to leave and come back; a missing one leaves a plain color.
       "org/gnome/desktop/background" = {
-        picture-uri = "file://${theme.assets.wallpaper}";
-        picture-uri-dark = "file://${theme.assets.wallpaper}";
+        picture-uri = "file://${theme.wallpaper}";
+        picture-uri-dark = "file://${theme.wallpaper}";
+        picture-options = "zoom";
+      };
+      "org/gnome/desktop/screensaver" = {
+        picture-uri = "file://${theme.wallpaper}";
       };
     }
     // {
@@ -611,6 +616,17 @@ in
       # gtk.css when a program starts, so windows already open keep the
       # colors they started with.
       restartNote = "already-open windows keep their colors";
+    };
+
+    # The wallpaper is a file in the home directory, not part of this
+    # generation, so the only thing to say about it is when it is not there.
+    dotfiles.theme.apps.wallpaper = {
+      label = "Wallpaper";
+      apply = "live";
+      check = ''
+        [[ -f ${lib.escapeShellArg theme.wallpaper} ]] ||
+          printf '%s is missing, so the desktop shows a plain color\n' ${lib.escapeShellArg theme.wallpaper}
+      '';
     };
 
     # GLib's generic terminal launcher only considers desktop files registered

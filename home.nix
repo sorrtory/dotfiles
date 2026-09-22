@@ -56,10 +56,10 @@
   targets.genericLinux.gpu.enable = true;
 
   # The palette every themed app follows (modules/theme/palettes: gruvbox,
-  # autumn-glass, onedark) and whether they are translucent. Per-app tweaks go
+  # autumn-leaves, onedark) and whether they are translucent. Per-app tweaks go
   # in dotfiles.theme.overrides. The notice at the end of activation says what
   # picked the switch up and what needs a restart.
-  dotfiles.theme.name = "gruvbox";
+  dotfiles.theme.name = "autumn-leaves";
   dotfiles.theme.transparency = true;
 
   # The terminal Ctrl+Alt+T runs or raises: "wezterm" or Fedora's "ptyxis".

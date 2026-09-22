@@ -45,13 +45,15 @@ in
   dotfiles.theme.apps.obsidian = {
     label = "Obsidian";
     apply = "restart";
-    setup = "link ${themeDir} into <vault>/.obsidian/themes/${themeName}, then pick ${themeName} under Settings → Appearance";
+    setup = "ln -sfn ${themeDir} <vault>/.obsidian/themes/${themeName} — then pick ${themeName} under Settings → Appearance";
     check = ''
       for name in ${lib.escapeShellArgs repositories}; do
         vault=$HOME/$name
         [[ -d $vault/.obsidian ]] || continue
         [[ -e $vault/.obsidian/themes/${themeName} || -L $vault/.obsidian/themes/${themeName} ]] && continue
-        printf '%s has no %s link\n' "''${name##*/}" ${lib.escapeShellArg themeName}
+        # The command itself, ready to paste, rather than a description of it.
+        printf 'no %s link yet — ln -sfn %s %s\n' ${lib.escapeShellArg themeName} \
+          ${lib.escapeShellArg themeDir} "$vault/.obsidian/themes/${themeName}"
       done
     '';
   };

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Spotify's side of the theme: the Spicetify color scheme comes from the
-# palette, autumn-glass still renders the hand-made scheme it was taken from,
-# and an override in home.nix reaches the client.
+# palette, and an override in home.nix reaches the client.
 set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -25,22 +24,7 @@ slots=(
   notification-error misc highlight highlight-elevated
 )
 
-# The scheme this replaced, as it stood in modules/programs/spotify.nix.
-read -r -d '' autumn_glass <<'JSON' || true
-{
-  "text": "f6e9da", "subtext": "bda18e",
-  "main": "261814", "main-elevated": "34231e",
-  "sidebar": "1d1210", "player": "1d1210",
-  "card": "3a251f", "shadow": "0f0907",
-  "selected-row": "f6e9da",
-  "button": "e9a15e", "button-active": "c86138", "button-disabled": "957c6e",
-  "tab-active": "c86138",
-  "notification": "3a251f", "notification-error": "e96b58",
-  "misc": "725046", "highlight": "4a3028", "highlight-elevated": "5a392f"
-}
-JSON
-
-for theme in gruvbox autumn-glass onedark; do
+for theme in gruvbox autumn-leaves onedark; do
   got=$(scheme "$theme")
   for slot in "${slots[@]}"; do
     value=$(jq -r --arg s "$slot" '.[$s] // ""' <<<"$got")
@@ -51,16 +35,13 @@ for theme in gruvbox autumn-glass onedark; do
     fail "$theme: the scheme has slots Spicetify does not know: $(jq -c 'keys' <<<"$got")"
 done
 
-# Autumn-glass is the theme this palette was taken from, so it has to render
-# what Spotify showed before there was a palette, to the digit.
-diff <(jq -S . <<<"$autumn_glass") <(scheme autumn-glass | jq -S .) ||
-  fail 'autumn-glass no longer renders the scheme it was taken from'
-
 # Each theme is its own scheme, and the window follows the palette's base.
 [[ $(scheme gruvbox | jq -r '.main') == 282828 ]] ||
   fail "gruvbox's main is not the palette's base"
 [[ $(scheme onedark | jq -r '.main') == 282c34 ]] ||
   fail "onedark's main is not the palette's base"
+[[ $(scheme autumn-leaves | jq -r '.main') == 291b17 ]] ||
+  fail "autumn-leaves' main is not the palette's base"
 
 # An override in home.nix reaches the client, both as a role and through
 # Spicetify's own slot names.

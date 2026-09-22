@@ -1,5 +1,5 @@
 -- A colorscheme drawn from the palette, for a theme that declares no plugin
--- of its own (autumn-glass). The roles come from modules/theme; this file is
+-- of its own (autumn-leaves). The roles come from modules/theme; this file is
 -- the mapping from them to Neovim's highlight groups, and is the place to
 -- adjust how a generated theme looks.
 

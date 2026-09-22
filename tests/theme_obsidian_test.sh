@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Obsidian's side of the theme: a theme generated per palette at one fixed
-# path, named so a vault is linked to it once, still recognisably the
-# hand-made Autumn Glass theme it replaces, and a hint that names a vault
+# path, named so a vault is linked to it once, setting everything the
+# hand-made Autumn Glass theme it replaced did, and a hint that names a vault
 # missing the link.
 set -euo pipefail
 
@@ -22,10 +22,15 @@ files() {
     fail "Obsidian theme for $1"
 }
 
+# nix build prints the paths sorted by store hash, not in the order they were
+# asked for, so each one is picked out by its name.
+stylesheet() { printf '%s\n' "$@" | grep '\.css$'; }
+manifest() { printf '%s\n' "$@" | grep '\.json$'; }
+
 # The manifest names the theme, and the directory a vault links to has to
 # carry that same name for Obsidian to find it.
 mapfile -t built < <(files gruvbox)
-[[ $(jq -r '.name' "${built[1]}") == Dotfiles ]] ||
+[[ $(jq -r '.name' "$(manifest "${built[@]}")") == Dotfiles ]] ||
   fail 'the manifest does not name the theme Dotfiles'
 
 # The hand-made theme is gone; the generated one is what a vault links to.
@@ -34,13 +39,13 @@ mapfile -t built < <(files gruvbox)
 
 # Every variable the hand-made theme set is still set, so no part of the
 # window falls back to Obsidian's own dark colors.
-wanted=$(git -C "$REPO_ROOT" show HEAD:configs/obsidian/autumn-glass/theme.css 2>/dev/null |
+wanted=$(git -C "$REPO_ROOT" show 6f3e418^:configs/obsidian/autumn-glass/theme.css 2>/dev/null |
   grep -oP '^\s*--\K[a-z0-9-]+' | sort -u)
 [[ -n $wanted ]] || fail 'cannot read the hand-made theme from git to compare against'
 
-for theme in gruvbox autumn-glass onedark; do
+for theme in gruvbox autumn-leaves onedark; do
   mapfile -t built < <(files "$theme")
-  css=${built[0]}
+  css=$(stylesheet "${built[@]}")
   grep -q '^\.theme-dark {' "$css" || fail "$theme: the stylesheet does not scope to .theme-dark"
   got=$(grep -oP '^\s*--\K[a-z0-9-]+' "$css" | sort -u)
   missing=$(comm -23 <(printf '%s\n' "$wanted") <(printf '%s\n' "$got"))
@@ -53,45 +58,6 @@ for theme in gruvbox autumn-glass onedark; do
   done < <(grep -oP '^\s*--[a-z0-9-]+:\s*\K[^;]+' "$css")
 done
 
-# Autumn-glass is the theme this was generated from, so it still has to look
-# like it: every value either identical or a near neighbour, apart from the
-# code colors, which now read the roles the way the editors do.
-mapfile -t built < <(files autumn-glass)
-git -C "$REPO_ROOT" show HEAD:configs/obsidian/autumn-glass/theme.css > "$TEST_ROOT/was.css"
-python3 - "$TEST_ROOT/was.css" "${built[0]}" <<'PY' || fail 'autumn-glass no longer resembles the theme it was generated from'
-import re, sys
-
-def load(path):
-    out = {}
-    for line in open(path):
-        m = re.match(r"\s*--([a-z0-9-]+):\s*(.+?);", line)
-        if m:
-            out[m.group(1)] = m.group(2).strip()
-    return out
-
-def channels(value):
-    value = value.strip()
-    if value.startswith("#"):
-        return tuple(int(value[i:i + 2], 16) for i in (1, 3, 5))
-    m = re.match(r"rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)", value)
-    return tuple(float(x) for x in m.groups()) if m else None
-
-# code-string is deliberately the palette's success rather than the sage green
-# the hand-made file used, so that a string is one color across every editor.
-allowed = {"code-string"}
-was, now = load(sys.argv[1]), load(sys.argv[2])
-bad = []
-for key, before in was.items():
-    after = now.get(key, "")
-    if before.lower() == after.lower() or key in allowed:
-        continue
-    a, b = channels(before), channels(after)
-    if a is None or b is None or max(abs(x - y) for x, y in zip(a, b)) > 10:
-        bad.append(f"{key}: {before} -> {after}")
-print("\n".join(bad), file=sys.stderr)
-sys.exit(1 if bad else 0)
-PY
-
 # The hint names a vault that has no link yet, and goes quiet once it has one.
 check=$(nix build --impure --no-link --print-out-paths --expr "
   ((builtins.getFlake \"$REPO_ROOT\").homeConfigurations.z.pkgs.writeShellScript \"check\"
@@ -100,8 +66,8 @@ check=$(nix build --impure --no-link --print-out-paths --expr "
 
 vault="$TEST_ROOT/home/Documents/Knowledge-Database"
 mkdir -p "$vault/.obsidian"
-HOME="$TEST_ROOT/home" "$check" | grep -q 'Knowledge-Database has no Dotfiles link' ||
-  fail 'the hint does not name a vault that is missing the link'
+HOME="$TEST_ROOT/home" "$check" | grep -q "ln -sfn .*/dotfiles/theme/obsidian $vault/.obsidian/themes/Dotfiles" ||
+  fail 'the hint does not give the link command for a vault that is missing it'
 
 mkdir -p "$vault/.obsidian/themes"
 ln -s "$TEST_ROOT" "$vault/.obsidian/themes/Dotfiles"

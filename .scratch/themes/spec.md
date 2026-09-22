@@ -22,9 +22,11 @@ in step.
   generator, see Out of scope). Adding a theme is adding a palette file.
   The first three:
   - **gruvbox** — the main theme, from Rewaita's Gruvbox Medium.
-  - **autumn-glass** — the espresso/copper Autumn Glass family, with text
-    brighter than stock and Gruvbox's bright ANSI set as the normal colors
-    (the tweaks WezTerm carries today move here). Applied to every app.
+  - **autumn-leaves** — Gruvbox's structure in the colors of the wallpaper
+    it is named after: red-brown surfaces, warm parchment text, copper and
+    maple accents, more contrast than Gruvbox and less than a cream on
+    near-black. Replaced autumn-glass on 2026-09-22; it no longer reproduces
+    the hand-made Autumn Glass files. Applied to every app.
   - **onedark** — One Dark Pro, based on Rewaita's One Dark palette.
 - Two independent switches in `home.nix`: the theme, and **transparency**
   (on/off). Every theme works both ways.
@@ -51,7 +53,8 @@ in step.
   accent, icon theme, wallpaper, Telegram chat background.
 - A theme missing a required role (base roles or ANSI) is an **evaluation
   error**. Anything else missing falls back: no app override → global roles,
-  no native editor theme → generated, no wallpaper → unchanged.
+  no native editor theme → generated, no wallpaper → plain color (the
+  wallpaper is ~/Pictures/wallpapers/<theme>.jpg, outside the repository).
 
 ### Consumers
 
@@ -63,7 +66,7 @@ in step.
   onedark.nvim, the Gruvbox and One Dark Pro VS Code extensions) and receive
   overrides through the native override API (the Neovim plugins' overrides,
   VS Code's `workbench.colorCustomizations`). A theme without a native one,
-  like autumn-glass, gets a generated theme.
+  like autumn-leaves, gets a generated theme.
 - **Stable names**: where an app's own config names a theme, it names a fixed
   "Dotfiles" theme, and Nix decides what is behind it. The repo configs do not
   change when the theme does.
@@ -123,6 +126,7 @@ Activation never restarts or signals a program.
   with transparency on and off.
 - On the Ubuntu GNOME VM, switching between all three themes recolors every
   consumer as the table says, and the hint lists exactly what changed.
-- Rendering autumn-glass reproduces today's Telegram, Obsidian and Spotify
-  look, and gruvbox reproduces today's GNOME look.
+- Gruvbox reproduces today's GNOME look. (Autumn-glass reproducing the
+  hand-made Telegram, Obsidian and Spotify look was dropped with its
+  replacement by autumn-leaves on 2026-09-22.)
 - Transparency, blur and GPU-dependent looks are confirmed on the host.

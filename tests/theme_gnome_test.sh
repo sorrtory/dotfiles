@@ -73,7 +73,7 @@ cp "$package/home-files/.local/share/rewaita/dark/Dotfiles gruvbox.css" "$genera
 
 # Every theme has a palette, named so that Rewaita's CLI finds it: it strips
 # the extension, replaces spaces with dashes and lowercases.
-for theme in gruvbox autumn-glass onedark; do
+for theme in gruvbox autumn-leaves onedark; do
   [[ -f "$(build "{ name = \"$theme\"; }")/home-files/.local/share/rewaita/dark/Dotfiles $theme.css" ]] ||
     fail "no generated palette for $theme"
 done
@@ -136,7 +136,7 @@ tr -d '\\\n' <"$package/activate" | grep -qE 'timeout 60 +\S+/bin/rewaita' ||
 rm -f "$TEST_ROOT/home/.local/state/dotfiles/theme"
 notice=$(
   unset XDG_CURRENT_DESKTOP WAYLAND_DISPLAY DISPLAY DBUS_SESSION_BUS_ADDRESS
-  run_steps "$(build '{ name = "autumn-glass"; }')" \
+  run_steps "$(build '{ name = "autumn-leaves"; }')" \
     dotfilesThemeInit seedRewaitaPreferences applyRewaitaTheme dotfilesThemeHint
 )
 grep -q 'Log out and back in: GNOME Shell, GTK and Firefox' <<<"$notice" ||

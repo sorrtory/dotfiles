@@ -63,6 +63,19 @@ let
   # allowance to run under the VPN command. The entry is DBusActivatable, so
   # GNOME starts it through the D-Bus service file and never reads its Exec;
   # that file is replaced too.
+  # A .tdesktop-theme is a zip of the palette and a chat background. The
+  # background is the theme's wallpaper, the same picture GNOME shows, which
+  # lives in the home directory rather than this generation — so the zip is
+  # packed during activation rather than built here. A theme whose wallpaper
+  # is missing gets one solid color. Either way the file is named
+  # background.*, never tiled.*, which Telegram would repeat as a pattern.
+  telegramThemePath = "${theme.dataDir}/telegram/Dotfiles.tdesktop-theme";
+  telegramColors = pkgs.writeText "colors.tdesktop-theme"
+    (import ../../theme/telegram-theme.nix { inherit lib; } (theme.forApp "telegram"));
+  telegramPlainBackground = pkgs.runCommand "telegram-background.png"
+    { nativeBuildInputs = [ pkgs.imagemagick ]; }
+    "magick -size 1920x1080 xc:${lib.escapeShellArg (theme.forApp "telegram").base} $out";
+
   ayugram = pkgs.symlinkJoin {
     name = "ayugram-vpn-${pkgs.ayugram-desktop.version}";
     paths = [ pkgs.ayugram-desktop ];
@@ -188,6 +201,43 @@ in
 
     (lib.mkIf (proxy.enable && cfg.ayugram.enable) {
       home.packages = [ ayugram ];
+
+      # AyuGram keeps the applied theme in its encrypted tdata, which nothing
+      # here writes, but a theme chosen from a file is read again from that
+      # path at every start. So the theme is generated to one fixed path,
+      # chosen from there once, and each switch shows at the next start.
+      home.activation.dotfilesThemeTelegram = lib.hm.dag.entryAfter [ "dotfilesThemeInit" ] ''
+        work=$(mktemp -d)
+        trap 'rm -rf -- "$work"' EXIT
+        cp ${telegramColors} "$work/colors.tdesktop-theme"
+        # Telegram refuses a theme over 5 MB, and a wallpaper is often larger
+        # than that on its own, so it is re-encoded to something a chat
+        # background needs rather than packed as it is.
+        if [[ -f ${lib.escapeShellArg theme.wallpaper} ]] &&
+          ${lib.getExe pkgs.imagemagick} ${lib.escapeShellArg theme.wallpaper} \
+            -resize '2560x2560>' -quality 82 "$work/background.jpg"
+        then
+          :
+        else
+          rm -f "$work/background.jpg"
+          cp ${telegramPlainBackground} "$work/background.png"
+        fi
+        # zip stores a timestamp; a fixed one keeps the theme byte-identical
+        # between activations, so AyuGram is only handed a changed file when
+        # the theme actually changed.
+        touch -d 1980-01-02T00:00:00Z "$work"/*
+        (cd "$work" && ${lib.getExe pkgs.zip} -qX packed.zip colors.tdesktop-theme background.*)
+        if ! cmp -s "$work/packed.zip" ${lib.escapeShellArg telegramThemePath}; then
+          run mkdir -p ${lib.escapeShellArg (builtins.dirOf telegramThemePath)}
+          run cp --no-preserve=mode "$work/packed.zip" ${lib.escapeShellArg telegramThemePath}
+        fi
+      '';
+
+      dotfiles.theme.apps.telegram = {
+        label = "Telegram";
+        apply = "restart";
+        setup = "choose ${telegramThemePath} under Settings → Chat Settings → Choose from file, then Apply";
+      };
     })
   ];
 }

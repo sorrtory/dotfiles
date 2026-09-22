@@ -87,7 +87,7 @@ in
     name = mkOption {
       type = types.str;
       default = "gruvbox";
-      example = "autumn-glass";
+      example = "autumn-leaves";
       description = "The palette every themed app follows: a name from `dotfiles.theme.palettes`.";
     };
 
@@ -118,7 +118,7 @@ in
       type = types.attrsOf types.attrs;
       default = {
         gruvbox = import ./palettes/gruvbox.nix;
-        autumn-glass = import ./palettes/autumn-glass.nix;
+        autumn-leaves = import ./palettes/autumn-leaves.nix;
         onedark = import ./palettes/onedark.nix;
       };
       description = ''
@@ -150,8 +150,8 @@ in
       default = name: (paletteOf name).assets or { };
       description = ''
         A theme's non-color assets, every one optional: `gnomeAccent`,
-        `iconTheme`, `wallpaper`, `telegramBackground`. An app falls back when
-        the theme declares none.
+        `iconTheme` and `wallpaper`, which overrides the wallpaper directory's
+        `<theme>.jpg`. An app falls back when the theme declares none.
       '';
     };
 
@@ -160,6 +160,32 @@ in
       readOnly = true;
       default = (paletteOf cfg.name).assets or { };
       description = "The current theme's non-color assets.";
+    };
+
+    wallpaperDir = mkOption {
+      type = types.str;
+      default = "${config.home.homeDirectory}/Pictures/wallpapers";
+      description = ''
+        Where a theme's wallpaper is looked for, by the name of the theme:
+        `<wallpaperDir>/<theme>.jpg`. The pictures live in the home directory
+        rather than the repository, so they can be swapped without a rebuild
+        and stay out of git; a theme that names a `wallpaper` asset overrides
+        the convention. Activation says so when the file is missing.
+      '';
+    };
+
+    wallpaperFor = mkOption {
+      type = types.functionTo types.str;
+      readOnly = true;
+      default = name: (paletteOf name).assets.wallpaper or "${cfg.wallpaperDir}/${name}.jpg";
+      description = "Where the given theme's wallpaper is.";
+    };
+
+    wallpaper = mkOption {
+      type = types.str;
+      readOnly = true;
+      default = cfg.wallpaperFor cfg.name;
+      description = "Where the current theme's wallpaper is.";
     };
 
     dataDir = mkOption {

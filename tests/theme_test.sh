@@ -28,7 +28,7 @@ theme_for() {
 
 # Every theme builds, both ways.
 installables=()
-for theme in gruvbox autumn-glass onedark; do
+for theme in gruvbox autumn-leaves onedark; do
   for transparency in true false; do
     installables+=("$(home "$(themed "{ name = \"$theme\"; transparency = $transparency; }")").activationPackage")
   done
@@ -44,7 +44,7 @@ grep -q 'palette "broken" is missing required role "accent"' "$TEST_ROOT/eval.er
 
 # Operator overrides: a remap follows the theme, a hex pins one value, and
 # the theme's own values are kept elsewhere.
-for theme in gruvbox autumn-glass onedark; do
+for theme in gruvbox autumn-leaves onedark; do
   colors=$(theme_for "{ name = \"$theme\"; overrides.wezterm = r: { base = r.mantle; }; }")
   jq -e '.base == .mantle' <<<"$colors" >/dev/null || fail "$theme: remap did not follow the theme"
 done
@@ -88,12 +88,13 @@ jq -e '
   .scheme.tab_bar.new_tab_hover.fg_color == "#fe8019"
 ' <<<"$out" >/dev/null || fail "gruvbox WezTerm: $out"
 
-# Autumn Glass carries the terminal's former contrast tweaks.
-out=$(wezterm_scheme "$(theme_for '{ name = "autumn-glass"; transparency = false; }')")
+# Autumn Leaves carries the wallpaper's browns and coppers, with no dim
+# neutrals in the terminal's normal slots.
+out=$(wezterm_scheme "$(theme_for '{ name = "autumn-leaves"; transparency = false; }')")
 jq -e '
-  .opacity == 1 and .scheme.background == "#261814" and .scheme.foreground == "#fbf1c7" and
-  .scheme.ansi == ["#282828","#fb4934","#b8bb26","#fabd2f","#83a598","#d3869b","#8ec07c","#ebdbb2"]
-' <<<"$out" >/dev/null || fail "autumn-glass WezTerm: $out"
+  .opacity == 1 and .scheme.background == "#291b17" and .scheme.foreground == "#f2e0c8" and
+  .scheme.ansi == ["#3b2a24","#e8604c","#a9b665","#e9a15e","#8fa9b8","#d3869b","#89b482","#e6d3b8"]
+' <<<"$out" >/dev/null || fail "autumn-leaves WezTerm: $out"
 
 # No theme file: the bundled scheme, not an error.
 rm -f "$TEST_ROOT/data/dotfiles/theme/wezterm.lua"
@@ -112,18 +113,18 @@ activate() {
     "$package/activate")
   (export HOME="$TEST_ROOT/home"; run() { "$@"; }; eval "$script")
 }
-out=$(activate '{ name = "autumn-glass"; }')
-grep -qx 'Theme is now autumn-glass, transparency on.' <<<"$out" || fail "no notice on first switch: $out"
+out=$(activate '{ name = "autumn-leaves"; }')
+grep -qx 'Theme is now autumn-leaves, transparency on.' <<<"$out" || fail "no notice on first switch: $out"
 grep -q 'Updated live: .*WezTerm' <<<"$out" || fail "WezTerm not listed as live: $out"
-grep -q '"#261814"' "$TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua" || fail 'theme file not written'
+grep -q '"#291b17"' "$TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua" || fail 'theme file not written'
 [[ ! -L $TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua ]] || fail 'theme file is a symlink'
 inode=$(stat -c %i "$TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua")
 
-out=$(activate '{ name = "autumn-glass"; }')
+out=$(activate '{ name = "autumn-leaves"; }')
 [[ -z $out ]] || fail "notice printed for an unchanged theme: $out"
 
-out=$(activate '{ name = "autumn-glass"; transparency = false; }')
-grep -qx 'Theme is now autumn-glass, transparency off.' <<<"$out" || fail "no notice for transparency: $out"
+out=$(activate '{ name = "autumn-leaves"; transparency = false; }')
+grep -qx 'Theme is now autumn-leaves, transparency off.' <<<"$out" || fail "no notice for transparency: $out"
 [[ $(stat -c %i "$TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua") == "$inode" ]] ||
   fail 'theme file replaced rather than rewritten in place'
 grep -q '"window"\] = 1' "$TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua" || fail 'opacity not rewritten'

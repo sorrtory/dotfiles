@@ -45,7 +45,7 @@ report() {
       }, " "))' -c qa 2>/dev/null
 }
 
-for theme in gruvbox autumn-glass onedark; do
+for theme in gruvbox autumn-leaves onedark; do
   for transparency in true false; do
     install -m 644 "$(theme_file "{ name = \"$theme\"; transparency = $transparency; }")" \
       "$TEST_ROOT/data/dotfiles/theme/nvim.lua"
@@ -90,12 +90,12 @@ surfaces() {
       io.write(table.concat(out, " "))' -c qa 2>/dev/null
 }
 
-install -m 644 "$(theme_file '{ name = "autumn-glass"; transparency = true; }')" \
+install -m 644 "$(theme_file '{ name = "autumn-leaves"; transparency = true; }')" \
   "$TEST_ROOT/data/dotfiles/theme/nvim.lua"
 for pair in $(surfaces); do
   [[ $pair == *=none ]] || fail "transparent, but $pair"
 done
-install -m 644 "$(theme_file '{ name = "autumn-glass"; transparency = false; }')" \
+install -m 644 "$(theme_file '{ name = "autumn-leaves"; transparency = false; }')" \
   "$TEST_ROOT/data/dotfiles/theme/nvim.lua"
 opaque_surfaces=$(surfaces)
 [[ $opaque_surfaces != *=none* ]] || fail "opaque, but a surface has no background: $opaque_surfaces"
@@ -103,7 +103,7 @@ opaque_surfaces=$(surfaces)
 # An override in home.nix reaches the highlight it names, whichever theme is
 # active: the plugins take it through their own override option, and the
 # generated colorscheme through the same table.
-for theme in gruvbox autumn-glass onedark; do
+for theme in gruvbox autumn-leaves onedark; do
   install -m 644 "$(theme_file "{
     name = \"$theme\";
     transparency = false;

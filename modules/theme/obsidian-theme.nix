@@ -7,7 +7,7 @@
 # window can be see-through on Linux, but Chromium redraws it with glitches on
 # GNOME Wayland while the window moves, and a wallpaper behind the panels was
 # too busy for writing. That was decided for the hand-made Autumn Glass theme
-# this generates and has not changed.
+# this replaced and has not changed.
 #
 # Obsidian's chrome sits a shade *above* the editor rather than below it — the
 # ribbon, tab bar and status bar are lighter than the note — which is the one

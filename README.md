@@ -149,8 +149,8 @@ and deep-link handler (`discord://`, `tg://`) always start it through the
 VPN, and a copy already running outside the VPN is refused rather than
 silently reused. Vesktop's preferences live in `configs/vesktop/settings.json`,
 which Vesktop edits in place, and its colors come from the palette like every
-other themed app ([Themes](#themes)); AyuGram keeps its own settings. Vesktop's
-Electron needs phase 10 on Ubuntu; see
+other themed app ([Themes](#themes)). AyuGram keeps its own settings but takes
+its colors from the palette too. Vesktop's Electron needs phase 10 on Ubuntu; see
 [docs/VESKTOP-APPARMOR.md](docs/VESKTOP-APPARMOR.md). AyuGram is a native Qt
 binary and needs no such allowance.
 
@@ -245,7 +245,7 @@ match. Additional vaults also named `Notes` are indistinguishable by title.
 ### Themes
 
 Two settings in `home.nix` choose the look of every themed app:
-`dotfiles.theme.name` — `gruvbox`, `autumn-glass` or `onedark`, one palette
+`dotfiles.theme.name` — `gruvbox`, `autumn-leaves` or `onedark`, one palette
 file each under `modules/theme/palettes/` — and `dotfiles.theme.transparency`.
 A switch is a Nix change, not a runtime command: edit either and re-activate.
 
@@ -263,14 +263,26 @@ Bare `home-manager switch` looks for a channel configuration under
 | WezTerm, Sublime Text, Vesktop | live: they watch their file |
 | GNOME Shell, GTK, Firefox | live, through Rewaita; a GTK program reads its colors at startup, so open windows keep theirs |
 | Wallpaper, accent, icons | live, through dconf |
-| Neovim, Spotify, Obsidian | next start |
+| Neovim, Spotify, Obsidian, Telegram | next start |
 | VS Code | next Reload Window |
 
 Activation ends with a notice saying exactly that, printed only when the theme
 or transparency actually changed. Outside a GNOME session — over SSH, say —
 nothing can recolor the running desktop, so GNOME moves to a "log out and back
-in" line and the login autostart applies it at the next login. AyuGram is the
-one app still carrying its own theme rather than the palette.
+in" line and the login autostart applies it at the next login.
+
+**Each theme's wallpaper is `~/Pictures/wallpapers/<theme>.jpg`** — nothing
+in git, so a picture can be swapped or edited without a rebuild, and it is the
+chat background in Telegram too. Activation says so under "Needs attention"
+when a theme has none; the desktop then shows a plain color. A palette can
+name a `wallpaper` asset to override the convention.
+
+**Telegram needs one manual step.** AyuGram keeps the applied theme in its
+encrypted `tdata`, which Home Manager does not write, but it reads a theme
+chosen from a file again from that path at every start. So choose
+`~/.local/share/dotfiles/theme/telegram/Dotfiles.tdesktop-theme` once, under
+Settings → Chat Settings → Choose from file, and press Apply; every later
+switch shows at AyuGram's next start.
 
 **Obsidian needs one manual step per vault.** A vault is machine-local and may
 be anywhere, so Home Manager cannot put a theme inside it; instead it keeps
@@ -311,10 +323,11 @@ divergences are written down in the palette file that makes them.
   from Gruvbox's own 16.
 - **onedark** — surfaces and text from Rewaita's One Dark, with One Dark
   Pro's editor background and its terminal colors.
-- **autumn-glass** — ours, from the Autumn Glass theme in `configs/ayugram/`:
-  espresso surfaces, parchment text, copper and maple accents. Its terminal
-  colors deliberately keep Gruvbox's brighter set, which reads better on a
-  dark background than Gruvbox's dim neutrals.
+- **autumn-leaves** — ours: Gruvbox a step darker and with more contrast.
+  Surfaces go below Gruvbox's hard background, text is its brightest cream,
+  and the accents are its bright orange and yellow. Its terminal colors use
+  Gruvbox's bright set in the normal slots too, which reads better on a
+  background this dark than Gruvbox's dim neutrals.
 
 There is no external theme framework behind this, on purpose. Collections
 like Gogh give a terminal's 16 colors and nothing for GTK, Telegram, Obsidian
@@ -335,7 +348,7 @@ gruvbox's own overrides for this app.
 
 A theme names the plugin that carries it — gruvbox.nvim for gruvbox,
 onedark.nvim for onedark — and gets the palette through that plugin's own
-override option. A theme that names none, as autumn-glass does, is drawn from
+override option. A theme that names none, as autumn-leaves does, is drawn from
 the palette by `configs/nvim/colors/dotfiles.lua`, which is where to adjust
 how a generated colorscheme looks. Both plugins stay installed either way, so
 switching is a restart rather than an install.
@@ -360,7 +373,7 @@ is a small local extension Home Manager builds and links in: for a theme that
 names a native extension it is that extension's own theme, renamed — Gruvbox
 Dark Hard for gruvbox, One Dark Pro for onedark, both taken from the
 extension's `contributes.themes` rather than a file name guessed here — and
-for a theme that names none, as autumn-glass does, it is drawn from the
+for a theme that names none, as autumn-leaves does, it is drawn from the
 palette by `modules/theme/vscode-theme.nix`. Both upstream extensions stay
 installed, so they can also be selected directly, and extensions installed by
 hand are untouched.
@@ -385,9 +398,8 @@ dotfiles.theme.overrides.vscode.colorCustomizations = {
 Spicetify takes eighteen named slots and writes them into the client's CSS.
 Fourteen are a role; the other four — a card, its shadow, the neutral "misc"
 line and the hover fill above a selection — are a step between two roles, so
-`modules/theme/spotify-scheme.nix` mixes them. Autumn-glass, the theme this
-palette family came from, pins those four to the shades its hand-made scheme
-chose by eye. Spicetify bakes the result into the client at activation, so a
+`modules/theme/spotify-scheme.nix` mixes them. A theme can pin any slot
+through its `spotify.scheme` override. Spicetify bakes the result into the client at activation, so a
 switch shows at the next Spotify launch.
 
 #### Obsidian
@@ -400,7 +412,7 @@ theme once at launch, so a switch shows at its next start.
 
 Its chrome sits a shade *above* the note rather than below it: ribbon, tabs
 and status bar are lighter than the page, which is the one app here that reads
-the roles that way, and is how the hand-made Autumn Glass theme it replaces
+the roles that way, and is how the hand-made Autumn Glass theme it replaced
 was drawn.
 
 Solid colors only: Obsidian's own translucent-window setting stays off,
@@ -410,6 +422,21 @@ rather than through the theme — the compositor fades and blurs it from
 outside, so Obsidian keeps drawing an ordinary opaque window and the blur
 settles the wallpaper that was too busy to write over. Text fades with it, as
 it does for every window on that list.
+
+#### Telegram
+
+A Telegram theme sets hundreds of colors, and most have no fallback: one left
+out stays the stock light theme's. So `modules/theme/telegram-keys.nix` names
+every key in terms of the palette. It was derived once from the hand-made
+Autumn Glass theme in `configs/ayugram/`, each color fitted to the nearest mix
+of two of its roles with the author's alpha kept, so that painting carries
+over to every palette; the eight per-user colors come from the palette's ANSI
+colors instead. With transparency off the surfaces go solid and only the faint
+alphas — ripples, shadows — stay. The chat background is the theme's
+wallpaper, the same picture the desktop shows, so the theme is packed during
+activation rather than built by Nix: the picture is a file in the home
+directory, not part of the generation. A theme whose wallpaper is missing
+gets one solid color. Either way it is a still background, never a tile.
 
 #### Vesktop
 

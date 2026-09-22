@@ -1,7 +1,7 @@
 # 07 — Telegram (AyuGram)
 
 Type: task
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 ## What to build
@@ -21,10 +21,11 @@ start.
 
 ## Acceptance
 
-- [ ] Autumn-glass renders a theme equivalent to today's Autumn Glass file.
+- [x] Autumn-glass renders a theme equivalent to today's Autumn Glass file
+      (now: its colors, handed to the table, repaint that file).
 - [ ] After the one-time load, switching theme and restarting AyuGram shows the
       new theme on the host.
-- [ ] Each theme's file stays under Telegram's 5 MB theme limit.
+- [x] Each theme's file stays under Telegram's 5 MB theme limit.
 
 ## Comments
 
@@ -63,3 +64,34 @@ restarting AyuGram shows the new theme **on the host**" needs a real Telegram
 login and the VPN namespace, so the last check is the operator's either way.
 The 5 MB limit is not a risk — today's packed theme is 806 KB, almost all of
 it `background.png`.
+
+## Answer
+
+Resolved 2026-09-22, and neither route in the survey: its premise was wrong.
+In AyuGram 7.0.9's palette (lib_ui `ec0c178`, `ui/colors.palette`) only 263 of
+586 keys fall back to another; the other 323 are literal light-theme colors,
+so a forty-root theme would leave most of the window white.
+
+What made the full listing cheap instead: every one of the hand-made file's
+438 literals is a mix of two of Autumn Glass's roles (or white or black) to
+within a few units — median 4/255, 88% within 8. So
+`modules/theme/telegram-keys.nix` was generated once from that file: each key
+is `color`, `mix` or `ref` over role names, with the author's alpha. The eight
+per-user colors (`historyPeer1..8`) take the palette's ANSI colors instead,
+and thirteen keys the hand-made file never set (bot keyboard, search
+highlight, rank badges) were mapped by hand. `modules/theme/telegram-theme.nix`
+renders it, resolving references so line order cannot matter; with
+transparency off, alphas of 0x80 and up go solid.
+
+AyuGram's module packs it during activation with the theme's wallpaper from
+`~/Pictures/wallpapers/<theme>.jpg` — the picture GNOME shows, outside the
+repository, re-encoded because a wallpaper alone can exceed Telegram's 5 MB
+limit — or one solid color when there is none, to
+`~/.local/share/dotfiles/theme/telegram/Dotfiles.tdesktop-theme`. Always a
+still `background.*`, never `tiled.*`, which Telegram repeats as a pattern. Telegram registers as restart-to-apply with the Choose from
+file step. `tests/theme_telegram_test.sh` covers the rest, including that the
+old palette still repaints the old file.
+
+Left for the operator: the host check (choose the file once, switch, restart
+AyuGram), which needs the real login. `configs/ayugram/` is now unused and is
+ticket 09's to remove.

@@ -45,7 +45,7 @@ steps=(100 130 160 200 230 260 300 330 345 360 400 430 460 500 530 560 600
        630 645 660 700 730 760 800 830 860 900)
 families=(primary brand blue red yellow green)
 
-for theme in gruvbox autumn-glass onedark; do
+for theme in gruvbox autumn-leaves onedark; do
   css=$(stylesheet "$theme")
 
   # Vencord names a theme from the first /** block; without it the file is

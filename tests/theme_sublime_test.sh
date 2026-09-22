@@ -26,7 +26,7 @@ grep -qF '"color_scheme": "Dotfiles.sublime-color-scheme"' \
 [[ ! -e "$REPO_ROOT/configs/sublime-text/Gruvbox Rewaita.sublime-color-scheme" ]] ||
   fail 'the hand-made scheme is still in the repository'
 
-for theme in gruvbox autumn-glass onedark; do
+for theme in gruvbox autumn-leaves onedark; do
   file=$(scheme "{ name = \"$theme\"; }")
   jq -e . "$file" >/dev/null || fail "$theme: the scheme is not valid JSON"
   jq -e '.name == "Dotfiles"' "$file" >/dev/null || fail "$theme: the scheme is not named Dotfiles"
@@ -47,7 +47,7 @@ done
 
 # The palette reaches it: each theme paints its own background, and an
 # override in home.nix wins.
-declare -A backgrounds=([gruvbox]='#32302f' [autumn-glass]='#261814' [onedark]='#282c34')
+declare -A backgrounds=([gruvbox]='#32302f' [autumn-leaves]='#291b17' [onedark]='#282c34')
 for theme in "${!backgrounds[@]}"; do
   got=$(jq -r '.globals.background' "$(scheme "{ name = \"$theme\"; }")")
   [[ $got == "${backgrounds[$theme]}" ]] || fail "$theme background is $got"
