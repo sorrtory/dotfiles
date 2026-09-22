@@ -50,5 +50,12 @@ rewaita.overrideAttrs (old: rec {
     substituteInPlace src/utils.py \
       --replace-fail '0.82)' '0.90)' \
       --replace-fail 'opacity: 0.95' 'opacity: 0.90'
+
+    # Keep the bottom Overview dash in the palette's opaque background color.
+    # Rewaita saves that color as overview-bg-color before making card surfaces
+    # translucent; the dash need not inherit the card's transparency.
+    substituteInPlace src/themes/gnome-shell-template.css \
+      --replace-fail $'color: @window-fg-color;\n  background-color: @card-bg-color;\n  border: 2px solid @border-color;' \
+        $'color: @window-fg-color;\n  background-color: @overview-bg-color;\n  border: 2px solid @border-color;'
   '';
 })

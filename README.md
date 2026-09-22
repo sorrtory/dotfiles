@@ -490,7 +490,8 @@ resizable as a side effect". Blur my Shell fades the window instead.
 Rewaita applies a palette to GTK, GNOME Shell and Firefox, and that palette is
 generated from the theme: one file per theme in `~/.local/share/rewaita/dark/`,
 named `Dotfiles <theme>`. GTK surfaces use 90% opacity while transparency is
-on, with accent borders disabled. The theme also declares GNOME's accent,
+on, with accent borders disabled. The bottom app row in GNOME's Overview uses
+the palette's solid background color. The theme also declares GNOME's accent,
 which is how Rewaita picks the color the desktop highlights with, and the icon
 theme that carries it into Files and application launchers.
 The first activation adds the User Themes extension, so log out and back in
