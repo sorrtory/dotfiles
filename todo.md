@@ -15,11 +15,13 @@ ssh-add ~/.config/sops-nix/secrets/id_ed25519_github to boostrap
 - we want to add an screenshot of our dotfiles
 - get rid of unnessesary css google newuroslop
 - ayugram desktop entry bug
-- enhance vesktop theme
+
 - theme desktop background image matching liek gruvbox-background.png etc
-- code doesnt update to gruvbox theme
-- blur my shell broke again
-- spotify theme is not orange
+- code doesnt update going back to gruvbox theme
+
+- spotify theme is not orange + make themes better
+- enhance vesktop theme
+
 - nomacs lags on high resoltion screen
 - vscode far more transparent on the second monitor. and after i move it there and return back to device monitor
 - create a proper userContent.css. adapt other solutions:
