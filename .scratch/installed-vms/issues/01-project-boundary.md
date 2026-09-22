@@ -1,6 +1,7 @@
 # 01 — Choose the VM project boundary and host storage contract
 
 Status: needs-triage
+Blocked by: 00
 
 ## Goal
 
@@ -22,9 +23,9 @@ provisioners.
 
 ## Acceptance
 
-- The contract distinguishes repository inputs, golden bases, overlays and
-  mutable guest state.
+- The contract distinguishes repository inputs, downloaded bases, overlays
+  and mutable guest state.
 - A clean host can identify what each command may read, create, modify and
   never remove.
-- Ubuntu, Puppy and Windows can all fit the same lifecycle without forcing
-  the guest-specific setup into one script.
+- The Ubuntu workflow is narrow without preventing a later guest profile from
+  using the same safe lifecycle.

@@ -10,8 +10,8 @@ virtualization and installation-media documentation.
 
 ## Work
 
-- Document prerequisites, first-time golden-image steps, daily commands,
-  storage locations, backup expectations and reset semantics.
+- Document prerequisites, image fetching, daily commands, storage locations,
+  backup expectations and reset semantics.
 - Clarify that ISO media is an input for image creation, not the installed VM
   itself.
 - Update the README and canonical decision/migration docs only with decisions

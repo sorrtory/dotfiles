@@ -12,13 +12,11 @@ Expose one dedicated host directory to the installed guests using VirtIO-FS.
 - Keep `virtiofsd` and SELinux labeling as host responsibilities.
 - Generate the libvirt memory backing and filesystem device required by
   VirtIO-FS.
-- Document Linux guest mounting and Windows VirtIO-FS/WinFsp drive setup.
+- Document mounting in the Ubuntu guest.
 - Make the share path explicit and never point it at the repository root,
   home directory, secrets, or VM disk directory.
 
 ## Acceptance
 
-- Ubuntu and Puppy can mount the share at their documented path.
-- Windows can expose the share at its documented drive letter when its guest
-  tooling is installed.
+- Ubuntu can mount the share at its documented path.
 - A missing or inaccessible share fails clearly without weakening SELinux.

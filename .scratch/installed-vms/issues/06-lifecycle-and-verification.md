@@ -21,5 +21,5 @@ management.
 
 - Repeating create is a no-op or reports the existing correct state.
 - Reset requires an explicit target and cannot remove bases or unrelated VMs.
-- All three guest targets can be represented by the lifecycle interface, with
-  unsupported guest operations reported rather than guessed.
+- The Ubuntu guest is fully represented by the lifecycle interface, with
+  unsupported operations reported rather than guessed.

@@ -11,8 +11,9 @@ machine.
 ## Work
 
 - Pin an official x86_64 cloud image URL and SHA-256 digest.
-- Download and verify it outside Nix, preserve it as a read-only base, and
-  create a qcow2 overlay for the named VM.
+- Implement `vm fetch` to download and verify it outside Nix and preserve it
+  as a read-only base. Make `vm create` invoke the same operation automatically
+  when that base is absent, then create a qcow2 overlay for the named VM.
 - Generate cloud-init with the staging user, qemu-guest-agent, networking and
   the shared-folder mount.
 - Import the guest into system libvirt with generated machine-specific values.
