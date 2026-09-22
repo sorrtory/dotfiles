@@ -54,16 +54,72 @@ let
     alpha = if cfg.transparency then alphaOn else alphaOff;
   };
 
+  # Keys an app takes besides the roles, the ANSI colors and `alpha`: its own
+  # escape hatch, where an override carries that app's native key names
+  # instead of a role. The table is here rather than in `dotfiles.theme.apps`
+  # because a module registers itself there in the same evaluation that calls
+  # `forApp`, and reading one from the other would tie the two together.
+  extraKeys = {
+    neovim = [ "highlights" ];
+    obsidian = [ "variables" ];
+    spotify = [ "scheme" ];
+    vesktop = [ "variables" ];
+    vscode = [ "colorCustomizations" ];
+  };
+
+  isAlpha = value:
+    (builtins.isFloat value || builtins.isInt value) && value >= 0 && value <= 1;
+
+  # An override is checked the way a palette is, so a misspelled role or a hex
+  # missing its `#` is an evaluation error rather than a line that silently
+  # does nothing. `source` says which layer wrote it.
+  checkedOverride = source: app: produced:
+    let
+      colorKeys = requiredRoles ++ requiredAnsi;
+      own = extraKeys.${app} or [ ];
+      known = colorKeys ++ [ "alpha" ] ++ own;
+      given = lib.attrNames produced;
+      unknown = lib.filter (key: !(lib.elem key known)) given;
+      badColor = lib.filter (key: !(isHex produced.${key}))
+        (lib.filter (key: lib.elem key colorKeys) given);
+      alphaGiven = produced.alpha or { };
+      badAlpha = lib.filter (key: !(lib.elem key (lib.attrNames alphaOn)) || !(isAlpha alphaGiven.${key}))
+        (lib.attrNames alphaGiven);
+      where = "${source} override for \"${app}\"";
+      names = keys: lib.concatMapStringsSep ", " (key: "\"${key}\"") keys;
+      plural = if lib.length unknown == 1 then "is not a key" else "are not keys";
+      ownLine = if own == [ ] then "\"${app}\" has no keys of its own." else "\"${app}\"'s own keys: ${names own}";
+    in
+    if !(builtins.isAttrs produced) then
+      throw "dotfiles.theme: ${where} is not an attrset of colors"
+    else if unknown != [ ] then
+      throw (
+        "dotfiles.theme: ${where} sets ${names unknown}, which ${plural} this theme has.\n"
+        + "  Roles: ${names requiredRoles}\n"
+        + "  ANSI: ${names requiredAnsi}\n"
+        + "  Transparency: \"alpha\"\n"
+        + "  ${ownLine}")
+    else if badColor != [ ] then
+      throw "dotfiles.theme: ${where} sets ${names badColor} to something that is not a #rrggbb hex"
+    else if produced ? alpha && !(builtins.isAttrs alphaGiven) then
+      throw "dotfiles.theme: ${where} sets \"alpha\" to something that is not a table of ${names (lib.attrNames alphaOn)}"
+    else if badAlpha != [ ] then
+      throw "dotfiles.theme: ${where} sets alpha ${names badAlpha}; an alpha is ${names (lib.attrNames alphaOn)} with a number from 0.0 to 1.0"
+    else
+      produced;
+
   # An override is an attrset of hexes, or a function of the colors so far
   # (`r: { base = r.mantle; }`), which is what lets a remap follow the theme.
-  applyOverride = colors: override:
-    lib.recursiveUpdate colors (if lib.isFunction override then override colors else override);
+  applyOverride = app: colors: { source, override }:
+    lib.recursiveUpdate colors
+      (checkedOverride source app
+        (if lib.isFunction override then override colors else override));
 
   forAppIn = name: app:
     let
-      resolved = lib.foldl applyOverride (globalIn name) [
-        ((paletteOf name).overrides.${app} or { })
-        (cfg.overrides.${app} or { })
+      resolved = lib.foldl (applyOverride app) (globalIn name) [
+        { source = "palette \"${name}\""; override = (paletteOf name).overrides.${app} or { }; }
+        { source = "the operator's"; override = cfg.overrides.${app} or { }; }
       ];
     in
     if cfg.transparency then resolved else resolved // { alpha = alphaOff; };
@@ -111,6 +167,18 @@ in
         is an attrset of colors or a function of the colors so far; `alpha`
         overrides the transparency table and only applies while transparency
         is on.
+
+        The app name must be one that registers in `dotfiles.theme.apps`, and
+        a key must be a role, an ANSI color, `alpha`, or one of that app's own
+        keys — `highlights` for Neovim, `colorCustomizations` for VS Code,
+        `scheme` for Spotify, `variables` for Obsidian and Vesktop. Anything
+        else is an evaluation error rather than a line that does nothing.
+
+        What it cannot check is whether the app's translator reads the role at
+        all: `modules/theme/<app>-*.nix` writes one app's format out of the
+        roles it needs, and a role that format has no slot for is dropped
+        there in silence. Overriding `info` for `gnome` is the worked example
+        — `rewaita-css.nix` never asks for it.
       '';
     };
 
@@ -249,6 +317,29 @@ in
   };
 
   config = {
+    # An override for an app nothing themes is a line that does nothing, so it
+    # is an error rather than a surprise. Checked here rather than in
+    # `forApp`, which an app calls while registering itself in `apps`; an
+    # assertion reads the finished set once, after every module has had its
+    # say. Every palette is checked, not just the selected one, so a typo in
+    # a theme is caught before that theme is switched to.
+    assertions =
+      let
+        themed = lib.attrNames cfg.apps;
+        strayIn = source: overrides:
+          map
+            (app: "${source} has an override for \"${app}\", which is not a themed app. Themed apps: ${lib.concatStringsSep ", " themed}.")
+            (lib.filter (app: !(lib.elem app themed)) (lib.attrNames overrides));
+        stray = strayIn "dotfiles.theme.overrides" cfg.overrides
+          ++ lib.concatLists (lib.mapAttrsToList
+            (name: palette: strayIn "palette \"${name}\"" (palette.overrides or { }))
+            cfg.palettes);
+      in
+      [{
+        assertion = stray == [ ];
+        message = "dotfiles.theme: " + lib.concatStringsSep "\n  " stray;
+      }];
+
     # Before anything that applies a theme, so those steps can move an app.
     home.activation.dotfilesThemeInit = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       declare -gA dotfilesThemeApply=(

@@ -312,6 +312,16 @@ Overrides are part of the design, not a patch over a shortcoming: a palette
 carries what a theme is, and an override carries what one app should do
 differently. A theme can ship its own, and yours in `home.nix` win over those.
 
+An override is checked the way a palette is. The app has to be one that
+registers itself as themed, and a key has to be a role, an ANSI color, `alpha`
+or one of that app's own keys — `highlights` for Neovim,
+`colorCustomizations` for VS Code, `scheme` for Spotify, `variables` for
+Obsidian and Vesktop. A misspelled role, a hex that lost its `#` and an alpha
+outside 0.0–1.0 all fail the build with the layer, the app and the key named,
+rather than becoming a line that quietly does nothing. What the check cannot
+tell you is whether the app's own translator under `modules/theme/` reads that
+role at all: one that has no slot for it drops it in silence.
+
 #### Where the colors come from
 
 The themes are this repository's own, started from palettes worth starting

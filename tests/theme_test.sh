@@ -42,6 +42,38 @@ nix_eval "$(home '{ lib, ... }: { dotfiles.theme.name = lib.mkForce "broken"; do
 grep -q 'palette "broken" is missing required role "accent"' "$TEST_ROOT/eval.err" ||
   fail "unhelpful error for a missing role: $(cat "$TEST_ROOT/eval.err")"
 
+# A bad override is an evaluation error too, naming the layer that wrote it,
+# the app, and the key. A misspelled role would otherwise be a line that
+# silently does nothing.
+override_error() {
+  nix_eval "$(home "$(themed "{ overrides.$1 = $2; }")").config.dotfiles.theme.forApp \"$3\"" >/dev/null &&
+    fail "an override that $4 evaluated"
+  grep -q "$5" "$TEST_ROOT/eval.err" ||
+    fail "unhelpful error when an override $4: $(cat "$TEST_ROOT/eval.err")"
+}
+override_error wezterm '{ acent = "#d65d0e"; }' wezterm \
+  'misspells a role' 'sets "acent", which is not a key this theme has'
+override_error wezterm '{ accent = "d65d0e"; }' wezterm \
+  'drops the # from a hex' 'sets "accent" to something that is not a #rrggbb hex'
+override_error wezterm '{ alpha.windwo = 0.9; }' wezterm \
+  'misspells an alpha' 'sets alpha "windwo"'
+override_error wezterm '{ alpha.window = 1.4; }' wezterm \
+  'puts an alpha out of range' 'sets alpha "window"'
+# An escape hatch belongs to one app: `highlights` is Neovim's alone.
+override_error wezterm '{ highlights = { }; }' wezterm \
+  "uses another app's key" 'sets "highlights", which is not a key this theme has'
+nix_eval "$(home "$(themed '{ overrides.neovim = { highlights.Normal.bg = "#000000"; }; }')").config.dotfiles.theme.forApp \"neovim\"" |
+  jq -e '.highlights.Normal.bg == "#000000"' >/dev/null ||
+  fail 'Neovim did not receive its own escape hatch'
+
+# An override for an app nothing themes is caught by an assertion, which is
+# the build rather than the evaluation of one app's colors.
+nix build --impure --no-link \
+  --expr "$(home "$(themed '{ overrides.weztrem = { accent = "#d65d0e"; }; }')").activationPackage" \
+  2>"$TEST_ROOT/eval.err" && fail 'an override for an app nothing themes built'
+grep -q 'override for "weztrem", which is not a themed app' "$TEST_ROOT/eval.err" ||
+  fail "unhelpful error for an override of an unthemed app: $(cat "$TEST_ROOT/eval.err")"
+
 # Operator overrides: a remap follows the theme, a hex pins one value, and
 # the theme's own values are kept elsewhere.
 for theme in gruvbox autumn-leaves onedark; do
