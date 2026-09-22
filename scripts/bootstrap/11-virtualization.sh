@@ -22,15 +22,15 @@ detect_host() {
     *' debian '* | *' ubuntu '*)
       MANAGER=apt-get
       # qemu-kvm is a virtual package on Ubuntu; query its actual provider.
-      PACKAGES=(qemu-system-x86 libvirt-daemon-system libvirt-clients virt-manager ovmf)
+      PACKAGES=(qemu-system-x86 libvirt-daemon-system libvirt-clients virt-manager virtinst ovmf)
       ;;
     *' fedora '*)
       MANAGER=dnf
-      PACKAGES=(qemu-kvm libvirt-daemon-kvm libvirt-daemon-config-network libvirt-client virt-manager edk2-ovmf)
+      PACKAGES=(qemu-kvm libvirt-daemon-kvm libvirt-daemon-config-network libvirt-client virt-manager virt-install edk2-ovmf)
       ;;
     *' arch '*)
       MANAGER=pacman
-      PACKAGES=(qemu-desktop libvirt virt-manager dnsmasq edk2-ovmf)
+      PACKAGES=(qemu-desktop libvirt virt-manager virt-install dnsmasq edk2-ovmf)
       ;;
     *) phase_error "virtualization supports Debian/Ubuntu, Fedora and Arch; unsupported host: $ID"; return 2 ;;
   esac
@@ -162,7 +162,7 @@ install() {
   require_commands sudo "$MANAGER" systemctl
   sudo -v
   if ! packages_installed; then
-    phase_info 'installing distro QEMU/KVM, libvirt, virt-manager and UEFI firmware...'
+    phase_info 'installing distro QEMU/KVM, libvirt, virt-manager, virt-install and UEFI firmware...'
     case "$MANAGER" in
       apt-get) sudo apt-get update; sudo apt-get install -y "${PACKAGES[@]}" ;;
       dnf) sudo dnf install -y "${PACKAGES[@]}" ;;

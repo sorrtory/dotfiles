@@ -103,6 +103,10 @@ for distribution in ubuntu debian fedora arch; do
   if bash "$phase" status >/dev/null; then fail 'missing installation reported ready'; fi
   [[ ! -s $TEST_ROOT/actions ]] || fail 'status used sudo'
   bash "$phase" install >/dev/null
+  case "$distribution" in
+    ubuntu|debian) grep -Eq '(^| )virtinst( |$)' "$TEST_ROOT/actions" || fail "$distribution did not install virtinst" ;;
+    fedora|arch) grep -Eq '(^| )virt-install( |$)' "$TEST_ROOT/actions" || fail "$distribution did not install virt-install" ;;
+  esac
   bash "$phase" status >/dev/null
   grep -q 'enable --now virtqemud.socket' "$TEST_ROOT/actions" || fail 'modular socket not enabled'
   grep -q 'enable --now virtnetworkd.socket' "$TEST_ROOT/actions" || fail 'network daemon not enabled'

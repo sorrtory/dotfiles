@@ -143,7 +143,7 @@ intentionally hardcoded rather than configurable, since no other host in
 this repo needs a different mirror today.
 
 The virtualization stack is host-owned: KVM comes from the host kernel, and
-QEMU, libvirt, virt-manager and UEFI firmware come from distro packages.
+QEMU, libvirt, virt-manager, virt-install and UEFI firmware come from distro packages.
 Keeping the GUI with the host stack avoids introducing a second libvirt/QEMU
 installation through Home Manager. The privileged `virtualization` bootstrap
 phase is part of the default flow on supported systemd-based x86_64
