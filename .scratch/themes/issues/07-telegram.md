@@ -85,8 +85,9 @@ transparency off, alphas of 0x80 and up go solid.
 
 AyuGram's module packs it during activation with the theme's wallpaper from
 `~/Pictures/wallpapers/<theme>.jpg` — the picture GNOME shows, outside the
-repository, re-encoded because a wallpaper alone can exceed Telegram's 5 MB
-limit — or one solid color when there is none, to
+repository, cropped to the part the chat area sits over and blurred, as the
+hand-made background was, and re-encoded because a wallpaper alone can exceed
+Telegram's 5 MB limit — or one solid color when there is none, to
 `~/.local/share/dotfiles/theme/telegram/Dotfiles.tdesktop-theme`. Always a
 still `background.*`, never `tiled.*`, which Telegram repeats as a pattern. Telegram registers as restart-to-apply with the Choose from
 file step. `tests/theme_telegram_test.sh` covers the rest, including that the

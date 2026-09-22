@@ -12,6 +12,11 @@
 # ANSI colors instead, since they only have to be told apart. Keys the
 # hand-made theme set that AyuGram 7.0.9 no longer knows are left out.
 #
+# Links, in-message service text and the audio/file buttons were the hand-made
+# theme's muted teal, which the fit lands on green in a palette that has no
+# teal; they are the second accent and a steel blue instead, so green is left
+# to what it means — a sent message, something online, a line added.
+#
 # `color role alpha` is one color, `mix from to ratio alpha` is `ratio` of
 # `to` mixed into `from`, and `ref key` repeats another key. A name is a role,
 # an ANSI color, "white" or "black"; an alpha is two hex digits.
@@ -28,7 +33,7 @@
   windowBoldFgOver = mix "accent2" "white" 0.9 "ff";
   windowBgActive = color "accent" "c2";
   windowFgActive = mix "accent2" "white" 0.9 "ff";
-  windowActiveTextFg = color "success" "ff";
+  windowActiveTextFg = color "accent2" "ff";
   windowShadowFg = mix "mantle" "black" 0.5 "b0";
   windowShadowFgFallback = ref "windowBg";
   shadowFg = mix "base" "black" 0.55 "2e";
@@ -204,8 +209,8 @@
   historyTextOutFgSelected = mix "accent2" "white" 0.85 "ff";
   historyLinkInFg = mix "accent" "accent2" 0.9 "ff";
   historyLinkInFgSelected = mix "accent2" "white" 0.65 "ff";
-  historyLinkOutFg = mix "text" "success" 0.9 "ff";
-  historyLinkOutFgSelected = mix "info" "white" 0.75 "ff";
+  historyLinkOutFg = mix "text" "accent2" 0.9 "ff";
+  historyLinkOutFgSelected = mix "accent2" "white" 0.75 "ff";
   historyFileNameInFg = ref "historyTextInFg";
   historyFileNameInFgSelected = mix "accent2" "white" 0.85 "ff";
   historyFileNameOutFg = ref "historyTextOutFg";
@@ -264,7 +269,7 @@
   msgStickerOverlay = mix "accent" "accent2" 0.35 "60";
   msgInServiceFg = ref "windowActiveTextFg";
   msgInServiceFgSelected = mix "accent2" "white" 0.85 "ff";
-  msgOutServiceFg = mix "info" "white" 0.15 "ff";
+  msgOutServiceFg = mix "accent2" "white" 0.15 "ff";
   msgOutServiceFgSelected = mix "accent2" "white" 0.85 "ff";
   msgInShadow = mix "accent" "black" 0.95 "00";
   msgInShadowSelected = mix "overlay" "accent2" 0.7 "00";
@@ -292,7 +297,7 @@
   msgDateImgBgSelected = mix "overlay" "error" 0.25 "9b";
   msgFileThumbLinkInFg = ref "lightButtonFg";
   msgFileThumbLinkInFgSelected = mix "text" "accent2" 0.8 "b1";
-  msgFileThumbLinkOutFg = mix "success" "white" 0.05 "a6";
+  msgFileThumbLinkOutFg = mix "accent2" "white" 0.05 "a6";
   msgFileThumbLinkOutFgSelected = mix "accent2" "white" 0.85 "ff";
   msgFileInBg = mix "accent" "accent2" 0.4 "ff";
   msgFileInBgOver = mix "accent" "accent2" 0.7 "ff";
@@ -303,16 +308,16 @@
   msgFile1BgDark = mix "base" "accent" 0.7 "be";
   msgFile1BgOver = mix "accent" "accent2" 0.4 "b7";
   msgFile1BgSelected = mix "accent2" "white" 0.85 "ff";
-  msgFile2Bg = mix "muted" "success" 0.8 "be";
-  msgFile2BgDark = mix "success" "black" 0.3 "be";
-  msgFile2BgOver = mix "text" "success" 0.8 "c0";
+  msgFile2Bg = mix "muted" "blue" 0.8 "be";
+  msgFile2BgDark = mix "blue" "black" 0.3 "be";
+  msgFile2BgOver = mix "text" "blue" 0.8 "c0";
   msgFile2BgSelected = mix "accent2" "white" 0.85 "ff";
   msgFile3Bg = mix "base" "error" 0.9 "ae";
   msgFile3BgDark = mix "error" "black" 0.25 "ae";
   msgFile3BgOver = mix "subtext" "error" 0.85 "af";
-  msgFile3BgSelected = mix "accent" "success" 0.4 "9b";
+  msgFile3BgSelected = mix "accent" "error" 0.4 "9b";
   msgFile4Bg = mix "surface" "accent2" 0.95 "b7";
-  msgFile4BgDark = mix "accent" "success" 0.1 "af";
+  msgFile4BgDark = mix "accent2" "black" 0.2 "af";
   msgFile4BgOver = mix "accent2" "white" 0.1 "b1";
   msgFile4BgSelected = mix "subtext" "muted" 0.25 "c9";
   historyFileInIconFg = mix "surface" "muted" 0.2 "ce";

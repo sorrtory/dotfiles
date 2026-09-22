@@ -70,6 +70,14 @@ let
   # is missing gets one solid color. Either way the file is named
   # background.*, never tiled.*, which Telegram would repeat as a pattern.
   telegramThemePath = "${theme.dataDir}/telegram/Dotfiles.tdesktop-theme";
+  # How much of the window the chat area takes beside the chat list, and how
+  # hard the wallpaper behind it is blurred. Both were matched by eye to the
+  # hand-made Autumn Glass background this replaces.
+  telegramChatWidth = 65;
+  telegramBlur = 18;
+  # How far the blurred picture is pulled toward the theme's background, so
+  # message bubbles and their text stay legible over it.
+  telegramDim = 50;
   telegramColors = pkgs.writeText "colors.tdesktop-theme"
     (import ../../theme/telegram-theme.nix { inherit lib; } (theme.forApp "telegram"));
   telegramPlainBackground = pkgs.runCommand "telegram-background.png"
@@ -210,12 +218,19 @@ in
         work=$(mktemp -d)
         trap 'rm -rf -- "$work"' EXIT
         cp ${telegramColors} "$work/colors.tdesktop-theme"
-        # Telegram refuses a theme over 5 MB, and a wallpaper is often larger
-        # than that on its own, so it is re-encoded to something a chat
-        # background needs rather than packed as it is.
+        # The chat background is the desktop wallpaper as it would look
+        # through the window: the chat list covers the left third, so that
+        # part is cropped away and what is left lines up with the picture
+        # behind the window, and it is blurred, because a drawing is too busy
+        # to read messages over. Re-encoding also keeps the theme under
+        # Telegram's 5 MB limit, which a wallpaper alone often exceeds.
         if [[ -f ${lib.escapeShellArg theme.wallpaper} ]] &&
           ${lib.getExe pkgs.imagemagick} ${lib.escapeShellArg theme.wallpaper} \
-            -resize '2560x2560>' -quality 82 "$work/background.jpg"
+            -gravity East -crop ${toString telegramChatWidth}%x100%+0+0 +repage \
+            -resize '2560x2560>' -blur 0x${toString telegramBlur} \
+            -fill ${lib.escapeShellArg (theme.forApp "telegram").base} \
+            -colorize ${toString telegramDim}% -strip \
+            -quality 82 "$work/background.jpg"
         then
           :
         else

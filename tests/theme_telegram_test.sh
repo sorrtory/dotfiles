@@ -82,6 +82,19 @@ unpack
 (( $(stat -c %s "$THEME_FILE") < 5 * 1024 * 1024 )) ||
   fail "a large wallpaper is packed whole, over Telegram's 5 MB limit"
 
+# The chat list covers the left of the window, so the background is the right
+# of the wallpaper: narrower than the picture, the same height, and blurred.
+python3 - "$WALLPAPERS/autumn-leaves.jpg" "$TEST_ROOT/unpacked/background.jpg" <<'PICTURE' || fail 'the chat background is not a blurred crop of the wallpaper'
+import sys
+from PIL import Image, ImageFilter, ImageStat
+source, packed = (Image.open(path) for path in sys.argv[1:3])
+cropped = packed.size[0] / packed.size[1] / (source.size[0] / source.size[1])
+# Sharp edges survive a resize; a blur is what takes them out.
+edges = ImageStat.Stat(packed.convert("L").filter(ImageFilter.FIND_EDGES)).stddev[0]
+print(f"crop {cropped:.2f} of the wallpaper's shape, edges {edges:.1f}", file=sys.stderr)
+sys.exit(0 if 0.5 < cropped < 0.8 and edges < 12 else 1)
+PICTURE
+
 # An unreadable picture is not packed as a broken background.
 mv "$WALLPAPERS/autumn-leaves.jpg" "$TEST_ROOT/wallpaper.jpg"
 printf 'not really a jpeg' > "$WALLPAPERS/autumn-leaves.jpg"
@@ -94,7 +107,7 @@ activate '{ name = "autumn-leaves"; transparency = false; }' >/dev/null
 unpack
 
 # Transparency off makes the surfaces solid; a faint shadow stays faint.
-grep -qx 'windowBg: #291b17;' "$TEST_ROOT/unpacked/colors.tdesktop-theme" ||
+grep -qx 'windowBg: #261814;' "$TEST_ROOT/unpacked/colors.tdesktop-theme" ||
   fail 'transparency off leaves the window translucent'
 grep -qP '^shadowFg: #[0-9a-f]{6}2e;$' "$TEST_ROOT/unpacked/colors.tdesktop-theme" ||
   fail 'transparency off made a shadow solid'
