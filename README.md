@@ -442,7 +442,7 @@ it does for every window on that list.
 A Telegram theme sets hundreds of colors, and most have no fallback: one left
 out stays the stock light theme's. So `modules/theme/telegram-keys.nix` names
 every key in terms of the palette. It was derived once from the hand-made
-Autumn Glass theme in `configs/ayugram/`, each color fitted to the nearest mix
+Autumn Glass theme the generated one replaced, each color fitted to the nearest mix
 of two of its roles with the author's alpha kept, so that painting carries
 over to every palette; the eight per-user colors come from the palette's ANSI
 colors instead. With transparency off the surfaces go solid and only the faint
@@ -455,7 +455,10 @@ over it stays legible. That is why the theme is packed during activation rather 
 built by Nix — the picture is a file in the home directory, not part of the
 generation — and re-encoding it also keeps the theme under Telegram's 5 MB
 limit, which a wallpaper alone often exceeds. The crop, the blur and the
-dimming are three constants at the top of `modules/programs/vpnized-apps/`. A theme whose wallpaper is missing gets one solid color. Either way it
+dimming are three constants at the top of `modules/theme/telegram.nix`, which
+owns all of this; AyuGram's own module only sets
+`dotfiles.theme.telegram.enable`, because none of the theming is about the
+VPN. A theme whose wallpaper is missing gets one solid color. Either way it
 is a still background, never a tile.
 
 #### Vesktop

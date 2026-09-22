@@ -4,7 +4,8 @@
 # the stock light theme's.
 #
 # The entries were derived once, on 2026-09-22, from the hand-made Autumn
-# Glass theme (configs/ayugram/autumn-glass): each literal color there was
+# Glass theme, which lived in configs/ayugram until the generated theme
+# replaced it (read it at 1174260 if ever needed): each literal color there was
 # fitted to the nearest mix of two of that theme's roles, or white or black,
 # in twentieths, and its alpha kept as the author set it. Nearly all land
 # within a few units of the original, so autumn's painting carries over to
