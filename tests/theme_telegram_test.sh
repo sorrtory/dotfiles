@@ -139,9 +139,13 @@ done
 
 # Handed the colors the hand-made theme was painted with, the table paints it
 # again: every color within a small step of the original and every alpha the
-# same. The per-user colors are the palette's ANSI ones instead, so they are
-# left out.
-keys() { grep -oP '^\w+: #[0-9a-fA-F]{6,8}(?=;)' "$1" | tr -d ':' | tr 'A-F' 'a-f' | sort; }
+# same. Left out are the keys deliberately aimed elsewhere: the per-user
+# colors, which are the palette's ANSI ones, and the links, service text and
+# file buttons, which were the hand-made theme's teal and would otherwise
+# land on green.
+# Each key and its color, the color lowercased and the name left alone.
+keys() { grep -oP '^\w+: #[0-9a-fA-F]{6,8}(?=;)' "$1" | tr -d ':' |
+  awk '{ print $1, tolower($2) }' | sort; }
 git -C "$REPO_ROOT" show "$BEFORE:modules/theme/palettes/autumn-glass.nix" > "$TEST_ROOT/autumn-glass.nix"
 nix eval --impure --raw --expr "
   let lib = (builtins.getFlake \"$REPO_ROOT\").homeConfigurations.z.pkgs.lib;
@@ -154,8 +158,13 @@ import sys
 load = lambda path: dict(line.split() for line in open(path))
 was, now = load(sys.argv[1]), load(sys.argv[2])
 bad = []
+re_aimed = {
+    "windowActiveTextFg", "historyLinkOutFg", "historyLinkOutFgSelected",
+    "msgOutServiceFg", "msgFileThumbLinkOutFg", "msgFile2Bg", "msgFile2BgDark",
+    "msgFile2BgOver", "msgFile3BgSelected", "msgFile4BgDark",
+}
 for key, before in was.items():
-    if key not in now or "Peer" in key:
+    if key not in now or "Peer" in key or key in re_aimed:
         continue
     after = now[key]
     a, b = ([int(v[i:i + 2], 16) for i in (1, 3, 5)] for v in (before, after))
