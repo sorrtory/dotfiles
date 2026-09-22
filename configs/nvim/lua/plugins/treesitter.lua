@@ -6,6 +6,7 @@ local parsers = {
   "vim",
   "vimdoc",
   "query",
+  "nix",
 
   -- Systems languages
   "rust",

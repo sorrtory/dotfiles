@@ -57,7 +57,7 @@ status_of "$TEST_ROOT/config" "$TEST_ROOT/empty"
   fail "empty tree did not report missing plugins: $STATUS_OUTPUT"
 [[ "$STATUS_OUTPUT" == *"missing 25 tools"* ]] ||
   fail "empty tree did not report missing tools: $STATUS_OUTPUT"
-[[ "$STATUS_OUTPUT" == *"missing 35 parsers"* ]] ||
+[[ "$STATUS_OUTPUT" == *"missing 36 parsers"* ]] ||
   fail "empty tree did not report missing parsers: $STATUS_OUTPUT"
 [[ ! -e "$TEST_ROOT/empty/nvim/mason" ]] || fail 'status created a mason tree'
 [[ ! -e "$TEST_ROOT/empty/nvim/lazy" ]] || fail 'status created a plugin tree'
@@ -70,7 +70,7 @@ ln -s "$installed/lazy" "$TEST_ROOT/parserless/nvim/lazy"
 ln -s "$installed/mason" "$TEST_ROOT/parserless/nvim/mason"
 status_of "$TEST_ROOT/config" "$TEST_ROOT/parserless"
 [[ $STATUS_CODE -eq 1 ]] || fail "a parser-less tree reported $STATUS_CODE: $STATUS_OUTPUT"
-[[ "$STATUS_OUTPUT" == *"missing 35 parsers"* ]] ||
+[[ "$STATUS_OUTPUT" == *"missing 36 parsers"* ]] ||
   fail "parser-less tree did not report missing parsers: $STATUS_OUTPUT"
 [[ ! -e "$TEST_ROOT/parserless/nvim/site" ]] || fail 'status created parser directories'
 
