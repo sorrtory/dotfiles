@@ -11,6 +11,8 @@ return {
   opts = {
     preview = {
       enable = false,
+      -- follow-md-links.nvim handles navigation; Markview only renders.
+      map_gx = false,
     },
   },
 }
