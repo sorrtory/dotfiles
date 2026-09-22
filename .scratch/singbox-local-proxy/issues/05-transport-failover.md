@@ -4,8 +4,8 @@ Status: wontfix
 
 ## Answer
 
-Superseded by `vpn-followups/03`, `04`, `07` and `08`, which define one shared
-egress inventory and separate a real protocol adapter from automatic strategy.
+Superseded by `.scratch/vpn-egress/`, which defines one shared egress
+inventory and keeps automatic strategy out until real alternatives exist.
 The proposal below is retained as history, not implementation direction.
 
 The old wording also overstated `urltest`: in pinned sing-box 1.14 it is latency

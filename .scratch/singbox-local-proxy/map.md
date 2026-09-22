@@ -15,8 +15,10 @@ future namespace launcher. See [spec.md](spec.md).
 
 - WireGuard ciphertext already exists. Each machine selects its own peer identity.
 - The new service uses pinned sing-box 1.13.19 without TUN or host routing changes.
-- [VPN prototype](../vpn-command/issues/00-sing-box-namespace-prototype.md) follows
-  ticket 01 and verifies a namespace-capable version before launcher implementation.
+- The VPN prototype followed ticket 01 and verified a namespace-capable
+  version before launcher implementation. It shipped in the retired
+  `vpn-command` effort; see Git history, and `.scratch/vpn-egress/` for the
+  work that continues it.
 - The Firefox PAC delivery remains in the separate Firefox effort.
 - Staging uses desktop-ubuntu through an evaluation override; the host's
   running legacy container owns laptop. Ticket 01 records the detected peer

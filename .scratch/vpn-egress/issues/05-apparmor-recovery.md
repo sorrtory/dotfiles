@@ -1,11 +1,17 @@
 # 08 — Make AppArmor install and removal failure-recoverable
 
 Status: ready-for-agent
+
+Blocked by: None (can start immediately)
+
 Priority: P2
+
+Carried over from `vpn-command/08`. Re-verified on 2026-09-22: the defects
+below are still present in `scripts/bootstrap/10-apparmor.sh`.
 
 ## Evidence
 
-Review at 1e75b0f, scripts/bootstrap/09-apparmor.sh:
+Review at 1e75b0f, since renumbered to `scripts/bootstrap/10-apparmor.sh`:
 
 - install copies the profile before kernel loading. A failed --replace leaves
   matching files, so the next check incorrectly reports installation complete.

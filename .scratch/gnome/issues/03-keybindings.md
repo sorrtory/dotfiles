@@ -115,7 +115,8 @@ Not verified here: the new PC under normal use.
   `obsidian` profiles attach to `/usr/share/code{/bin,}/code` and
   `/opt/Obsidian/obsidian`, which never match Nix paths. The repository's
   exact-path allowances (docs/VESKTOP-APPARMOR.md) cover only Vesktop and
-  sing-box, and `vpn-followups/02` would extend them only to tunneled apps. So
+  sing-box, and the deferred sandboxed-application work in `vpn-egress` would extend them
+  only to tunneled apps. So
   on a fresh Ubuntu, Nix VS Code and Obsidian cannot start at all. This is
   outside 03, and needs its own ticket and an operator decision on the
   security tradeoff.

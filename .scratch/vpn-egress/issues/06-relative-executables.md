@@ -1,7 +1,13 @@
 # 09 — Accept relative executable paths in vpn
 
 Status: ready-for-agent
+
+Blocked by: None (can start immediately)
+
 Priority: P2
+
+Carried over from `vpn-command/09`. Re-verified on 2026-09-22: `vpn.sh` still
+rejects a resolved path that is not absolute.
 
 ## Evidence
 
