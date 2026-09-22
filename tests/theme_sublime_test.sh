@@ -47,7 +47,7 @@ done
 
 # The palette reaches it: each theme paints its own background, and an
 # override in home.nix wins.
-declare -A backgrounds=([gruvbox]='#32302f' [autumn-leaves]='#291b17' [onedark]='#282c34')
+declare -A backgrounds=([gruvbox]='#32302f' [autumn-leaves]='#261814' [onedark]='#282c34')
 for theme in "${!backgrounds[@]}"; do
   got=$(jq -r '.globals.background' "$(scheme "{ name = \"$theme\"; }")")
   [[ $got == "${backgrounds[$theme]}" ]] || fail "$theme background is $got"

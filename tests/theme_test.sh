@@ -92,8 +92,8 @@ jq -e '
 # neutrals in the terminal's normal slots.
 out=$(wezterm_scheme "$(theme_for '{ name = "autumn-leaves"; transparency = false; }')")
 jq -e '
-  .opacity == 1 and .scheme.background == "#291b17" and .scheme.foreground == "#f2e0c8" and
-  .scheme.ansi == ["#3b2a24","#e8604c","#a9b665","#e9a15e","#8fa9b8","#d3869b","#89b482","#e6d3b8"]
+  .opacity == 1 and .scheme.background == "#261814" and .scheme.foreground == "#fbeada" and
+  .scheme.ansi == ["#38271f","#e8604c","#c2ad4b","#e9a15e","#8fa9b8","#d3869b","#97c973","#eedcc4"]
 ' <<<"$out" >/dev/null || fail "autumn-leaves WezTerm: $out"
 
 # No theme file: the bundled scheme, not an error.
@@ -116,7 +116,7 @@ activate() {
 out=$(activate '{ name = "autumn-leaves"; }')
 grep -qx 'Theme is now autumn-leaves, transparency on.' <<<"$out" || fail "no notice on first switch: $out"
 grep -q 'Updated live: .*WezTerm' <<<"$out" || fail "WezTerm not listed as live: $out"
-grep -q '"#291b17"' "$TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua" || fail 'theme file not written'
+grep -q '"#261814"' "$TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua" || fail 'theme file not written'
 [[ ! -L $TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua ]] || fail 'theme file is a symlink'
 inode=$(stat -c %i "$TEST_ROOT/home/.local/share/dotfiles/theme/wezterm.lua")
 

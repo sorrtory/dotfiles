@@ -323,11 +323,15 @@ divergences are written down in the palette file that makes them.
   from Gruvbox's own 16.
 - **onedark** — surfaces and text from Rewaita's One Dark, with One Dark
   Pro's editor background and its terminal colors.
-- **autumn-leaves** — ours: Gruvbox a step darker and with more contrast.
-  Surfaces go below Gruvbox's hard background, text is its brightest cream,
-  and the accents are its bright orange and yellow. Its terminal colors use
-  Gruvbox's bright set in the normal slots too, which reads better on a
-  background this dark than Gruvbox's dim neutrals.
+- **autumn-leaves** — ours: Gruvbox's structure in the colors of the
+  wallpaper it is named after. Red-brown surfaces rather than neutral grays,
+  a pastel cream text, copper and maple accents, and more contrast than
+  Gruvbox at both ends. Its terminal colors keep Gruvbox's roles pulled toward
+  the picture, with the bright set in the normal slots too, because dim
+  neutrals disappear on a background this dark. Green is the one color the
+  picture cannot give — its leaves are yellow — so it is a dry-leaf olive,
+  kept bright, since a green goes dull against browns long before a warm
+  color does.
 
 There is no external theme framework behind this, on purpose. Collections
 like Gogh give a terminal's 16 colors and nothing for GTK, Telegram, Obsidian
@@ -433,10 +437,16 @@ of two of its roles with the author's alpha kept, so that painting carries
 over to every palette; the eight per-user colors come from the palette's ANSI
 colors instead. With transparency off the surfaces go solid and only the faint
 alphas — ripples, shadows — stay. The chat background is the theme's
-wallpaper, the same picture the desktop shows, so the theme is packed during
-activation rather than built by Nix: the picture is a file in the home
-directory, not part of the generation. A theme whose wallpaper is missing
-gets one solid color. Either way it is a still background, never a tile.
+wallpaper as it would look through the window: the chat list covers the left
+third, so that part is cropped away and what is left lines up with the
+picture behind the window, blurred, because a drawing is too busy to read
+messages over, and pulled halfway toward the theme's background, so a message
+over it stays legible. That is why the theme is packed during activation rather than
+built by Nix — the picture is a file in the home directory, not part of the
+generation — and re-encoding it also keeps the theme under Telegram's 5 MB
+limit, which a wallpaper alone often exceeds. The crop, the blur and the
+dimming are three constants at the top of `modules/programs/vpnized-apps/`. A theme whose wallpaper is missing gets one solid color. Either way it
+is a still background, never a tile.
 
 #### Vesktop
 

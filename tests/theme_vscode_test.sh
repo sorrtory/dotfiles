@@ -51,7 +51,7 @@ done
 declare -A want_background=(
   [gruvbox]='#1d2021'
   [onedark]='#282c34'
-  [autumn-leaves]='#291b17'
+  [autumn-leaves]='#261814'
 )
 
 for theme in gruvbox onedark autumn-leaves; do
@@ -93,7 +93,7 @@ json=$(theme_json "$(extension autumn-leaves "$override")")
 # A role remap follows the theme, the same as it does for every other app.
 remap='{ dotfiles.theme.overrides.vscode = r: { base = r.mantle; }; }'
 json=$(theme_json "$(extension autumn-leaves "$remap")")
-[[ $(jq -r '.colors["editor.background"]' "$json") == '#1f1311' ]] ||
+[[ $(jq -r '.colors["editor.background"]' "$json") == '#1c1210' ]] ||
   fail 'a role remap does not reach the generated theme'
 
 printf 'theme VS Code tests passed\n'

@@ -40,7 +40,7 @@ done
   fail "gruvbox's main is not the palette's base"
 [[ $(scheme onedark | jq -r '.main') == 282c34 ]] ||
   fail "onedark's main is not the palette's base"
-[[ $(scheme autumn-leaves | jq -r '.main') == 291b17 ]] ||
+[[ $(scheme autumn-leaves | jq -r '.main') == 261814 ]] ||
   fail "autumn-leaves' main is not the palette's base"
 
 # An override in home.nix reaches the client, both as a role and through
