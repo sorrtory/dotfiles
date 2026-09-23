@@ -33,6 +33,28 @@ printf '%s\n' "${args[@]}" | grep -qx -- '--job-mode=replace' ||
   fail 'a relaunch would fail against the queued capture stop'
 [[ $(<"$test_root/user-path") == "$user_path" ]] || fail 'caller PATH not handed to the helper'
 
+mkdir -p "$test_root/relative bin"
+cat > "$test_root/relative bin/program" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$test_root/relative bin/program"
+ln -s 'program' "$test_root/relative bin/linked"
+(
+  cd "$test_root"
+  vpn './relative bin/program' one
+  mapfile -t relative_args < "$test_root/args"
+  [[ ${relative_args[-2]} == "$test_root/./relative bin/program" ]] || fail 'relative program path was not anchored'
+  vpn 'relative bin/linked' two
+  mapfile -t relative_args < "$test_root/args"
+  [[ ${relative_args[-2]} == "$test_root/relative bin/linked" ]] || fail 'final symlink path was changed'
+)
+(
+  cd "$test_root"
+  user_path='relative bin':$user_path vpn linked three
+  mapfile -t relative_args < "$test_root/args"
+  [[ ${relative_args[-2]} == "$test_root/relative bin/linked" ]] || fail 'relative PATH entry was not anchored'
+)
 vpn -- multicall-name || fail 'rejected -- separator'
 vpn --help | grep -q '^Usage: vpn' || fail 'help missing'
 if vpn 2>/dev/null; then fail 'accepted no program'; fi

@@ -31,8 +31,12 @@ esac
 # path is kept as is, because multicall tools dispatch on their argv[0] name.
 target=$(command -v -- "$1") || die "command not found: $1"
 shift
-[[ $target == /* && -f $target && -x $target ]] || die "not an executable file: $target"
-case "$target" in
+# command -v may return a relative path when the caller supplied one or PATH
+# contains relative entries. Anchor it before systemd-run changes directory.
+[[ $target == /* ]] || target=$PWD/$target
+[[ -f $target && -x $target ]] || die "not an executable file: $target"
+resolved=$(readlink -f -- "$target") || die "cannot resolve executable: $target"
+case "$resolved" in
   /snap/*|/var/lib/flatpak/*|"$HOME"/.local/share/flatpak/*)
     die 'Snap and Flatpak programs are not supported' ;;
 esac

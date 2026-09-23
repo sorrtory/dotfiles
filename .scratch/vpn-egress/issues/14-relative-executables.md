@@ -1,6 +1,6 @@
 # 14: Accept relative executable paths in vpn
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: None (can start immediately)
 Priority: P2
 
@@ -16,3 +16,7 @@ gate the egress rewrite.
 - [ ] Existing argument passing and caller `PATH` behavior remain intact,
       without user-wrapper runtime inputs that silently change command
       resolution.
+
+## Answer
+
+`vpn` anchors relative executable paths before handing them to systemd and checks the resolved target for unsupported package families. The command test covers relative paths, a relative PATH entry, spaces and final symlinks; it passed locally and on staging.
