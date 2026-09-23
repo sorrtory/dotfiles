@@ -196,8 +196,9 @@ shell plugins, history policy, and zoxide integration. It preserves the small
 safe alias baseline and local proxy toggles. Neovim owns the single default
 editor selection through its Home Manager module.
 Runtime managers, media conversion, and integrations for deferred programs stay
-with their respective future slices. The exception is a pair of `vpn-up` and
-`vpn-down` functions, beside `proxy-on` and `proxy-off`, which exist because
+with their respective future slices. On the daily host's current generation,
+the exception is a pair of `vpn-up` and `vpn-down` functions, beside `proxy-on`
+and `proxy-off`, which exist because
 invoking `wg-quick` by hand needs both an absolute path for `sudo` and a config
 path rather than an interface name. They follow `dotfiles.vpn.identity`, the
 one device configuration this machine decrypts, so they take no argument.
@@ -340,15 +341,15 @@ A migrated key that carries its own passphrase still needs that passphrase on a 
 
 The host-identifying half of `~/.ssh/config` is ciphertext for a different reason than the keys are: it is not a credential, but this repository is public, and host names, login names and ports together are a target list that published history would make permanent. The operator-independent half stays readable in `configs/ssh/config` and pulls the rest in through `Include`.
 
-WireGuard configurations are whole-file SOPS ciphertext decrypted to a user-owned path, with no privileged deployment step. `wg-quick` accepts a config file path as readily as an interface name, deriving the interface from the basename, so `/etc/wireguard/` is unnecessary and the configuration never lands root-owned on disk. This replaces the earlier position that deployment to `/etc/wireguard/` was an explicit privileged action; that step turned out to buy nothing.
+WireGuard configurations are whole-file SOPS ciphertext decrypted to a user-owned path, with no privileged deployment step. The daily host's current `wg-quick` handover accepts a config file path as readily as an interface name, deriving the interface from the basename, so `/etc/wireguard/` is unnecessary and the configuration never lands root-owned on disk. This replaces the earlier position that deployment to `/etc/wireguard/` was an explicit privileged action; that step turned out to buy nothing.
 
 Most of these configurations are per-device identities, so a machine decrypts only its own: materializing all of them everywhere would let one compromised machine impersonate every device on the network, and would buy nothing, since a laptop has no use for the phone's key. The legacy secondary `extra` configuration remains decrypted during migration, but the shared sing-box backend uses an exclusive per-machine identity instead. Each configuration names its identity explicitly with `dotfiles.vpn.identity`, which has no default; the flake's `staging` configuration differs from `z` only in that choice, and the home-manager phase remembers which configuration a machine activated.
 
 Secrets are named after the file they come from, so `wg-quick` takes the interface name from the basename and brings up the identity's name, such as `laptop`, and `extra`. A generic `wg0` would make the interface name identical across machines, which pays off only once something shared refers to an interface by name; nothing does, and renaming the one that needs it is a line of configuration when something eventually does. Until then the generic name costs a lookup every time someone reads a path and has to ask which device it means.
 
-Bringing up a WireGuard interface in the host network namespace needs `CAP_NET_ADMIN`. It is an explicit runtime action rather than machine setup; the bootstrap flow does not bring up a host tunnel. `wireguard-tools` is a Home Manager package rather than a host prerequisite. The packaged `wg-quick` is a wrapper that prepends its own dependencies to `PATH`, so it runs correctly under `sudo` despite being outside the host's `secure_path`; what `sudo` cannot do is resolve the bare name, so it must be invoked as `sudo "$(command -v wg-quick)"` or through a command that has the store path baked in.
+Bringing up the daily host's current WireGuard interface in the host network namespace needs `CAP_NET_ADMIN`. It is an explicit runtime action rather than machine setup; the bootstrap flow does not bring up a host tunnel. `wireguard-tools` is a Home Manager package rather than a host prerequisite. The packaged `wg-quick` is a wrapper that prepends its own dependencies to `PATH`, so it runs correctly under `sudo` despite being outside the host's `secure_path`; what `sudo` cannot do is resolve the bare name, so it must be invoked as `sudo "$(command -v wg-quick)"` or through a command that has the store path baked in.
 
-Home Manager does not create host network interfaces. It owns the unprivileged sing-box user service, whose userspace WireGuard endpoint needs no host interface, and the VPN command's TUN exists only inside a rootless network namespace. User namespaces widen what an unprivileged process can reach in the kernel, which is why Ubuntu restricts them; the application VPN decisions below record how that is handled.
+Normal Home Manager activation does not create host network interfaces. It owns the unprivileged sing-box user service, whose userspace WireGuard endpoint needs no host interface. The application VPN command creates a TUN inside a rootless network namespace. The staged whole-host command explicitly starts a root supervised TUN at runtime. User namespaces widen what an unprivileged process can reach in the kernel, which is why Ubuntu restricts them; the application VPN decisions below record how that is handled.
 
 Everything committed under `secrets/` must already be public-safe, and the staged secret gate enforces that mechanically rather than trusting the convention. Under that directory the test is inverted: elsewhere a file is rejected when it looks like a secret, but here it is rejected unless it is positively recognized as encrypted, because the likeliest way a key arrives is in a form no detection rule matches. Recognition asks `sops` itself, since marker strings can appear in a plaintext file's comments and prove nothing. Note the residual limit: SOPS permits partially encrypted documents, so this establishes that a file is a SOPS document rather than that every value in it is encrypted. Never copy a legacy secrets tree or expose plaintext through Nix expressions, logs, patches, or the Nix store.
 
@@ -620,10 +621,10 @@ uses the local HTTP proxy through its own per-process setting, `http.proxy` or
 `--proxy-server`, never a session-wide proxy variable.
 
 Each machine uses its own WireGuard peer identity. Never share `extra` between
-simultaneously connected machines, or run the whole-host `wg-quick` client
-concurrently with sing-box using the same identity: independent clients make
-the server's peer endpoint roam between them. A separate identity is needed
-if a simultaneous whole-host tunnel is wanted.
+simultaneously connected machines, or run another `wg-quick` client concurrently
+with sing-box using the same identity: independent clients make the server's
+peer endpoint roam between them. The staged whole-host TUN forwards through
+sing-box and does not start another WireGuard client.
 
 Generate the proxy configuration at service start from whole-file SOPS
 ciphertext, into a private user runtime directory. Validate it before starting

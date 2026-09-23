@@ -73,6 +73,7 @@ grep -qx "apparmor_parser --replace $TEST_ROOT/target/dotfiles-a" "$TEST_ROOT/su
 phase status >/dev/null || fail 'installed profiles not recognized'
 # A copied file is not proof that the kernel accepted the profile.
 sed -i '/^dotfiles-b (/d' "$TEST_ROOT/kernel-profiles"
+printf 'other-dotfiles-b (unconfined)\n' >> "$TEST_ROOT/kernel-profiles"
 if phase status >/dev/null; then fail 'missing kernel policy reported satisfied'; fi
 phase install >/dev/null
 phase status >/dev/null || fail 'kernel policy not restored'

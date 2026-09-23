@@ -31,7 +31,8 @@ profiles_in() {
 }
 
 profile_loaded() {
-  [[ -r "$KERNEL_PROFILES" ]] && grep -qF "${1##*/} (" "$KERNEL_PROFILES"
+  [[ -r "$KERNEL_PROFILES" ]] &&
+    awk -v name="${1##*/}" 'index($0, name " (") == 1 { found=1; exit } END { exit !found }' "$KERNEL_PROFILES"
 }
 
 remove_profile() {
@@ -60,7 +61,7 @@ check() {
     return 1
   fi
 
-  require_commands cmp grep
+  require_commands cmp grep awk
   if [[ ! -r "$KERNEL_PROFILES" ]]; then
     phase_info 'cannot read loaded AppArmor profiles'
     return 1

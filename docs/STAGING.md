@@ -130,8 +130,11 @@ The generated whole-host TUN configuration passed `sing-box check` and started
 as a supervised root `vpn-host.service` through `/usr/bin/env` under Fedora
 SELinux. Public IPv4 routed through `vpn-host0`, while the VM gateway stayed on
 `enp1s0`. The resolver chose the TUN link; a direct query to its DNS returned
-an A answer and no AAAA answer. Ordinary HTTPS and `vpn -- curl` worked while
-the TUN was active. Stopping the user backend blocked ordinary HTTPS; starting
+an A answer and no AAAA answer. A public UDP STUN binding request received
+its matching response through the generated TUN. `ip route get` kept IPv4
+link-local traffic on `enp1s0`, and the IPv6 link-local route selected that
+physical interface too. The VM had no separate link-local peer to probe.
+Ordinary HTTPS and `vpn -- curl` worked while the TUN was active. Stopping the user backend blocked ordinary HTTPS; starting
 it restored a 204 response without restarting the TUN. Two `vpn-up`/`vpn-down`
 cycles restored direct public routing and the original resolver and removed
 `vpn-host0`. The root config held no provider credential. These observations
