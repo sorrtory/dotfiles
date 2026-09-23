@@ -260,7 +260,7 @@ Bare `home-manager switch` looks for a channel configuration under
 
 | App | Takes a switch |
 |---|---|
-| WezTerm, Sublime Text, Vesktop | live: they watch their file |
+| WezTerm, Zsh, Sublime Text, Vesktop | live: they watch their file |
 | GNOME Shell, GTK, Firefox | live, through Rewaita; a GTK program reads its colors at startup, so open windows keep theirs |
 | Wallpaper, accent, icons | live, through dconf |
 | Neovim, Spotify, Obsidian, Telegram | next start |
@@ -348,6 +348,36 @@ like Gogh give a terminal's 16 colors and nothing for GTK, Telegram, Obsidian
 or Spotify, and generators like Stylix take the per-app overrides away. A
 palette here is one file of hexes, pinned in this repository's history, and
 adding a theme is adding one more.
+
+#### Zsh
+
+The prompt, zsh-syntax-highlighting's styles, the ghost text
+zsh-autosuggestions draws ahead of the cursor and the completion listing all
+come from the palette, generated into
+`~/.local/share/dotfiles/theme/zsh.zsh`. A shell reads `.zshrc` once, so
+that file is where the colors have to live: `.zshrc` sources it at startup
+and re-sources it from `precmd` when its timestamp changed, which is how a
+switch reaches the shells that are already open rather than only the next one.
+The cost is one `zstat` per prompt.
+
+The oh-my-zsh theme is `dotfiles`, generated rather than chosen from the
+bundled ones. Every one of those writes its own `PROMPT` out of the
+terminal's eight named colors, which no palette here controls; this one keeps
+the layout of `flazz`, which the configuration used to select — host, path,
+branch, caret — and writes it in `%F{#rrggbb}` instead, so the prompt follows
+the theme in any terminal that can draw true color and not only in WezTerm,
+whose ANSI colors come from the same palette anyway. The theme oh-my-zsh
+loads is three lines long: the colors cannot live in it, because Home Manager
+writes it as a symlink into the Nix store and every file there carries the
+same epoch timestamp, which is the one thing the reload hook watches. It
+sources the generated file instead.
+
+The path is the `success` role, the branch the second accent, the caret the
+accent and `error` for root, and a failed command's status appears on the
+right in `error`. The marker for a dirty tree is
+`error` too, rather than `warning`: a palette may make its warning the second
+accent, and autumn-leaves does, which would leave the marker the color of the
+brackets it sits between.
 
 #### Sublime Text
 
@@ -464,15 +494,25 @@ is a still background, never a tile.
 #### Vesktop
 
 Discord names a few hundred CSS variables, but every one of them is a step of
-a numbered family: `--background-primary` is `var(--primary-600)`, a hovered
-row is `hsl(var(--primary-500-hsl)/0.3)`. So
-`modules/theme/vesktop-theme.nix` writes the six families rather than the
-tokens, and everything Discord derives from them follows, including whatever
-it renames next. A step number is a lightness, 100 near white to 900 near
-black, which is the order the roles are already in: text at 230, muted at 360,
-the message box at 560, the window at 600, the darkest panel at 660. The
-accent sits at 500, where Discord paints its buttons, and error, warning,
-success and the second accent at 360, where it reads them as text.
+a numbered family: `--background-base-lower` is `var(--neutral-69)`, a hovered
+row is `hsl(var(--opacity-12-hsl)/0.12)`. So
+`modules/theme/vesktop-theme.nix` writes the families rather than the tokens,
+and everything Discord derives from them follows, including whatever it
+renames next.
+
+Discord numbers its families twice. The older numbering runs 100 to 900, a
+step's number being its lightness from near-white to black, which is the order
+the roles are already in: text at 230, muted at 360, the message box at 560,
+the window at 600, the darkest panel at 660. The visual refresh replaced it
+with a hundred-step numbering — `--neutral-69`, `--red-new-38` — and that is
+what Discord reads now, so the same walk of roles is written there too:
+message text at 4, the quieter text at 16 and 23, a raised surface at 64, the
+window at 69 and the server bar at 73. The accent sits where Discord paints
+its buttons, error, warning, success and the second accent where it reads them
+as text, and the ANSI palette where it colors a code block. Discord's own
+`.visual-refresh` class re-derives the old numbering from the new one, and a
+class outranks a bare `:root`, so the block is scoped `:root:root` and a step
+is the color the palette chose whichever way the client reaches it.
 
 The theme is written to `~/.config/vesktop/themes/Dotfiles.css`. **Enable
 `Dotfiles` once** under Settings → Themes; Vencord keeps that list in its own
