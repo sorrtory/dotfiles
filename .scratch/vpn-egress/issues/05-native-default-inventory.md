@@ -29,6 +29,8 @@ WireGuard peer per hostname. The synthetic compiler fixture covers names,
 missing references, native entry validation, DNS and secret-safe failure. The
 Fedora VM, renamed `fedora-staging` because the daily host is also `fedora`,
 decrypted its assigned peer and carried proxy, captured and whole-host HTTPS
-and DNS. Backend loss failed closed and recovery restored traffic. See
+and DNS. Captured UDP STUN succeeded, while captured DNS returned only A records
+and IPv6 HTTPS failed without a global IPv6 route. Backend loss failed closed
+and recovery restored traffic. See
 `docs/STAGING.md`. Daily-host activation remains a separate operator approval;
 this ticket stays claimed until that cutover is checked.

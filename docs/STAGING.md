@@ -159,7 +159,10 @@ route DNS servers, and hostname policy. The runtime compiler checked every
 native entry and selected only the VM's assigned `desktop-ubuntu` peer after
 its guest hostname was changed to `fedora-staging`. Its generated backend passed
 `sing-box check`. After staging activation, the local proxy and `vpn -- curl`
-carried real HTTPS with the VM peer. The generated whole-host TUN carried HTTPS
+carried real HTTPS with the VM peer. Captured `dig` returned A records and no
+AAAA records; a captured public UDP STUN binding request received a matching
+response. The capture had no global IPv6 route and `vpn -- curl -6` could not
+resolve the destination. The generated whole-host TUN carried HTTPS
 and DNS, while a simultaneous `vpn` capture still worked. Stopping the user
 backend blocked whole-host traffic; restarting it restored whole-host and
 capture HTTPS. `vpn-down` removed the TUN and restored the physical route and
