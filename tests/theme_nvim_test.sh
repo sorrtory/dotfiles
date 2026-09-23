@@ -126,4 +126,79 @@ for plugin in gruvbox.nvim onedark.nvim transparent.nvim; do
     fail "$plugin is not in the lockfile"
 done
 
+# Markdown is mostly prose, so the little color a page has comes from a handful
+# of groups; when they collapse onto one role the file reads as one color,
+# which is what the heading ramp and the link treatment in
+# lua/theme/generated.lua are for. Naming those groups is worth nothing unless
+# the parser actually produces the captures they name, so this parses a real
+# buffer and reports what the captures in it resolve to, rather than asking for
+# highlight groups by name and believing the answer.
+cat >"$TEST_ROOT/sample.md" <<'MARKDOWN'
+# One
+
+## Two
+
+### Three
+
+#### Four
+
+> A quote.
+
+A `span` and a [label](https://example.com), then a list:
+
+- item
+MARKDOWN
+
+install -m 644 "$(theme_file '{ name = "autumn-leaves"; transparency = false; }')" \
+  "$TEST_ROOT/data/dotfiles/theme/nvim.lua"
+
+markdown_colors() {
+  XDG_CONFIG_HOME="$TEST_ROOT/config" XDG_DATA_HOME="$TEST_ROOT/data" \
+  XDG_STATE_HOME="$TEST_ROOT/state" \
+    timeout 120 nvim --headless -c "lua
+      local buf = vim.fn.bufadd('$TEST_ROOT/sample.md')
+      vim.fn.bufload(buf)
+      vim.bo[buf].filetype = 'markdown'
+      local parser = vim.treesitter.get_parser(buf, 'markdown')
+      parser:parse(true)
+      -- The group a capture is drawn in is the capture plus its language, so
+      -- collect the pairs the parser really emitted.
+      local lang = {}
+      parser:for_each_tree(function(tree, ltree)
+        local query = vim.treesitter.query.get(ltree:lang(), 'highlights')
+        if not query then return end
+        for id in query:iter_captures(tree:root(), buf, 0, -1) do
+          lang['@' .. query.captures[id]] = ltree:lang()
+        end
+      end)
+      local out = {}
+      for _, capture in ipairs({
+        '@markup.heading.1', '@markup.heading.2', '@markup.heading.3',
+        '@markup.heading.4', '@markup.link.label', '@markup.quote',
+        '@markup.raw', '@markup.list',
+      }) do
+        local group = lang[capture] and (capture .. '.' .. lang[capture])
+        local hl = group and vim.api.nvim_get_hl(0, { name = group, link = false }) or {}
+        out[#out + 1] = capture .. '='
+          .. (lang[capture] == nil and 'uncaptured'
+              or (hl.fg and string.format('#%06x', hl.fg) or 'none'))
+      end
+      io.write(table.concat(out, ' '))" -c qa 2>/dev/null
+}
+
+declare -A seen_color=()
+for pair in $(markdown_colors); do
+  capture=${pair%%=*}
+  color=${pair#*=}
+  [[ $color != uncaptured ]] ||
+    fail "markdown: nothing in the buffer is captured as $capture"
+  [[ $color != none ]] ||
+    fail "markdown: $capture has no color of its own"
+  [[ -z ${seen_color[$color]:-} ]] ||
+    fail "markdown: $capture and ${seen_color[$color]} are both $color"
+  seen_color[$color]=$capture
+done
+(( ${#seen_color[@]} == 8 )) ||
+  fail "markdown: expected 8 distinct colors, got ${#seen_color[@]}"
+
 printf 'theme Neovim tests passed\n'

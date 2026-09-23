@@ -5,6 +5,21 @@
 
 local M = {}
 
+-- `ratio` of `to` mixed into `from`, the same operation as
+-- modules/theme/color.nix's `mix`. The heading ramp below asks for shades
+-- between two roles that no palette names, and deriving them from the roles
+-- keeps the ramp a statement about the palette rather than a second copy of
+-- its hexes.
+local function blend(from, to, ratio)
+  local out = "#"
+  for offset = 2, 6, 2 do
+    local a = tonumber(from:sub(offset, offset + 1), 16)
+    local b = tonumber(to:sub(offset, offset + 1), 16)
+    out = out .. string.format("%02x", math.floor(a + (b - a) * ratio + 0.5))
+  end
+  return out
+end
+
 function M.apply(colors)
   local c = colors
   vim.cmd("highlight clear")
@@ -13,6 +28,26 @@ function M.apply(colors)
   end
   vim.o.background = "dark"
   vim.g.colors_name = "dotfiles"
+
+  -- Markdown heading levels as a leaf turning: maple red at the top, then
+  -- copper, amber, and a green fourth level. The palette is warm by design, so
+  -- the first three rungs are 9 to 12 degrees of hue apart and would read as
+  -- one color; each is nudged toward the page or the text until neighbouring
+  -- levels differ in brightness as well.
+  --
+  -- The ramp can be the theme's own metaphor rather than a hierarchy because
+  -- depth is already legible without it: Markview renders no preview, so the
+  -- "#" of each heading are on screen and counting them is how a level is
+  -- read. It stops at four because this repository's Markdown holds 704
+  -- headings and ten of them are H4; a fifth and sixth rung would be spent on
+  -- levels nothing writes. Gold stays out of it: inline code has that role,
+  -- and inline code outnumbers headings five to one.
+  local heading = {
+    blend(c.error, c.base, 0.14),
+    blend(c.accent, c.text, 0.10),
+    blend(c.accent2, c.base, 0.06),
+    blend(c.info, c.text, 0.06),
+  }
 
   local groups = {
     Normal = { fg = c.text, bg = c.base },
@@ -124,9 +159,40 @@ function M.apply(colors)
     ["@punctuation.delimiter"] = { fg = c.subtext },
     ["@tag"] = { fg = c.error },
     ["@tag.attribute"] = { fg = c.warning },
-    ["@markup.heading"] = { fg = c.accent, bold = true },
-    ["@markup.link"] = { fg = c.accent2, underline = true },
+
+    -- Markdown, where the structure carries the color and the prose does not:
+    -- a page is mostly sentences, and a sentence is the text color at every
+    -- depth. Marking the structure is also all a warm palette has room for,
+    -- since every hue it holds sits between 8 and 95 degrees.
+    ["@markup.heading"] = { fg = heading[1], bold = true },
+    ["@markup.heading.1"] = { fg = heading[1], bold = true },
+    ["@markup.heading.2"] = { fg = heading[2], bold = true },
+    ["@markup.heading.3"] = { fg = heading[3], bold = true },
+    ["@markup.heading.4"] = { fg = heading[4], bold = true },
+    ["@markup.heading.5"] = { fg = c.muted, bold = true },
+    ["@markup.heading.6"] = { fg = c.muted, bold = true },
+    -- A link points out of the document, which is the one thing worth
+    -- separating from a heading, and every hue is already a heading or inline
+    -- code. So it separates by texture: the label is the only underlined text
+    -- on the page, and the URL beside it is noise.
+    ["@markup.link"] = { fg = c.muted },
+    ["@markup.link.label"] = { fg = c.text, underline = true },
+    ["@markup.link.url"] = { fg = c.muted, underline = true },
     ["@markup.raw"] = { fg = c.success },
+    -- A fenced block is marked by its surface rather than by a color of its
+    -- own, because the injected language already highlights the code in it.
+    ["@markup.raw.block"] = { bg = c.surface },
+    ["@markup.quote"] = { fg = c.muted, italic = true },
+    ["@markup.strikethrough"] = { fg = c.muted, strikethrough = true },
+    ["@markup.list"] = { fg = c.subtext },
+    ["@markup.list.checked"] = { fg = c.info },
+    ["@markup.list.unchecked"] = { fg = c.muted },
+    -- The ">" of a quote and the "---" of a break, kept quiet. Scoped to
+    -- Markdown so that a format specifier in a string keeps Special.
+    ["@punctuation.special.markdown"] = { fg = c.overlay },
+    -- The language named after a fence opener lands on @label, which would
+    -- otherwise paint it in the error color.
+    ["@label.markdown"] = { fg = c.muted },
 
     -- The plugins this configuration carries
     NeoTreeNormal = { fg = c.subtext, bg = c.mantle },
