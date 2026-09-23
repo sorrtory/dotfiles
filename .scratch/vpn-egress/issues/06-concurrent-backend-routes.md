@@ -1,6 +1,6 @@
 # 06: Serve concurrent default and named egress routes
 
-Status: claimed
+Status: resolved
 Blocked by: 05 (native default inventory)
 
 The operator chose to keep only the current host and staging WireGuard peers.
@@ -43,14 +43,28 @@ backend. Keep the existing local proxy and default capture usable through a
 manual default selector while distinct named listeners route directly to
 their matching egresses.
 
-- [ ] Multiple configured egresses load in one backend, with stable listener
+- [x] Multiple configured egresses load in one backend, with stable listener
       bindings that cannot silently be reassigned to another name.
-- [ ] Default proxy and capture traffic use the selector; named-listener TCP,
+- [x] Default proxy and capture traffic use the selector; named-listener TCP,
       UDP and DNS use only their named route, without default fallback.
-- [ ] Default entry points reject IPv6 and return no AAAA answers; named
+- [x] Default entry points reject IPv6 and return no AAAA answers; named
       listeners follow their declared IPv6 capability.
-- [ ] A failed named egress does not affect another named route or substitute
+- [x] A failed named egress does not affect another named route or substitute
       the default. Backend restart interrupts connections but compatible
       capture namespaces can reconnect to the same binding.
-- [ ] Synthetic staging traffic identifies each route through its actual
+- [x] Synthetic staging traffic identifies each route through its actual
       listener and DNS path before a separately approved host cutover.
+
+## Daily-host cutover
+
+The operator separately approved clean generation
+`/nix/store/v61d2g0f0v0vgs445vmxlzq71h5ghw46-home-manager-generation`, with
+`/nix/store/6yrvdf0nybwain769llbabcbzybd6ypl-home-manager-generation`
+retained for rollback. The host backend loaded only its laptop WireGuard peer
+and shared VLESS. Default proxy, named VLESS, and default capture HTTPS passed;
+both proxy listeners returned DNS A answers over UDP, while default capture
+returned no AAAA. With operator-run `vpn-up`, public HTTPS and DNS followed
+`vpn-host0`, LAN stayed on Wi-Fi, and capture and VLESS HTTPS still passed.
+Stopping the backend blocked whole-host and named traffic; restart restored
+whole-host, capture and VLESS HTTPS. Operator-run `vpn-down` removed the TUN,
+restored the Wi-Fi route and resolver, and direct HTTPS passed.

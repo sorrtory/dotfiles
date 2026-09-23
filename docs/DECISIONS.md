@@ -540,9 +540,9 @@ passed, including backend loss and recovery. The encrypted legacy profile
 stays available until network-change and suspend checks precede retirement.
 The backend credentials now come from whole-file encrypted native inventory
 and hostname policy, activated on the daily host after separate approval. Its
-installed compiler loads only the selected peer for each machine. The staged
-concurrent compiler loads that host's assigned WireGuard peer plus the shared
-VLESS outbound; the daily host still awaits a separately approved cutover.
+installed compiler loads only that host's assigned WireGuard peer plus the
+shared VLESS outbound. The concurrent generation passed staging and was
+activated on the daily host after separate approval.
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 

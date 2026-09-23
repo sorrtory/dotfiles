@@ -212,6 +212,17 @@ of a retired port and a hostname server without physical-route bootstrap DNS.
 The live backend still loaded only the VM peer and VLESS, enforced IPv4-only
 DNS, and served HTTPS through the VLESS listener.
 
+The daily host then activated separately approved clean generation
+`/nix/store/v61d2g0f0v0vgs445vmxlzq71h5ghw46-home-manager-generation`.
+Its backend loaded only the laptop WireGuard peer and VLESS. Default proxy,
+named VLESS and default capture carried HTTPS; both proxy listeners returned
+DNS A records over UDP and default capture returned no AAAA. With `vpn-up`,
+public HTTPS and DNS used `vpn-host0`, LAN kept Wi-Fi routing, and capture and
+VLESS HTTPS remained usable. Backend loss blocked whole-host and named traffic;
+restart restored both and capture HTTPS. `vpn-down` removed the TUN, restored
+Wi-Fi routing and DNS, and direct HTTPS succeeded. The previous generation
+remains available for rollback.
+
 ## Mirroring the working tree
 
 The guest copy is a plain directory, not a clone, so every edit, commit and Git
