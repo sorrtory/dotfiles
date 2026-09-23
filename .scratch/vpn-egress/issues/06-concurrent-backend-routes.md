@@ -31,6 +31,13 @@ loss and restoration, and `vpn-down` cleanup passed with that backend. The
 daily-host activation remains separately gated. Default switching belongs to
 ticket 07; named capture belongs to ticket 08.
 
+Review added a private per-session listener binding record, so a removed
+route's port cannot be reused by another tag while an old capture may still
+exist. The compiler also rejects hostname servers until physical-route-bound
+bootstrap DNS is implemented. The revised VM generation passed its synthetic
+collision and hostname fixtures, created the binding record at mode `0600`,
+kept IPv4-only DNS, and continued to serve the real VLESS route.
+
 **What to build:** Load the encrypted egress inventory into one unprivileged
 backend. Keep the existing local proxy and default capture usable through a
 manual default selector while distinct named listeners route directly to

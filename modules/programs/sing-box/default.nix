@@ -21,7 +21,7 @@ let
     '';
   };
   prepare = pkgs.writeShellScript "sing-box-prepare" ''
-    exec ${lib.getExe generator} --concurrent \
+    exec ${lib.getExe generator} --concurrent --bindings "$1/vpn-listeners.json" \
       ${config.sops.secrets."vpn-egresses".path} \
       ${config.sops.secrets."vpn-policy".path} \
       "$1/sing-box/config.json"

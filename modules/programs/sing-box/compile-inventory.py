@@ -59,6 +59,30 @@ def named_port(tag):
     return 20000 + int.from_bytes(hashlib.sha256(tag.encode()).digest()[:4], "big") % 40000
 
 
+def binding_ledger(path, config):
+    """Reserve a named listener's port until reboot, including removed tags."""
+    previous = {}
+    if path.exists():
+        try:
+            previous = json.loads(path.read_text())
+        except (OSError, ValueError):
+            raise InvalidConfig("invalid listener binding record") from None
+        if not isinstance(previous, dict) or any(
+                not isinstance(tag, str) or not isinstance(port, int)
+                for tag, port in previous.items()):
+            raise InvalidConfig("invalid listener binding record")
+    current = {item["tag"]: item["listen_port"] for item in config["inbounds"]
+               if item["tag"].startswith("vpn-named-")}
+    by_port = {port: tag for tag, port in previous.items()}
+    if len(by_port) != len(previous):
+        raise InvalidConfig("listener binding record reuses a port")
+    if any(tag in previous and previous[tag] != port or
+           port in by_port and by_port[port] != tag
+           for tag, port in current.items()):
+        raise InvalidConfig("named listener port was reserved by another route")
+    return {**previous, **current}
+
+
 def compile_config(inventory, policy, concurrent=False):
     inventory = object_at(inventory, "inventory")
     policy = object_at(policy, "policy")
@@ -141,6 +165,15 @@ def compile_config(inventory, policy, concurrent=False):
         kind: [entry],
     }
     if concurrent:
+        for _, route in entries.values():
+            addresses = ([peer.get("address") for peer in route.get("peers", [])]
+                         if route["type"] == "wireguard" else
+                         [route["server"]] if "server" in route else [])
+            for address in addresses:
+                try:
+                    ipaddress.ip_address(address)
+                except (ValueError, TypeError):
+                    raise InvalidConfig("egress server hostname needs physical-route bootstrap") from None
         # A WireGuard peer cannot run on two machines: the server would move
         # its endpoint between them. Ownership is independent of the default;
         # non-WireGuard outbounds may be shared by all inventory hosts.
@@ -198,6 +231,8 @@ def compile_config(inventory, policy, concurrent=False):
                 for tag in sorted(active)
             ],
         }
+        if not any(ipv6[tag] for tag in active):
+            config["dns"]["strategy"] = "ipv4_only"
         config["route"] = {
             "final": selector, "default_domain_resolver": default_dns["tag"],
             "auto_detect_interface": True,
@@ -218,10 +253,12 @@ def compile_config(inventory, policy, concurrent=False):
 
 
 def main():
-    concurrent = len(sys.argv) == 5 and sys.argv[1] == "--concurrent"
-    paths = sys.argv[2:] if concurrent else sys.argv[1:]
-    if len(paths) != 3 or not os.path.isabs(paths[2]):
-        print("usage: vpn-inventory-config [--concurrent] INVENTORY POLICY ABSOLUTE_OUTPUT", file=sys.stderr)
+    concurrent = len(sys.argv) == 7 and sys.argv[1:3] == ["--concurrent", "--bindings"]
+    bindings = Path(sys.argv[3]) if concurrent else None
+    paths = sys.argv[4:] if concurrent else sys.argv[1:]
+    if (len(paths) != 3 or not os.path.isabs(paths[2]) or
+            concurrent and not bindings.is_absolute()):
+        print("usage: vpn-inventory-config [--concurrent --bindings ABSOLUTE_LEDGER] INVENTORY POLICY ABSOLUTE_OUTPUT", file=sys.stderr)
         return 2
     try:
         inventory = jsonc(Path(paths[0]).read_text())
@@ -235,6 +272,7 @@ def main():
         return 1
     output = Path(paths[2])
     temporary = None
+    ledger_temporary = None
     try:
         # Check every native entry before selecting one. An inactive route with
         # malformed protocol fields must not wait until a later host switch to
@@ -267,6 +305,15 @@ def main():
                                 check=False)
         if result.returncode != 0:
             raise InvalidConfig("generated sing-box configuration failed validation")
+        if concurrent:
+            ledger = binding_ledger(bindings, config)
+            with tempfile.NamedTemporaryFile(mode="w", dir=bindings.parent,
+                                         prefix="vpn-bindings.", delete=False) as stream:
+                ledger_temporary = Path(stream.name)
+                json.dump(ledger, stream, separators=(",", ":"))
+                stream.write("\n")
+            os.replace(ledger_temporary, bindings)
+            ledger_temporary = None
         os.replace(temporary, output)
         temporary = None
     except (OSError, InvalidConfig) as error:
@@ -276,6 +323,8 @@ def main():
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
+        if ledger_temporary is not None:
+            ledger_temporary.unlink(missing_ok=True)
     return 0
 
 

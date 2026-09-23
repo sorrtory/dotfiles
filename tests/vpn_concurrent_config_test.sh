@@ -17,6 +17,7 @@ printf '{"defaults":{"%s":"route-a"},"pins":{},"ipv6":{"route-a":false,"route-b"
   "$(hostname)" > "$root/policy"
 compile() {
   python3 "$repo/modules/programs/sing-box/compile-inventory.py" --concurrent \
+    --bindings "$root/listeners.json" \
     "$root/egresses" "$root/policy" "$root/config"
 }
 compile
@@ -24,6 +25,7 @@ jq -e '
   .route.final == "vpn-default-selector" and
   .outbounds[-1].type == "selector" and
   .outbounds[-1].default == "route-a" and
+  (.dns | has("strategy") | not) and
   .outbounds[-1].outbounds == ["route-a", "route-b"] and
   ([.inbounds[] | select(.tag | startswith("vpn-named-")) | .listen_port] | unique | length) == 2 and
   ([.inbounds[] | select(.tag | startswith("vpn-named-")) | .listen] | all(. == "127.0.0.1")) and
@@ -57,6 +59,45 @@ if compile >"$root/stdout" 2>"$root/stderr"; then
 fi
 grep -q 'shared primary DNS server' "$root/stderr" || fail 'missing DNS rejection'
 cp "$root/valid-egresses" "$root/egresses"
+jq '(.outbounds[] | select(.tag == "route-a") | .server) = "example.invalid"' \
+  "$root/egresses" > "$root/hostname-server"
+mv "$root/hostname-server" "$root/egresses"
+if compile >"$root/stdout" 2>"$root/stderr"; then
+  fail 'hostname server accepted without physical-route bootstrap'
+fi
+grep -q 'physical-route bootstrap' "$root/stderr" || fail 'missing hostname rejection'
+cp "$root/valid-egresses" "$root/egresses"
+
+# A removed listener keeps its port reservation for this login session.
+read -r old_tag new_tag < <(python3 - "$repo" <<'PY'
+import runpy, sys
+port = runpy.run_path(sys.argv[1] + "/modules/programs/sing-box/compile-inventory.py")["named_port"]
+reserved = {port("route-a"), port("route-b")}
+seen = {}
+for index in range(1000):
+    tag = f"collision-{index}"
+    number = port(tag)
+    if number in reserved:
+        continue
+    if number in seen:
+        print(seen[number], tag)
+        break
+    seen[number] = tag
+else:
+    raise SystemExit("no synthetic port collision found")
+PY
+)
+cat > "$root/egresses" <<EOF2
+{"endpoints":[],"outbounds":[{"type":"socks","tag":"$old_tag","server":"127.0.0.1","server_port":15001}],"dns":{"servers":[{"type":"udp","tag":"collision-dns","server":"8.8.8.8","detour":"$old_tag"}]}}
+EOF2
+printf '{"defaults":{"%s":"%s"},"pins":{},"ipv6":{"%s":false}}\n' \
+  "$(hostname)" "$old_tag" "$old_tag" > "$root/policy"
+compile
+sed -i "s/$old_tag/$new_tag/g" "$root/egresses" "$root/policy"
+if compile >"$root/stdout" 2>"$root/stderr"; then
+  fail 'removed route port was silently reassigned'
+fi
+grep -q 'reserved by another route' "$root/stderr" || fail 'missing port reservation rejection'
 
 # The shared VLESS-like route may run on both machines; each WireGuard peer
 # belongs only to the hostname that declares it as its default.
@@ -79,6 +120,7 @@ compile
 jq -e '
   [.endpoints[].tag] == ["host-wireguard"] and
   [.outbounds[].tag] == ["shared-route", "vpn-default-selector"] and
+  .dns.strategy == "ipv4_only" and
   (.inbounds | all(.tag != "vpn-named-vm-wireguard")) and
   (.dns.servers | all(.detour != "vm-wireguard"))
 ' "$root/config" >/dev/null || fail 'exclusive peer entered concurrent backend'

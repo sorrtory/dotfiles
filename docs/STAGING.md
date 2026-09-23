@@ -206,6 +206,12 @@ the physical route and resolver. The revised encrypted ownership policy was
 then activated on the VM; both proxy listeners returned HTTPS 204. The daily
 host still runs its earlier single-route generation.
 
+After review, the VM's next generation recorded listener bindings in a private
+per-session file at mode `0600`; its synthetic fixture rejected reassignment
+of a retired port and a hostname server without physical-route bootstrap DNS.
+The live backend still loaded only the VM peer and VLESS, enforced IPv4-only
+DNS, and served HTTPS through the VLESS listener.
+
 ## Mirroring the working tree
 
 The guest copy is a plain directory, not a clone, so every edit, commit and Git

@@ -56,9 +56,10 @@ contains every peer, so compromise of either machine could expose both peers.
 An owner map prevents the backend from starting another host's WireGuard peer;
 the same peer must not run on two clients at once or its server endpoint would
 roam. Old `wg-quick` use ends before the concurrent backend starts.
-The backend never has an unbound direct fallback. Current WireGuard server
-addresses are IP literals; a future egress with a hostname must bootstrap
-through fixed-address DoH bound to the physical route rather than host DNS.
+The backend never has an unbound direct fallback. Current WireGuard and VLESS
+server addresses are IP literals. The compiler rejects hostname servers until
+they can bootstrap through fixed-address DoH bound to the physical route
+rather than host DNS.
 
 ## Commands and failure behavior
 
@@ -108,7 +109,9 @@ it stops **all** scopes on that route, including one-off launches, before
 replacing the listener. A pin-only change does not stop an old capture still
 used by another scope. Each stop reports the app, old route and reason.
 Listener addresses cannot be reassigned to another tag while a capture is
-live. Readback compares the app's route, capture namespace PID/inode and
+live. A private runtime binding record reserves removed tags' ports until
+reboot, when no capture from the prior session can survive. Readback compares
+the app's route, capture namespace PID/inode and
 backend listener binding, and distinguishes an attached route from a backend
 outage or mismatch. Failed reconciliation cannot silently reroute an app.
 
