@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Compile encrypted-at-rest native egresses into this host's default backend."""
+"""Compile encrypted-at-rest native egresses into a private backend config."""
 
 import ipaddress
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -53,7 +54,12 @@ def object_at(value, name):
     return value
 
 
-def compile_config(inventory, policy):
+def named_port(tag):
+    # A tag keeps its binding when inventory order or other entries change.
+    return 20000 + int.from_bytes(hashlib.sha256(tag.encode()).digest()[:4], "big") % 40000
+
+
+def compile_config(inventory, policy, concurrent=False):
     inventory = object_at(inventory, "inventory")
     policy = object_at(policy, "policy")
     if set(inventory) != {"endpoints", "outbounds", "dns"}:
@@ -81,10 +87,14 @@ def compile_config(inventory, policy):
     if set(dns) != {"servers"} or not isinstance(dns["servers"], list):
         raise InvalidConfig("invalid DNS server inventory")
     servers = dns["servers"]
+    server_tags = set()
     for server in servers:
         if not isinstance(server, dict) or server.get("type") != "udp" or \
                 server.get("detour") not in entries or not isinstance(server.get("tag"), str):
             raise InvalidConfig("invalid DNS server route")
+        if server["tag"] in server_tags:
+            raise InvalidConfig("duplicate DNS server name")
+        server_tags.add(server["tag"])
         try:
             if ipaddress.ip_address(server.get("server", "")).version != 4:
                 raise InvalidConfig("default DNS needs an IPv4 resolver")
@@ -121,34 +131,93 @@ def compile_config(inventory, policy):
                   "rules": [{"ip_version": 6, "action": "reject"}]},
         kind: [entry],
     }
+    if concurrent:
+        missing_dns = set(entries) - {server["detour"] for server in servers}
+        if missing_dns:
+            raise InvalidConfig("egress has no DNS server")
+        ports = {tag: named_port(tag) for tag in entries}
+        if len(set(ports.values())) != len(ports):
+            raise InvalidConfig("named listener port collision")
+        selector = "vpn-default-selector"
+        if selector in entries or selector in server_tags or "vpn-default-dns" in server_tags:
+            raise InvalidConfig("reserved VPN tag in inventory")
+        default_dns = {"type": "udp", "tag": "vpn-default-dns",
+                       "server": selected_dns[0]["server"], "detour": selector}
+        named_inbounds = {tag: "vpn-named-" + tag for tag in entries}
+        config["endpoints"] = endpoints
+        config["outbounds"] = outbounds + [{"type": "selector", "tag": selector,
+                                           "outbounds": list(entries), "default": selected,
+                                           "interrupt_exist_connections": False}]
+        config["inbounds"] += [
+            {"type": "mixed", "tag": named_inbounds[tag],
+             "listen": "127.0.0.1", "listen_port": ports[tag]}
+            for tag in sorted(entries)
+        ]
+        config["dns"] = {
+            "servers": [{"type": "local", "tag": "bootstrap"}, default_dns] + servers,
+            "final": default_dns["tag"],
+            "rules": [
+                {"inbound": ["mixed", "http"], "query_type": ["AAAA"],
+                 "action": "predefined"},
+            ] + [
+                {"inbound": [named_inbounds[tag]], "query_type": ["AAAA"],
+                 "action": "predefined"}
+                for tag in sorted(entries) if not ipv6[tag]
+            ] + [
+                {"inbound": [named_inbounds[tag]], "action": "route",
+                 "server": next(server["tag"] for server in servers
+                                if server["detour"] == tag)}
+                for tag in sorted(entries)
+            ],
+        }
+        config["route"] = {
+            "final": selector, "default_domain_resolver": default_dns["tag"],
+            "auto_detect_interface": True,
+            "rules": [
+                {"inbound": ["mixed", "http"], "ip_version": 6,
+                 "action": "reject"},
+            ] + [
+                {"inbound": [named_inbounds[tag]], "ip_version": 6,
+                 "action": "reject"}
+                for tag in sorted(entries) if not ipv6[tag]
+            ] + [
+                {"inbound": [named_inbounds[tag]], "action": "route",
+                 "outbound": tag}
+                for tag in sorted(entries)
+            ],
+        }
     return config
 
 
 def main():
-    if len(sys.argv) != 4 or not os.path.isabs(sys.argv[3]):
-        print("usage: vpn-inventory-config INVENTORY POLICY ABSOLUTE_OUTPUT", file=sys.stderr)
+    concurrent = len(sys.argv) == 5 and sys.argv[1] == "--concurrent"
+    paths = sys.argv[2:] if concurrent else sys.argv[1:]
+    if len(paths) != 3 or not os.path.isabs(paths[2]):
+        print("usage: vpn-inventory-config [--concurrent] INVENTORY POLICY ABSOLUTE_OUTPUT", file=sys.stderr)
         return 2
     try:
-        inventory = jsonc(Path(sys.argv[1]).read_text())
-        policy = jsonc(Path(sys.argv[2]).read_text())
-        config = compile_config(inventory, policy)
+        inventory = jsonc(Path(paths[0]).read_text())
+        policy = jsonc(Path(paths[1]).read_text())
+        config = compile_config(inventory, policy, concurrent)
     except (OSError, ValueError, InvalidConfig) as error:
         # Parser exceptions can include input fragments. Only our fixed messages
         # leave this boundary; credentials and private tags never enter logs.
         message = str(error) if isinstance(error, InvalidConfig) else "invalid JSONC or unreadable input"
         print(f"vpn-inventory-config: {message}", file=sys.stderr)
         return 1
-    output = Path(sys.argv[3])
+    output = Path(paths[2])
     temporary = None
     try:
         # Check every native entry before selecting one. An inactive route with
         # malformed protocol fields must not wait until a later host switch to
         # surface its error. `check` parses the config without starting peers.
-        all_routes = {**config, "endpoints": inventory["endpoints"],
-                      "outbounds": inventory["outbounds"],
-                      "dns": {**config["dns"], "servers":
-                              [{"type": "local", "tag": "bootstrap"}] +
-                              inventory["dns"]["servers"]}}
+        all_routes = config if concurrent else {
+            **config, "endpoints": inventory["endpoints"],
+            "outbounds": inventory["outbounds"],
+            "dns": {**config["dns"], "servers":
+                    [{"type": "local", "tag": "bootstrap"}] +
+                    inventory["dns"]["servers"]},
+        }
         with tempfile.NamedTemporaryFile(mode="w", dir=output.parent,
                                      prefix=output.name + ".", delete=False) as stream:
             temporary = Path(stream.name)

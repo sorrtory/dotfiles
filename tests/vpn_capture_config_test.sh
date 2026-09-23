@@ -5,7 +5,7 @@ test_root=$(mktemp -d)
 trap 'rm -rf -- "$test_root"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 subject="$repo/modules/programs/vpnized-apps/capture-config.sh"
-printf '%s\n' '{"endpoints":[{"private_key":"DO-NOT-COPY"}],"dns":{"servers":[{"type":"local","tag":"bootstrap"},{"type":"udp","tag":"tunnel-dns-0","server":"1.1.1.1","detour":"tunnel"}]}}' > "$test_root/backend.json"
+printf '%s\n' '{"endpoints":[{"private_key":"DO-NOT-COPY"}],"route":{"final":"tunnel"},"dns":{"servers":[{"type":"local","tag":"bootstrap"},{"type":"udp","tag":"tunnel-dns-0","server":"1.1.1.1","detour":"tunnel"}]}}' > "$test_root/backend.json"
 bash "$subject" "$test_root/backend.json" "$test_root"
 [[ $(stat -c %a "$test_root/config.json") == 600 ]] || fail 'config permissions'
 jq -e --arg runtime "$test_root" '

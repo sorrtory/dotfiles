@@ -119,9 +119,8 @@ of migration.
 This section records the installed VPN command. The
 [selectable egress spec](../.scratch/vpn-egress/spec.md) and its ticket map
 describe the remaining concurrent-route rewrite. The module split and
-supervised whole-host TUN were activated on the daily host on 2026-09-23;
-native inventory passed Fedora staging but awaits a separate daily-host
-activation; runtime selection and named captures are still planned.
+supervised whole-host TUN and native inventory were activated on the daily host
+on 2026-09-23; runtime selection and named captures are still planned.
 
 Implemented on §13's shared backend. `vpn PROGRAM` runs one program as the
 invoking user in an on-demand, rootless capture namespace that forwards TCP and

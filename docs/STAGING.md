@@ -179,6 +179,19 @@ traffic and restarting it restored whole-host and capture HTTPS. After
 `vpn-down`, the root unit and TUN interface were absent, public IPv4 routed
 through Wi-Fi, the Wi-Fi resolver was selected, and direct HTTPS worked.
 
+## Concurrent VPN candidate, 2026-09-24
+
+The installed backend stayed on the VM's assigned peer. A separate candidate
+compiler mode generated two loopback named listeners and a manual default
+selector from synthetic SOCKS egresses; `sing-box check` accepted the output.
+The default listener reached synthetic A, named A reached A, and named B
+reached B. Disabling B broke its named listener while named A still worked.
+The installed VM backend was restarted afterward and its real-peer proxy
+returned HTTPS 204. The current encrypted inventory passed candidate-mode
+`sing-box check` without starting its second peer. Concurrent generated UDP,
+DNS and IPv6 traffic remain unmeasured, as does real concurrent operation
+without additional peer assignments.
+
 ## Mirroring the working tree
 
 The guest copy is a plain directory, not a clone, so every edit, commit and Git

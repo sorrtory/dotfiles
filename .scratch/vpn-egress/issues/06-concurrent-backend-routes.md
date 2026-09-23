@@ -1,6 +1,6 @@
 # 06: Serve concurrent default and named egress routes
 
-Status: needs-info
+Status: claimed
 Blocked by: 05 (native default inventory)
 
 The operator chose to keep only the current host and staging WireGuard peers.
@@ -9,6 +9,17 @@ in one backend would make one peer roam between clients. Concurrent real-route
 validation needs additional independent peers or another provisioned egress.
 The existing synthetic routing proof remains available for implementation
 checks, but cannot establish real concurrent operation on these identities.
+
+The compiler now has an explicit `--concurrent` candidate mode. It is not
+selected by the installed service. A synthetic two-route fixture checks stable
+loopback bindings, direct named route and DNS rules, default IPv4 policy, and
+capture/TUN resolver generation. On the Fedora VM, the generated candidate
+sent default and named HTTP to the intended synthetic SOCKS egresses; disabling
+one named egress left the other working. The VM's installed real-peer service
+was restored and its proxy passed HTTPS. The real encrypted inventory also
+passed `sing-box check` in candidate mode without starting another peer.
+Real concurrent UDP/DNS and IPv6 traffic, default switching, and a host cutover
+remain open.
 
 **What to build:** Load the encrypted egress inventory into one unprivileged
 backend. Keep the existing local proxy and default capture usable through a

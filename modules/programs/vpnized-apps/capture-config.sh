@@ -20,9 +20,10 @@ trap 'rm -f -- "$temporary"' EXIT
 # independent tunnel identity. Without IPv6 the namespace gets no IPv6 address,
 # so programs inside see no IPv6 route rather than one that goes nowhere.
 jq -e --arg runtime "$runtime" '
-  [.dns.servers[] | select(.type == "udp") |
+  .route.final as $selected |
+  [.dns.servers[] | select(.type == "udp" and .detour == $selected) |
     {type: "udp", tag: .tag, server: .server, detour: "proxy"}] as $dns |
-  (.dns.strategy != "ipv4_only") as $ipv6 |
+  ($selected != "vpn-default-selector" and .dns.strategy != "ipv4_only") as $ipv6 |
   if ($dns | length) == 0 then error("missing tunnel resolver") else
   {
     log: {level: "warn"},
