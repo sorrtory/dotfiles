@@ -94,5 +94,7 @@ file step. `tests/theme_telegram_test.sh` covers the rest, including that the
 old palette still repaints the old file.
 
 Left for the operator: the host check (choose the file once, switch, restart
-AyuGram), which needs the real login. `configs/ayugram/` is now unused and is
-ticket 09's to remove.
+AyuGram), which needs the real login. `configs/ayugram/` has since been
+removed; its `build.sh` packed the same zip the activation step now packs, so
+it was the logic twice over. `tests/theme_telegram_test.sh` reads the
+hand-made theme from commit 1174260 rather than the tree, so it is unaffected.

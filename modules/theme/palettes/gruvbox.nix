@@ -76,6 +76,10 @@ with gruvbox;
       surface = "#45403d";
       text = "#fffaeb";
     };
+    terminus = {
+      base = bg0_s;
+      text = "#fffaeb";
+    };
   };
 
   ansi = {

@@ -5,7 +5,7 @@
 # app layered on top, then the operator's. Apps take their colors from
 # `dotfiles.theme.forApp "<app>"` and register in `dotfiles.theme.apps` so
 # the notice printed after a switch can say how each one picks it up.
-# .scratch/themes/spec.md has the decisions behind this.
+# docs/DECISIONS.md records the palette and application ownership decisions.
 
 let
   inherit (lib) mkOption types;

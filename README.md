@@ -264,7 +264,7 @@ Bare `home-manager switch` looks for a channel configuration under
 
 | App | Takes a switch |
 |---|---|
-| WezTerm, Zsh, Sublime Text, Vesktop | live: they watch their file |
+| WezTerm, Zsh, Sublime Text, Terminus, Vesktop | live: they watch their file |
 | GNOME Shell, GTK, Firefox | live, through Rewaita; a GTK program reads its colors at startup, so open windows keep theirs |
 | Wallpaper, accent, icons | live, through dconf |
 | Neovim, Spotify, Obsidian, Telegram | next start |
@@ -391,6 +391,13 @@ rereads the file when it changes, so a switch recolors an open window. The
 hand-made Gruvbox scheme it replaced is gone, and the two choices worth
 keeping from it — the softer background and the brighter plain text — are now
 gruvbox's own overrides for this app.
+
+Terminus has a separate generated settings file in that directory. It follows
+the same palette live, including open terminal views: Terminus watches its
+colors and rebuilds its own hidden color scheme. Its normal and bright ANSI
+slots use the palette's distinct sets. Gruvbox keeps its former soft
+background and bright text as Terminus overrides; `Terminus View` keeps its
+native font setting.
 
 #### Neovim
 

@@ -52,6 +52,26 @@ _Avoid_: Rewrite
 The intentionally selected behavior a migration slice must preserve while its representation may improve.
 _Avoid_: Exact legacy copy
 
+**Theme**:
+The selected named look for themed applications, chosen by `dotfiles.theme.name` and supplied by one palette.
+_Avoid_: Rewaita preset, per-app theme collection
+
+**Palette**:
+The repository-owned file that exports semantic color roles and sixteen ANSI colors for a theme, with optional assets and app overrides.
+_Avoid_: Generated application theme, terminal color scheme
+
+**Color role**:
+A named color by purpose, such as `base`, `text` or `accent`, which each application translates into its own format.
+_Avoid_: Application-specific color key, ANSI slot
+
+**Theme override**:
+A palette or operator adjustment to one application's resolved colors, applied after the global roles and ANSI colors.
+_Avoid_: Separate palette, hand-edited generated file
+
+**Theme transparency**:
+The independent on/off choice that controls the alpha values themed applications use for windows and surfaces.
+_Avoid_: Theme name, blur setting
+
 **Native config**:
 Application configuration kept in the application's own readable format and optionally exposed through Home Manager.
 _Avoid_: Unmanaged config

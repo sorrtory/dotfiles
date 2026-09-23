@@ -161,17 +161,24 @@ Keep a readable native config when translating it to Nix would reduce clarity. U
 
 Home Manager owns Zsh, Neovim, tmux, MPV, Yazi, Git, and the intentional GNOME dconf settings: the Shell extension list, custom launchers and keybindings, input sources, Ubuntu Dock and appearance. Keys a GNOME component manages at runtime, such as the Mutter tiling keys Tiling Assistant overrides, are not declared, and neither are machine-specific ones such as the dock's preferred monitor. GNOME tools and extensions come from Nixpkgs rather than the distro, because the target machines span Ubuntu, Fedora and possibly NixOS. A distro's own session-mode extensions, such as Ubuntu Dock, stay distro-provided and are not listed. Migration may preserve selected native configuration first and translate it later.
 
-Rewaita owns the generated color layer for GTK 3, GTK 4/libadwaita, GNOME
-Shell and Firefox. The selected baseline is Gruvbox Medium in dark mode, with
-GNOME's orange accent choosing Gruvbox orange and Yaru's warty-brown icon
-variant completing the autumn palette. GTK surfaces use Rewaita's 90% alpha
-variant and its accent borders are disabled. Home Manager installs the User Themes
-extension and `adw-gtk3`, seeds Rewaita's mutable preferences only when absent,
-and reruns the preset inside each GNOME login; it does not put generated CSS in
-the Nix store. That leaves Fine Tune changes editable while making a missing or
-stale generated theme self-repairing. The native package is used instead of
-Flatpak, so no system-wide `sudo flatpak override` grants every Flatpak write
-access to the GTK configuration directories.
+`dotfiles.theme.name` selects one repository-owned palette of semantic roles
+and sixteen ANSI colors. Applications translate those colors into their native
+formats. A palette may override colors for one app, and an operator override in
+`home.nix` wins over it. Stable theme names in application preferences keep a
+switch to `home-manager switch`; `dotfiles.theme.transparency` independently
+turns surface alpha on or off. The three dark palettes are gruvbox,
+autumn-leaves and onedark. Stylix is not used because it would compete with
+Rewaita's GNOME ownership and the native editor themes and would not preserve
+the per-app override model.
+
+Rewaita consumes the selected palette for GTK 3, GTK 4/libadwaita, GNOME Shell
+and Firefox. Gruvbox starts from Rewaita's Gruvbox Medium colors, with GNOME's
+orange accent and Yaru's warty-brown icon variant preserving the earlier
+desktop look. Home Manager installs the User Themes extension and `adw-gtk3`,
+seeds Rewaita's mutable preferences only when absent, and applies the selected
+generated palette at activation and GNOME login. Rewaita owns generated GTK
+and Shell CSS in native paths; its Fine Tune settings remain mutable. The
+native package avoids a system-wide Flatpak write grant to GTK configuration.
 
 Nixpkgs 26.05 and the repository's unstable pin both carry Rewaita 1.1.1,
 which predates the command-line theme selector and Firefox generation described
