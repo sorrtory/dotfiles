@@ -118,8 +118,9 @@ of migration.
 
 This section records the installed VPN command. The
 [selectable egress spec](../.scratch/vpn-egress/spec.md) and its ticket map
-describe the planned concurrent-route rewrite; they do not change current
-fresh-machine steps until activated.
+describe the remaining concurrent-route rewrite. The module split and
+supervised whole-host TUN were activated on the daily host on 2026-09-23;
+native inventory, runtime selection and named captures are still planned.
 
 Implemented on §13's shared backend. `vpn PROGRAM` runs one program as the
 invoking user in an on-demand, rootless capture namespace that forwards TCP and
@@ -138,7 +139,16 @@ are not yet verified. IPv6 is now off by default
 through the server timed out, stalling programs for minutes before fallback.
 
 Machines are bootstrapped fresh rather than migrated, so the legacy launcher and
-the native `/opt/Vesktop` retire with the reinstall instead of coexisting.
+the native `/opt/Vesktop` retire with the reinstall instead of coexisting. The
+current daily-host generation replaces the `wg-quick` handover functions with
+an explicit supervised, credential-free TUN. After approved activation, the
+user backend, local proxy and `vpn -- curl` carried real traffic. The operator
+started `vpn-up` and stopped it with `vpn-down`. Public HTTPS and UDP STUN
+used the TUN; DNS selected `vpn-host0`; LAN and link-local routes stayed on
+`wlp1s0`; IPv6 was rejected. Stopping the backend blocked HTTPS, restarting
+it restored both whole-host and captured traffic, and `vpn-down` restored the
+ordinary route and resolver. Network-change and suspend checks remain in the
+later recovery ticket.
 Concurrent named egresses and per-application pins are planned in the
 selectable-egress spec linked above. Other Electron applications remain
 follow-up work.

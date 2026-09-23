@@ -1,6 +1,6 @@
 # 04: Run whole-host VPN through the supervised TUN
 
-Status: claimed
+Status: resolved
 Blocked by: 03 (shared VPN runtime)
 
 **What to build:** Make `vpn-up` and `vpn-down` operate a credential-free,
@@ -22,9 +22,16 @@ arrive.
 - [ ] Daily-host activation requires separate operator approval; a reviewed
       rollback generation remains available.
 
-## Staging result
+## Answer
 
-The generated credential-free TUN ran under a supervised root unit on Fedora
-staging. Public IPv4, DNS, LAN reachability, backend loss and recovery, capture
-coexistence and repeat cleanup passed. See `docs/STAGING.md`. Daily-host
-activation and normal-use observation remain, so this ticket stays claimed.
+The generated credential-free TUN passed the Fedora staging proof. On the
+daily host, operator-approved activation replaced the `wg-quick` handover.
+With the operator starting `vpn-up`, public HTTPS and UDP STUN used the TUN,
+DNS selected `vpn-host0`, LAN and link-local routes selected `wlp1s0`, and
+IPv6 default traffic was rejected. Stopping the user backend blocked
+whole-host HTTPS; restarting it restored whole-host and `vpn` capture traffic.
+After the operator ran `vpn-down`, the root unit was inactive, `vpn-host0` was
+absent, public routing and DNS returned to `wlp1s0`, and the user backend and
+capture still carried HTTPS. This checks normal use of this slice; longer
+network-change and suspend recovery remain ticket 11, and legacy retirement
+remains ticket 12.

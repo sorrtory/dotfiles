@@ -196,19 +196,15 @@ shell plugins, history policy, and zoxide integration. It preserves the small
 safe alias baseline and local proxy toggles. Neovim owns the single default
 editor selection through its Home Manager module.
 Runtime managers, media conversion, and integrations for deferred programs stay
-with their respective future slices. On the daily host's current generation,
-the exception is a pair of `vpn-up` and `vpn-down` functions, beside `proxy-on`
-and `proxy-off`, which exist because
-invoking `wg-quick` by hand needs both an absolute path for `sudo` and a config
-path rather than an interface name. They follow `dotfiles.vpn.identity`, the
-one device configuration this machine decrypts, so they take no argument.
-Because sing-box holds the same identity, `vpn-up` hands it over instead of
-requiring sing-box to stop, which would break every consumer of the local
-proxy: a runtime marker restarts sing-box without a key, with a direct
-outbound bound to the interface, before `wg-quick` claims the key, and
-`vpn-down` reverses that only once the interface is gone. They wrap an
-existing command rather than implementing privileged networking. They remain whole-host
-controls; the application VPN command does not replace them. The custom
+with their respective future slices. The `vpn-up` and `vpn-down` commands,
+beside `proxy-on` and `proxy-off`, remain whole-host controls; the application
+VPN command does not replace them. `vpn-up` explicitly generates a
+credential-free TUN config from the user backend's resolver and starts a
+supervised root sing-box unit through host-labeled `/usr/bin/env`. `vpn-down`
+stops that unit and removes its runtime config. The user backend keeps its
+WireGuard identity and binds upstream sockets to the physical interface, so
+whole-host capture does not start a second client or hand the peer to
+`wg-quick`. Normal Home Manager activation never invokes sudo. The custom
 tmux and file-navigation helpers, unused Powerlevel10k setup, and zsh-lazyload
 setup are retired rather than reproduced. The host package supplies a stable
 login-shell path, and the explicit `login-shell` bootstrap phase selects it;
@@ -341,15 +337,15 @@ A migrated key that carries its own passphrase still needs that passphrase on a 
 
 The host-identifying half of `~/.ssh/config` is ciphertext for a different reason than the keys are: it is not a credential, but this repository is public, and host names, login names and ports together are a target list that published history would make permanent. The operator-independent half stays readable in `configs/ssh/config` and pulls the rest in through `Include`.
 
-WireGuard configurations are whole-file SOPS ciphertext decrypted to a user-owned path, with no privileged deployment step. The daily host's current `wg-quick` handover accepts a config file path as readily as an interface name, deriving the interface from the basename, so `/etc/wireguard/` is unnecessary and the configuration never lands root-owned on disk. This replaces the earlier position that deployment to `/etc/wireguard/` was an explicit privileged action; that step turned out to buy nothing.
+WireGuard configurations are whole-file SOPS ciphertext decrypted to a user-owned path, with no privileged deployment step. The legacy `wg-quick` path accepted that user-owned config directly, so `/etc/wireguard/` was unnecessary. Its ciphertext remains during migration until the replacement is proven under normal use.
 
 Most of these configurations are per-device identities, so a machine decrypts only its own: materializing all of them everywhere would let one compromised machine impersonate every device on the network, and would buy nothing, since a laptop has no use for the phone's key. The legacy secondary `extra` configuration remains decrypted during migration, but the shared sing-box backend uses an exclusive per-machine identity instead. Each configuration names its identity explicitly with `dotfiles.vpn.identity`, which has no default; the flake's `staging` configuration differs from `z` only in that choice, and the home-manager phase remembers which configuration a machine activated.
 
 Secrets are named after the file they come from, so `wg-quick` takes the interface name from the basename and brings up the identity's name, such as `laptop`, and `extra`. A generic `wg0` would make the interface name identical across machines, which pays off only once something shared refers to an interface by name; nothing does, and renaming the one that needs it is a line of configuration when something eventually does. Until then the generic name costs a lookup every time someone reads a path and has to ask which device it means.
 
-Bringing up the daily host's current WireGuard interface in the host network namespace needs `CAP_NET_ADMIN`. It is an explicit runtime action rather than machine setup; the bootstrap flow does not bring up a host tunnel. `wireguard-tools` is a Home Manager package rather than a host prerequisite. The packaged `wg-quick` is a wrapper that prepends its own dependencies to `PATH`, so it runs correctly under `sudo` despite being outside the host's `secure_path`; what `sudo` cannot do is resolve the bare name, so it must be invoked as `sudo "$(command -v wg-quick)"` or through a command that has the store path baked in.
+Starting the whole-host TUN needs `CAP_NET_ADMIN`. It is an explicit runtime action rather than machine setup; bootstrap and normal Home Manager activation do not start it. The root process is supervised by host systemd and reads only the credential-free generated config. `wireguard-tools` remains in the user package set for the retained legacy path until that path is retired.
 
-Normal Home Manager activation does not create host network interfaces. It owns the unprivileged sing-box user service, whose userspace WireGuard endpoint needs no host interface. The application VPN command creates a TUN inside a rootless network namespace. The staged whole-host command explicitly starts a root supervised TUN at runtime. User namespaces widen what an unprivileged process can reach in the kernel, which is why Ubuntu restricts them; the application VPN decisions below record how that is handled.
+Normal Home Manager activation does not create host network interfaces. It owns the unprivileged sing-box user service, whose userspace WireGuard endpoint needs no host interface. The application VPN command creates a TUN inside a rootless network namespace. The installed whole-host command explicitly starts a root supervised TUN at runtime. User namespaces widen what an unprivileged process can reach in the kernel, which is why Ubuntu restricts them; the application VPN decisions below record how that is handled.
 
 Everything committed under `secrets/` must already be public-safe, and the staged secret gate enforces that mechanically rather than trusting the convention. Under that directory the test is inverted: elsewhere a file is rejected when it looks like a secret, but here it is rejected unless it is positively recognized as encrypted, because the likeliest way a key arrives is in a form no detection rule matches. Recognition asks `sops` itself, since marker strings can appear in a plaintext file's comments and prove nothing. Note the residual limit: SOPS permits partially encrypted documents, so this establishes that a file is a SOPS document rather than that every value in it is encrypted. Never copy a legacy secrets tree or expose plaintext through Nix expressions, logs, patches, or the Nix store.
 
@@ -533,17 +529,15 @@ ever read when nothing else has set the root.
 
 ## Scripts and privileged networking
 
-The VPN decisions in this section describe the daily host's installed
-one-identity configuration. The [selectable egress spec](../.scratch/vpn-egress/spec.md)
-defines its planned replacement. The app module split and whole-host TUN have
-passed Fedora staging, but daily-host activation still needs operator approval.
-The staged `vpn-up` generates a credential-free config from the user backend's
-resolver, starts a root sing-box TUN through host-labeled `/usr/bin/env`, and
-keeps the backend's WireGuard credential in its user service. `vpn-down` stops
-that unit. The backend binds its upstream sockets to the detected physical
-interface, and the root TUN forwards only to its loopback SOCKS listener. The
-active `wg-quick` handover path is removed from the staged shell functions;
-the encrypted legacy profile stays available until normal use proves the TUN.
+The VPN decisions in this section describe the installed one-identity
+backend and application capture. The [selectable egress spec](../.scratch/vpn-egress/spec.md)
+defines the remaining concurrent-route migration. The app module split and
+whole-host TUN passed Fedora staging and were activated on the daily host on
+2026-09-23 with operator approval. The backend binds upstream sockets to the
+detected physical interface, and the root TUN forwards only to its loopback
+SOCKS listener. Daily-host proxy, application capture and one complete whole-host TUN cycle
+passed, including backend loss and recovery. The encrypted legacy profile
+stays available until network-change and suspend checks precede retirement.
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 
