@@ -63,10 +63,10 @@ jq -e '
   def color($scope): first($scheme.rules[] | select(.scope == $scope) | .foreground);
   [range(1; 5) | color("markup.heading.\(.).markdown, markup.heading.\(.).markdown entity.name.section.markdown")] as $headings |
   ($headings | unique | length) == 4 and
-  color("markup.raw.inline.markdown") == "#e9a15e" and
-  color("entity.name.function, support.function, variable.function") == "#e9a15e" and
-  color("markup.underline.link.markdown") == "#9c7f6c" and
-  any($scheme.rules[]; .scope == "markup.raw.code-fence" and .background == "#33221d")
+  color("markup.raw.inline.markdown") == "#efad58" and
+  color("entity.name.function, support.function, variable.function") == "#efad58" and
+  color("markup.underline.link.markdown") == "#aa8973" and
+  any($scheme.rules[]; .scope == "markup.raw.code-fence" and .background == "#39251e")
 ' "$file" >/dev/null || fail 'Autumn Leaves Sublime syntax does not follow the palette'
 
 # Terminus has its own color names. The generated file supplies the normal
@@ -84,8 +84,8 @@ jq -e '.user_theme_colors | .background == "#32302f" and .foreground == "#fffaeb
   and .brown == "#d79921" and .light_brown == "#fabd2f"' "$file" >/dev/null ||
   fail 'Gruvbox Terminus did not preserve its soft base and bright text with true ANSI pairs'
 file=$(terminus '{ name = "autumn-leaves"; }')
-jq -e '.user_theme_colors.magenta == "#bd7467" and .user_theme_colors.light_magenta == "#d9947f"
-  and .user_theme_colors.blue == "#a98c7f" and .user_theme_colors.light_blue == "#c5a798"' "$file" >/dev/null ||
+jq -e '.user_theme_colors.magenta == "#cc7865" and .user_theme_colors.light_magenta == "#e8a087"
+  and .user_theme_colors.blue == "#b19680" and .user_theme_colors.light_blue == "#d0ad91"' "$file" >/dev/null ||
   fail 'Autumn Leaves Terminus kept cool ANSI colors'
 file=$(terminus '{ overrides.terminus = { base = "#123456"; brightRed = "#abcdef"; }; }')
 jq -e '.user_theme_colors.background == "#123456" and .user_theme_colors.light_red == "#abcdef"' "$file" >/dev/null ||

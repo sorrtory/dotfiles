@@ -3,15 +3,16 @@
 # grays, the text is its warm parchment, and the accents are its copper and
 # maple. The text is a pastel cream with the picture's peach in it rather than
 # Gruvbox's yellowed one, which is easier to read a page of. It carries more
-# contrast than Gruvbox — the background is darker and the text lighter — while staying short of a pure cream
-# on near-black, which is harsh to read a file in. Warmth is what keeps that
+# contrast than Gruvbox — the background is darker and the text lighter —
+# while staying short of a pure cream on near-black, which is harsh to read a
+# file in. Warmth is what keeps that
 # readable: the same numbers in Gruvbox's neutral grays glare.
 #
 # The 16 terminal colors keep Gruvbox's roles and shapes, each pulled toward
-# the picture: warmer reds and oranges, smoky umber in the ANSI blue slot,
-# and no dim neutrals, which disappear on a background this dark. Green is the
-# one color the picture cannot give — its leaves are yellow
-# — so it is a dry-leaf olive, red enough to sit with the rest and still green
+# the picture: brighter copper, gold, olive, and red leaves alongside smoky
+# umber in the ANSI blue slot. Green is the one color the picture cannot give
+# — its leaves are yellow — so it is a dry-leaf olive, red enough to sit with
+# the rest and still green
 # enough to read as one in a diff. It is kept bright: at this saturation a
 # green goes dull against the browns long before a warm color does.
 # The ANSI magenta slot is weathered clay, not Gruvbox purple: the name is a
@@ -24,17 +25,17 @@ let
   roles = {
     base = "#261814";
     mantle = "#1c1210";
-    surface = "#33221d";
-    overlay = "#4d332b";
+    surface = "#39251e";
+    overlay = "#56382d";
     text = "#fbeada";
-    subtext = "#dcc4ab";
-    muted = "#9c7f6c";
-    accent = "#d2703f";
-    accent2 = "#e9a15e";
-    error = "#e8604c";
-    warning = "#e9a15e";
-    success = "#c2ad4b";
-    info = "#97c973";
+    subtext = "#e4cbb1";
+    muted = "#aa8973";
+    accent = "#df773d";
+    accent2 = "#efad58";
+    error = "#ed624a";
+    warning = "#efad58";
+    success = "#c9b849";
+    info = "#a4cc74";
   };
 in
 {
@@ -49,21 +50,21 @@ in
   };
 
   ansi = {
-    black = "#38271f";
+    black = "#402a21";
     red = roles.error;
     green = roles.success;
     yellow = roles.warning;
-    blue = "#a98c7f";
-    magenta = "#bd7467";
+    blue = "#b19680";
+    magenta = "#cc7865";
     cyan = roles.info;
-    white = "#eedcc4";
-    brightBlack = "#8a6f60";
-    brightRed = "#f4715c";
-    brightGreen = "#d3bf5c";
-    brightYellow = "#f3b673";
-    brightBlue = "#c5a798";
-    brightMagenta = "#d9947f";
-    brightCyan = "#a9d489";
+    white = "#f2ddc0";
+    brightBlack = "#977663";
+    brightRed = "#f77b60";
+    brightGreen = "#dbc657";
+    brightYellow = "#ffc175";
+    brightBlue = "#d0ad91";
+    brightMagenta = "#e8a087";
+    brightCyan = "#b1da8b";
     brightWhite = roles.text;
   };
 }

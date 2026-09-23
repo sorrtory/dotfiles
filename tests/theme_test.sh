@@ -120,13 +120,12 @@ jq -e '
   .scheme.tab_bar.new_tab_hover.fg_color == "#fe8019"
 ' <<<"$out" >/dev/null || fail "gruvbox WezTerm: $out"
 
-# Autumn Leaves carries the wallpaper's browns and coppers, with no dim
-# neutrals in the terminal's normal slots.
+# Autumn Leaves carries the wallpaper's browns, copper, gold, and olive.
 out=$(wezterm_scheme "$(theme_for '{ name = "autumn-leaves"; transparency = false; }')")
 jq -e '
   .opacity == 1 and .scheme.background == "#261814" and .scheme.foreground == "#fbeada" and
-  .scheme.ansi == ["#38271f","#e8604c","#c2ad4b","#e9a15e","#a98c7f","#bd7467","#97c973","#eedcc4"] and
-  .scheme.brights[4] == "#c5a798" and .scheme.brights[5] == "#d9947f"
+  .scheme.ansi == ["#402a21","#ed624a","#c9b849","#efad58","#b19680","#cc7865","#a4cc74","#f2ddc0"] and
+  .scheme.brights[4] == "#d0ad91" and .scheme.brights[5] == "#e8a087"
 ' <<<"$out" >/dev/null || fail "autumn-leaves WezTerm: $out"
 
 # No theme file: the bundled scheme, not an error.
