@@ -54,6 +54,21 @@ for theme in gruvbox autumn-leaves onedark; do
   done
 done
 
+# The generated editor theme follows the same syntax roles and Markdown
+# structure as Neovim's palette theme. In particular, headings form a ramp
+# and inline code keeps the warning color rather than an ANSI color.
+file=$(scheme '{ name = "autumn-leaves"; }')
+jq -e '
+  . as $scheme |
+  def color($scope): first($scheme.rules[] | select(.scope == $scope) | .foreground);
+  [range(1; 5) | color("markup.heading.\(.).markdown, markup.heading.\(.).markdown entity.name.section.markdown")] as $headings |
+  ($headings | unique | length) == 4 and
+  color("markup.raw.inline.markdown") == "#e9a15e" and
+  color("entity.name.function, support.function, variable.function") == "#e9a15e" and
+  color("markup.underline.link.markdown") == "#9c7f6c" and
+  any($scheme.rules[]; .scope == "markup.raw.code-fence" and .background == "#33221d")
+' "$file" >/dev/null || fail 'Autumn Leaves Sublime syntax does not follow the palette'
+
 # Terminus has its own color names. The generated file supplies the normal
 # and bright ANSI sets separately, rather than repeating the bright set.
 for theme in gruvbox autumn-leaves onedark; do
@@ -68,6 +83,10 @@ jq -e '.user_theme_colors | .background == "#32302f" and .foreground == "#fffaeb
   and .red == "#cc241d" and .light_red == "#fb4934"
   and .brown == "#d79921" and .light_brown == "#fabd2f"' "$file" >/dev/null ||
   fail 'Gruvbox Terminus did not preserve its soft base and bright text with true ANSI pairs'
+file=$(terminus '{ name = "autumn-leaves"; }')
+jq -e '.user_theme_colors.magenta == "#bd7467" and .user_theme_colors.light_magenta == "#d9947f"
+  and .user_theme_colors.blue == "#a98c7f" and .user_theme_colors.light_blue == "#c5a798"' "$file" >/dev/null ||
+  fail 'Autumn Leaves Terminus kept cool ANSI colors'
 file=$(terminus '{ overrides.terminus = { base = "#123456"; brightRed = "#abcdef"; }; }')
 jq -e '.user_theme_colors.background == "#123456" and .user_theme_colors.light_red == "#abcdef"' "$file" >/dev/null ||
   fail 'a Terminus override did not reach its settings'

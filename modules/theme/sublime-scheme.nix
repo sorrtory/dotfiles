@@ -5,15 +5,21 @@
 # ordinary file rather than a store symlink. The scheme keeps the stable name
 # "Dotfiles", so Preferences never has to change.
 #
-# Syntax takes the semantic roles where they say something — comments are
-# muted, strings succeed, keywords err — and the palette's brighter ANSI hues
-# where the distinction is only a hue the roles do not name, as the hand-made
-# Gruvbox scheme this replaced used purple for constants and aqua for tags.
+# Syntax follows the same role choices as the generated Neovim theme. Markdown
+# prose stays at the foreground color; its structure carries the accent.
 
 colors:
 let
   inherit (colors) base mantle surface overlay text subtext muted accent accent2 error warning success info;
-  inherit (colors) brightMagenta brightCyan;
+  inherit (import ./color.nix { inherit lib; }) mix;
+
+  # The same four-step leaf ramp as configs/nvim/lua/theme/generated.lua.
+  heading = [
+    (mix error base 0.14)
+    (mix accent text 0.10)
+    (mix accent2 base 0.06)
+    (mix info text 0.06)
+  ];
 
   rule = scope: attrs: { inherit scope; } // attrs;
 in
@@ -57,25 +63,43 @@ builtins.toJSON {
     (rule "comment, punctuation.definition.comment" { foreground = muted; font_style = "italic"; })
     (rule "string" { foreground = success; })
     (rule "constant.character.escape, string.regexp" { foreground = accent; })
-    (rule "constant.numeric, constant.language, constant.character, constant.other" { foreground = brightMagenta; })
+    (rule "constant.numeric, constant.language, constant.character, constant.other" { foreground = accent2; })
     (rule "keyword, storage.modifier, keyword.control" { foreground = error; })
-    (rule "keyword.operator" { foreground = text; })
-    (rule "keyword.control.import, keyword.control.directive, meta.preprocessor" { foreground = brightCyan; })
+    (rule "keyword.operator" { foreground = accent; })
+    (rule "keyword.control.import, keyword.control.directive, meta.preprocessor" { foreground = info; })
     (rule "storage.type, entity.name.type, entity.name.class, support.type, support.class, entity.other.inherited-class" { foreground = warning; })
-    (rule "entity.name.function, support.function, variable.function" { foreground = success; font_style = "bold"; })
-    (rule "variable.parameter" { foreground = accent2; })
-    (rule "variable.language, support.constant" { foreground = accent; })
+    (rule "entity.name.function, support.function, variable.function" { foreground = warning; font_style = "bold"; })
+    (rule "variable.parameter" { foreground = subtext; })
+    (rule "variable.language" { foreground = error; })
+    (rule "support.constant" { foreground = accent2; })
     (rule "variable.other.member, meta.property-name, support.type.property-name" { foreground = accent2; })
-    (rule "entity.name.tag" { foreground = brightCyan; })
+    (rule "entity.name.tag" { foreground = error; })
     (rule "entity.other.attribute-name" { foreground = warning; })
-    (rule "punctuation.definition.tag" { foreground = accent2; })
-    (rule "entity.name.section, markup.heading" { foreground = success; font_style = "bold"; })
+    (rule "punctuation.definition.tag, punctuation.definition.parameters" { foreground = subtext; })
+    (rule "entity.name.section, markup.heading" { foreground = accent; font_style = "bold"; })
     (rule "markup.bold" { font_style = "bold"; })
     (rule "markup.italic" { font_style = "italic"; })
     (rule "markup.underline.link, markup.link" { foreground = accent2; })
-    (rule "markup.raw" { foreground = brightCyan; })
     (rule "markup.quote" { foreground = muted; font_style = "italic"; })
-    (rule "markup.list punctuation.definition.list_item" { foreground = accent; })
+    (rule "markup.strikethrough.markdown-gfm" { foreground = muted; })
+    (rule "markup.list punctuation.definition.list_item" { foreground = subtext; })
+    # Sublime's bundled Markdown syntax gives each heading level its own
+    # scope. Put the level rules after the generic entity.name.section rule.
+    (rule "markup.heading.1.markdown, markup.heading.1.markdown entity.name.section.markdown" { foreground = builtins.elemAt heading 0; font_style = "bold"; })
+    (rule "markup.heading.2.markdown, markup.heading.2.markdown entity.name.section.markdown" { foreground = builtins.elemAt heading 1; font_style = "bold"; })
+    (rule "markup.heading.3.markdown, markup.heading.3.markdown entity.name.section.markdown" { foreground = builtins.elemAt heading 2; font_style = "bold"; })
+    (rule "markup.heading.4.markdown, markup.heading.4.markdown entity.name.section.markdown" { foreground = builtins.elemAt heading 3; font_style = "bold"; })
+    (rule "markup.heading.5.markdown, markup.heading.5.markdown entity.name.section.markdown, markup.heading.6.markdown, markup.heading.6.markdown entity.name.section.markdown" { foreground = muted; font_style = "bold"; })
+    # Link labels read like prose; the underline marks the destination. The
+    # URL and surrounding Markdown punctuation recede from the sentence.
+    (rule "meta.link.inline.description.markdown, meta.link.reference.description.markdown, meta.link.reference.literal.description.markdown" { foreground = text; font_style = "underline"; })
+    (rule "markup.underline.link.markdown" { foreground = muted; font_style = "underline"; })
+    (rule "punctuation.definition.link.markdown, punctuation.definition.metadata.markdown" { foreground = overlay; })
+    (rule "markup.raw.inline.markdown" { foreground = warning; })
+    (rule "markup.raw.code-fence" { background = surface; })
+    (rule "punctuation.definition.raw.markdown, meta.code-fence.definition.begin.markdown-gfm, meta.code-fence.definition.end.markdown-gfm" { foreground = muted; })
+    (rule "markup.quote.markdown" { foreground = muted; font_style = "italic"; })
+    (rule "markup.list punctuation.definition.list_item.markdown" { foreground = subtext; })
     (rule "markup.inserted" { foreground = success; })
     (rule "markup.deleted" { foreground = error; })
     (rule "markup.changed" { foreground = accent; })

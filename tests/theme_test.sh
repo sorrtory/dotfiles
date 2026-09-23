@@ -125,7 +125,8 @@ jq -e '
 out=$(wezterm_scheme "$(theme_for '{ name = "autumn-leaves"; transparency = false; }')")
 jq -e '
   .opacity == 1 and .scheme.background == "#261814" and .scheme.foreground == "#fbeada" and
-  .scheme.ansi == ["#38271f","#e8604c","#c2ad4b","#e9a15e","#8fa9b8","#d3869b","#97c973","#eedcc4"]
+  .scheme.ansi == ["#38271f","#e8604c","#c2ad4b","#e9a15e","#a98c7f","#bd7467","#97c973","#eedcc4"] and
+  .scheme.brights[4] == "#c5a798" and .scheme.brights[5] == "#d9947f"
 ' <<<"$out" >/dev/null || fail "autumn-leaves WezTerm: $out"
 
 # No theme file: the bundled scheme, not an error.

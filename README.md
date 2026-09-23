@@ -341,8 +341,9 @@ divergences are written down in the palette file that makes them.
   wallpaper it is named after. Red-brown surfaces rather than neutral grays,
   a pastel cream text, copper and maple accents, and more contrast than
   Gruvbox at both ends. Its terminal colors keep Gruvbox's roles pulled toward
-  the picture, with the bright set in the normal slots too, because dim
-  neutrals disappear on a background this dark. Green is the one color the
+  the picture, with the magenta ANSI slot mapped to warm clay and the blue
+  slot to smoky umber rather than cool hues. Its normal and bright colors
+  remain distinct and legible on the dark background. Green is the one color the
   picture cannot give — its leaves are yellow — so it is a dry-leaf olive,
   kept bright, since a green goes dull against browns long before a warm
   color does.
@@ -391,6 +392,11 @@ rereads the file when it changes, so a switch recolors an open window. The
 hand-made Gruvbox scheme it replaced is gone, and the two choices worth
 keeping from it — the softer background and the brighter plain text — are now
 gruvbox's own overrides for this app.
+
+Its syntax colors use the same semantic roles as the generated Neovim theme.
+Markdown headings use the four palette-derived steps, while prose stays at the
+plain text color; links, inline code, quotes and fenced blocks have their own
+scopes. The mapping lives in `modules/theme/sublime-scheme.nix`.
 
 Terminus has a separate generated settings file in that directory. It follows
 the same palette live, including open terminal views: Terminus watches its

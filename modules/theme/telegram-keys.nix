@@ -15,8 +15,8 @@
 #
 # Links, in-message service text and the audio/file buttons were the hand-made
 # theme's muted teal, which the fit lands on green in a palette that has no
-# teal; they are the second accent and a steel blue instead, so green is left
-# to what it means — a sent message, something online, a line added.
+# teal; they are the second accent and a contrasting ANSI color instead, so
+# green is left to what it means — a sent message, something online, a line added.
 #
 # `color role alpha` is one color, `mix from to ratio alpha` is `ratio` of
 # `to` mixed into `from`, and `ref key` repeats another key. A name is a role,

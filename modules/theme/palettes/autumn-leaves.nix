@@ -8,13 +8,19 @@
 # readable: the same numbers in Gruvbox's neutral grays glare.
 #
 # The 16 terminal colors keep Gruvbox's roles and shapes, each pulled toward
-# the picture: warmer reds and oranges, a steel blue in place of Gruvbox's
-# green-leaning one, and no dim neutrals, which disappear on a background this
-# dark. Green is the one color the picture cannot give — its leaves are yellow
+# the picture: warmer reds and oranges, smoky umber in the ANSI blue slot,
+# and no dim neutrals, which disappear on a background this dark. Green is the
+# one color the picture cannot give — its leaves are yellow
 # — so it is a dry-leaf olive, red enough to sit with the rest and still green
 # enough to read as one in a diff. It is kept bright: at this saturation a
 # green goes dull against the browns long before a warm color does.
-{
+# The ANSI magenta slot is weathered clay, not Gruvbox purple: the name is a
+# terminal color index, while the hue follows the wallpaper's red-brown hair
+# and leaf shadows. Its bright partner is a lighter terracotta.
+# The ANSI blue slot likewise names a terminal index, not a leaf hue. Its
+# muted umber and lighter mushroom follow the wallpaper's hair and coat
+# shadows while staying readable as terminal text.
+let
   roles = {
     base = "#261814";
     mantle = "#1c1210";
@@ -30,6 +36,9 @@
     success = "#c2ad4b";
     info = "#97c973";
   };
+in
+{
+  inherit roles;
 
   # No Neovim plugin or VS Code extension carries these colors, so both
   # editors generate a theme from the palette. The wallpaper is
@@ -41,20 +50,20 @@
 
   ansi = {
     black = "#38271f";
-    red = "#e8604c";
-    green = "#c2ad4b";
-    yellow = "#e9a15e";
-    blue = "#8fa9b8";
-    magenta = "#d3869b";
-    cyan = "#97c973";
+    red = roles.error;
+    green = roles.success;
+    yellow = roles.warning;
+    blue = "#a98c7f";
+    magenta = "#bd7467";
+    cyan = roles.info;
     white = "#eedcc4";
     brightBlack = "#8a6f60";
     brightRed = "#f4715c";
     brightGreen = "#d3bf5c";
     brightYellow = "#f3b673";
-    brightBlue = "#a3bcc9";
-    brightMagenta = "#e09aae";
+    brightBlue = "#c5a798";
+    brightMagenta = "#d9947f";
     brightCyan = "#a9d489";
-    brightWhite = "#fbeada";
+    brightWhite = roles.text;
   };
 }
