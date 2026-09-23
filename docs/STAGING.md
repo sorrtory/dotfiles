@@ -8,7 +8,7 @@ syncs back.
 ## Current VM
 
 `fedora` in libvirt, reachable at `z@192.168.122.21`. It runs **Fedora 44
-Workstation** with 2 vCPUs, about 3.8 GiB of RAM and 14 GiB free on `/`. Its
+Workstation** with 2 vCPUs, about 3.8 GiB of RAM and a 30 GiB `/`. Its
 session is GNOME on Wayland with gdm active, the same session type as the
 operator's desktop, so GNOME work — dconf settings, launchers, Shell extensions,
 session environment variables — can be judged here rather than only on the host.
@@ -59,10 +59,33 @@ Afterwards `zsh` is the login shell, the Nix profile carries `rg`, `bat`, `fzf`,
 `yazi`, `nvim`, `tmux`, `wezterm` and `vpn`, `convert-to`/`download`/`vault` are
 in `~/.local/bin`, sing-box is active and linger is enabled.
 
+The VM was rebuilt with a 30 GiB disk on 2026-09-23, which is what the note
+below asks for; the two records under it are kept because the failure modes
+they describe are what a too-small disk looks like.
+
 **An 18 GiB disk is too small.** The activated closure took the guest to 92%
 with 1.5 GiB free, before `virtualization` and `native-toolchain` had installed
 anything. `nix-collect-garbage` recovered 1.9 GiB and the rest fit, but give a
 new staging VM 30 GiB rather than repeating that.
+
+By 2026-09-23 it no longer fit at all. Three days of pin drift left little of
+the bootstrapped store shared with the new closure: after
+`nix-collect-garbage -d` freed 1.6 GiB, `nix build --dry-run` wanted **13.4 GiB
+unpacked** against 1.9 GiB free. A build attempted anyway dies as
+`error: write of 65536 bytes: No space left on device`, and everything after it
+is a cascade of `some references ... could not be realised`, which reads like a
+substituter problem and is not one — check `df` first.
+
+**A full disk deadlocks the collector.** At 0 bytes free `nix-collect-garbage`
+cannot commit its own transaction and deletes nothing:
+
+```
+error: committing transaction: database or disk is full (in '/nix/var/nix/db/db.sqlite')
+0 store paths deleted, 0.0 KiB freed
+```
+
+Free something outside the store first — clearing `~/.cache` was enough — and
+then collect.
 
 **`virtualization` needs the nested network moved first.** The guest's own
 `enp1s0` sits on the outer host's `192.168.122.0/24`, and Fedora's default
