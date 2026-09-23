@@ -10,7 +10,7 @@ cat > "$root/egresses" <<'JSON'
   {"type":"socks","tag":"route-b","server":"127.0.0.1","server_port":15002}
 ],"dns":{"servers":[
   {"type":"udp","tag":"dns-a","server":"8.8.8.8","detour":"route-a"},
-  {"type":"udp","tag":"dns-b","server":"1.1.1.1","detour":"route-b"}
+  {"type":"udp","tag":"dns-b","server":"8.8.8.8","detour":"route-b"}
 ]}}
 JSON
 printf '{"defaults":{"%s":"route-a"},"pins":{},"ipv6":{"route-a":false,"route-b":true}}\n' \
@@ -48,4 +48,13 @@ jq -e '.dns.strategy == "ipv4_only" and .dns.servers == [{"type":"udp","tag":"vp
   "$root/capture/config.json" >/dev/null || fail 'default capture DNS or IPv6'
 jq -e '.dns.servers[0].server == "8.8.8.8"' "$root/host/config.json" >/dev/null ||
   fail 'whole-host resolver'
+cp "$root/egresses" "$root/valid-egresses"
+jq '(.dns.servers[] | select(.tag == "dns-b") | .server) = "1.1.1.1"' \
+  "$root/egresses" > "$root/different-dns"
+mv "$root/different-dns" "$root/egresses"
+if compile >"$root/stdout" 2>"$root/stderr"; then
+  fail 'different default DNS addresses accepted'
+fi
+grep -q 'shared primary DNS server' "$root/stderr" || fail 'missing DNS rejection'
+cp "$root/valid-egresses" "$root/egresses"
 printf 'vpn concurrent compiler tests passed\n'

@@ -18,7 +18,10 @@ sent default and named HTTP to the intended synthetic SOCKS egresses; disabling
 one named egress left the other working. The VM's installed real-peer service
 was restored and its proxy passed HTTPS. The real encrypted inventory also
 passed `sing-box check` in candidate mode without starting another peer.
-Real concurrent UDP/DNS and IPv6 traffic, default switching, and a host cutover
+Generated named UDP also followed its assigned synthetic route on the VM.
+The candidate currently requires a shared primary DNS address across routes,
+so a selector switch cannot retain the previous route's private resolver.
+Real concurrent DNS and IPv6 traffic, default switching, and a host cutover
 remain open.
 
 **What to build:** Load the encrypted egress inventory into one unprivileged

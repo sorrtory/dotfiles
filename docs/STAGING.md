@@ -185,7 +185,8 @@ The installed backend stayed on the VM's assigned peer. A separate candidate
 compiler mode generated two loopback named listeners and a manual default
 selector from synthetic SOCKS egresses; `sing-box check` accepted the output.
 The default listener reached synthetic A, named A reached A, and named B
-reached B. Disabling B broke its named listener while named A still worked.
+reached B over HTTP and UDP. Disabling B broke its named HTTP listener while
+named A still worked.
 The installed VM backend was restarted afterward and its real-peer proxy
 returned HTTPS 204. The current encrypted inventory passed candidate-mode
 `sing-box check` without starting its second peer. Concurrent generated UDP,

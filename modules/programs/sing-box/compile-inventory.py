@@ -135,6 +135,13 @@ def compile_config(inventory, policy, concurrent=False):
         missing_dns = set(entries) - {server["detour"] for server in servers}
         if missing_dns:
             raise InvalidConfig("egress has no DNS server")
+        # The default capture and whole-host TUN keep one resolver address
+        # across selector changes. Until runtime DNS follows the selector's
+        # choice, reject inventories whose routes need different primaries.
+        primary_dns = {tag: next(server["server"] for server in servers
+                                 if server["detour"] == tag) for tag in entries}
+        if len(set(primary_dns.values())) != 1:
+            raise InvalidConfig("concurrent defaults need a shared primary DNS server")
         ports = {tag: named_port(tag) for tag in entries}
         if len(set(ports.values())) != len(ports):
             raise InvalidConfig("named listener port collision")
