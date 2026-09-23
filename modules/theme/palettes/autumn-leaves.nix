@@ -1,7 +1,7 @@
 # Autumn Leaves: Gruvbox's structure in the wallpaper's colors. The surfaces
 # are the deep red-brown the picture sits in rather than Gruvbox's neutral
 # grays, the text is its warm parchment, and the accents are its copper and
-# maple. The text is a pastel cream with the picture's peach in it rather than
+# maple. The text is a warm cream with the picture's peach in it rather than
 # Gruvbox's yellowed one, which is easier to read a page of. It carries more
 # contrast than Gruvbox — the background is darker and the text lighter —
 # while staying short of a pure cream on near-black, which is harsh to read a
@@ -9,7 +9,7 @@
 # readable: the same numbers in Gruvbox's neutral grays glare.
 #
 # The 16 terminal colors keep Gruvbox's roles and shapes, each pulled toward
-# the picture: brighter copper, gold, olive, and red leaves alongside smoky
+# the picture: saturated copper, gold, olive, and red leaves alongside smoky
 # umber in the ANSI blue slot. Green is the one color the picture cannot give
 # — its leaves are yellow — so it is a dry-leaf olive, red enough to sit with
 # the rest and still green
@@ -27,15 +27,15 @@ let
     mantle = "#1c1210";
     surface = "#39251e";
     overlay = "#56382d";
-    text = "#fbeada";
-    subtext = "#e4cbb1";
-    muted = "#aa8973";
-    accent = "#df773d";
-    accent2 = "#efad58";
-    error = "#ed624a";
-    warning = "#efad58";
-    success = "#c9b849";
-    info = "#a4cc74";
+    text = "#fbe2c8";
+    subtext = "#e8c59f";
+    muted = "#b68a68";
+    accent = "#e76d27";
+    accent2 = "#f3a727";
+    error = "#f54e35";
+    warning = "#f3a727";
+    success = "#b6c62d";
+    info = "#87c64b";
   };
 in
 {
@@ -54,17 +54,17 @@ in
     red = roles.error;
     green = roles.success;
     yellow = roles.warning;
-    blue = "#b19680";
-    magenta = "#cc7865";
+    blue = "#b18355";
+    magenta = "#d7676a";
     cyan = roles.info;
-    white = "#f2ddc0";
+    white = "#f4d8ac";
     brightBlack = "#977663";
-    brightRed = "#f77b60";
-    brightGreen = "#dbc657";
-    brightYellow = "#ffc175";
-    brightBlue = "#d0ad91";
-    brightMagenta = "#e8a087";
-    brightCyan = "#b1da8b";
+    brightRed = "#ff7057";
+    brightGreen = "#cddd3a";
+    brightYellow = "#ffc14d";
+    brightBlue = "#c99b66";
+    brightMagenta = "#ef8b7e";
+    brightCyan = "#a4db62";
     brightWhite = roles.text;
   };
 }

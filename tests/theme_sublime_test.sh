@@ -63,9 +63,9 @@ jq -e '
   def color($scope): first($scheme.rules[] | select(.scope == $scope) | .foreground);
   [range(1; 5) | color("markup.heading.\(.).markdown, markup.heading.\(.).markdown entity.name.section.markdown")] as $headings |
   ($headings | unique | length) == 4 and
-  color("markup.raw.inline.markdown") == "#efad58" and
-  color("entity.name.function, support.function, variable.function") == "#efad58" and
-  color("markup.underline.link.markdown") == "#aa8973" and
+  color("markup.raw.inline.markdown") == "#f3a727" and
+  color("entity.name.function, support.function, variable.function") == "#f3a727" and
+  color("markup.underline.link.markdown") == "#b68a68" and
   any($scheme.rules[]; .scope == "markup.raw.code-fence" and .background == "#39251e")
 ' "$file" >/dev/null || fail 'Autumn Leaves Sublime syntax does not follow the palette'
 
@@ -84,8 +84,8 @@ jq -e '.user_theme_colors | .background == "#32302f" and .foreground == "#fffaeb
   and .brown == "#d79921" and .light_brown == "#fabd2f"' "$file" >/dev/null ||
   fail 'Gruvbox Terminus did not preserve its soft base and bright text with true ANSI pairs'
 file=$(terminus '{ name = "autumn-leaves"; }')
-jq -e '.user_theme_colors.magenta == "#cc7865" and .user_theme_colors.light_magenta == "#e8a087"
-  and .user_theme_colors.blue == "#b19680" and .user_theme_colors.light_blue == "#d0ad91"' "$file" >/dev/null ||
+jq -e '.user_theme_colors.magenta == "#d7676a" and .user_theme_colors.light_magenta == "#ef8b7e"
+  and .user_theme_colors.blue == "#b18355" and .user_theme_colors.light_blue == "#c99b66"' "$file" >/dev/null ||
   fail 'Autumn Leaves Terminus kept cool ANSI colors'
 file=$(terminus '{ overrides.terminus = { base = "#123456"; brightRed = "#abcdef"; }; }')
 jq -e '.user_theme_colors.background == "#123456" and .user_theme_colors.light_red == "#abcdef"' "$file" >/dev/null ||

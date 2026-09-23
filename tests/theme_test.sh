@@ -123,9 +123,9 @@ jq -e '
 # Autumn Leaves carries the wallpaper's browns, copper, gold, and olive.
 out=$(wezterm_scheme "$(theme_for '{ name = "autumn-leaves"; transparency = false; }')")
 jq -e '
-  .opacity == 1 and .scheme.background == "#261814" and .scheme.foreground == "#fbeada" and
-  .scheme.ansi == ["#402a21","#ed624a","#c9b849","#efad58","#b19680","#cc7865","#a4cc74","#f2ddc0"] and
-  .scheme.brights[4] == "#d0ad91" and .scheme.brights[5] == "#e8a087"
+  .opacity == 1 and .scheme.background == "#261814" and .scheme.foreground == "#fbe2c8" and
+  .scheme.ansi == ["#402a21","#f54e35","#b6c62d","#f3a727","#b18355","#d7676a","#87c64b","#f4d8ac"] and
+  .scheme.brights[4] == "#c99b66" and .scheme.brights[5] == "#ef8b7e"
 ' <<<"$out" >/dev/null || fail "autumn-leaves WezTerm: $out"
 
 # No theme file: the bundled scheme, not an error.

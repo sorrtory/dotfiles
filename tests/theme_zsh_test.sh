@@ -55,7 +55,7 @@ done
 
 # The palette reaches the prompt: each theme draws its own caret, and the
 # branch its own brackets.
-declare -A accents=([gruvbox]='#fe8019' [autumn-leaves]='#df773d' [onedark]='#61afef')
+declare -A accents=([gruvbox]='#fe8019' [autumn-leaves]='#e76d27' [onedark]='#61afef')
 for theme in "${!accents[@]}"; do
   file=$(generated "{ name = \"$theme\"; }")
   prompt=$(rendered "$file" PROMPT)
