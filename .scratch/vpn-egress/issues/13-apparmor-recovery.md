@@ -1,6 +1,6 @@
 # 13: Recover cleanly from AppArmor allowance failures
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: None (can start immediately)
 Priority: P2
 
@@ -17,3 +17,7 @@ flow and does not gate the egress rewrite.
       failure and absent policy while preserving unrelated profiles.
 - [ ] The normal lifecycle is checked on staging; Home Manager activation
       remains unprivileged and allowances remain exact-path.
+
+## Answer
+
+The bootstrap phase now checks kernel policy as well as installed files. A failed load is retryable, and a failed unload leaves its profile file in place. Fault-injection checks passed locally and on staging; Fedora's unrestricted normal path skipped correctly.

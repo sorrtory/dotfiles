@@ -12,6 +12,7 @@ readonly BOOTSTRAP_DIR
 readonly PROFILE_SOURCE="${BOOTSTRAP_APPARMOR_SOURCE:-${XDG_DATA_HOME:-$HOME/.local/share}/dotfiles/apparmor}"
 readonly PROFILE_TARGET="${BOOTSTRAP_APPARMOR_TARGET:-/etc/apparmor.d}"
 readonly USERNS_RESTRICTION="${BOOTSTRAP_USERNS_RESTRICTION:-/proc/sys/kernel/apparmor_restrict_unprivileged_userns}"
+readonly KERNEL_PROFILES="${BOOTSTRAP_APPARMOR_KERNEL_PROFILES:-/sys/kernel/security/apparmor/profiles}"
 
 # The allowances exist only for Ubuntu's restriction on unprivileged user
 # namespaces. Where it is off, installing them would add policy for nothing.
@@ -29,10 +30,20 @@ profiles_in() {
   shopt -u nullglob
 }
 
+profile_loaded() {
+  [[ -r "$KERNEL_PROFILES" ]] && grep -qF "${1##*/} (" "$KERNEL_PROFILES"
+}
+
 remove_profile() {
   phase_info "removing ${1##*/}..."
-  # Unloading fails harmlessly when the profile was never loaded.
-  sudo apparmor_parser --remove "$1" 2>/dev/null || true
+  if profile_loaded "$1"; then
+    # Preserve the installed file when unloading fails, so a retry can use it.
+    sudo apparmor_parser --remove "$1" || return
+    if profile_loaded "$1"; then
+      phase_error "${1##*/} is still loaded"
+      return 1
+    fi
+  fi
   sudo rm -f -- "$1"
 }
 
@@ -49,11 +60,18 @@ check() {
     return 1
   fi
 
-  require_commands cmp
+  require_commands cmp grep
+  if [[ ! -r "$KERNEL_PROFILES" ]]; then
+    phase_info 'cannot read loaded AppArmor profiles'
+    return 1
+  fi
   while IFS= read -r profile; do
     name="${profile##*/}"
     if ! cmp -s -- "$profile" "$PROFILE_TARGET/$name"; then
       phase_info "$name is missing or stale"
+      stale=1
+    elif ! profile_loaded "$profile"; then
+      phase_info "$name is installed but not loaded"
       stale=1
     fi
   done < <(profiles_in "$PROFILE_SOURCE")
@@ -108,7 +126,8 @@ install() {
 }
 
 is_uninstalled() {
-  [[ -z "$(profiles_in "$PROFILE_TARGET")" ]]
+  [[ -z "$(profiles_in "$PROFILE_TARGET")" ]] &&
+    { [[ ! -r "$KERNEL_PROFILES" ]] || ! grep -q '^dotfiles-[^ ]* (' "$KERNEL_PROFILES"; }
 }
 
 uninstall() {
