@@ -84,6 +84,12 @@ config.keys = {
       window:perform_action(select_all, pane)
     end),
   },
+  -- WezTerm binds Ctrl+Shift+Arrow to ActivatePaneDirection by default and
+  -- swallows the key, so Neovim never sees the Ctrl+Shift+Up/Down that moves
+  -- a line. Splits are tmux's job here, so hand the keys back to whatever is
+  -- running in the pane.
+  { key = "UpArrow", mods = "CTRL|SHIFT", action = act.DisableDefaultAssignment },
+  { key = "DownArrow", mods = "CTRL|SHIFT", action = act.DisableDefaultAssignment },
 }
 
 -- Installed by modules/packages.nix; its glyphs are what Neovim and Yazi

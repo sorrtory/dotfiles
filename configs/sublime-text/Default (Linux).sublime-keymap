@@ -29,6 +29,12 @@
     "keys": ["ctrl+b"],
     "command": "toggle_side_bar"
   },
+  // VS Code's Open Folder key; Sublime leaves Ctrl+K Ctrl+O unbound and only
+  // offers the File menu entry.
+  {
+    "keys": ["ctrl+k", "ctrl+o"],
+    "command": "prompt_open_folder"
+  },
   // The rest are VS Code keys. They stay out of the terminal, where Ctrl+M is
   // Enter and Alt+F and Alt+Z go to the shell. Terminus sets terminus_view
   // only on its own views, so the test is "not true" rather than "false".
