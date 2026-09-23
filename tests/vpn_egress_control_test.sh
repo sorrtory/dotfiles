@@ -8,6 +8,7 @@ import sys
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
+sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("vpn_egress", sys.argv[1])
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
