@@ -20,6 +20,13 @@ let
       exec ${lib.getExe pkgs.python3} ${./compile-inventory.py} "$@"
     '';
   };
+  egressControl = pkgs.writeShellApplication {
+    name = "vpn-egress";
+    runtimeInputs = [ pkgs.python3 ];
+    text = ''
+      exec ${lib.getExe pkgs.python3} ${./vpn-egress.py} "$@"
+    '';
+  };
   prepare = pkgs.writeShellScript "sing-box-prepare" ''
     exec ${lib.getExe generator} --concurrent --bindings "$1/vpn-listeners.json" \
       ${config.sops.secrets."vpn-egresses".path} \
@@ -84,7 +91,7 @@ in
       assertion = !cfg.ipv6.enable;
       message = "dotfiles.localProxy.ipv6.enable is obsolete: default VPN routes are IPv4-only.";
     }];
-    home.packages = [ cfg.package ] ++ map proxyProgram cfg.wrappedPrograms;
+    home.packages = [ cfg.package egressControl ] ++ map proxyProgram cfg.wrappedPrograms;
 
     # For programs that take a proxy argument instead of needing to be wrapped:
     # `yt-dlp --proxy "$PROXY"`. Naming the endpoint once means an alias cannot

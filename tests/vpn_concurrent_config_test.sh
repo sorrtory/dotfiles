@@ -22,6 +22,16 @@ compile() {
 }
 compile
 jq -e '
+  .experimental.clash_api.external_controller == "127.0.0.1:19090" and
+  (.experimental.clash_api.secret | length) >= 32
+' "$root/config" >/dev/null || fail 'private loopback control API missing'
+jq -e --slurpfile config "$root/config" '
+  .declarative_default == "route-a" and
+  .names == ["route-a", "route-b"] and
+  .secret == $config[0].experimental.clash_api.secret
+' "$root/vpn-control.json" >/dev/null || fail 'runtime control metadata differs from backend'
+[[ $(stat -c %a "$root/vpn-control.json") == 600 ]] || fail 'runtime control metadata is not private'
+jq -e '
   .route.final == "vpn-default-selector" and
   .outbounds[-1].type == "selector" and
   .outbounds[-1].default == "route-a" and

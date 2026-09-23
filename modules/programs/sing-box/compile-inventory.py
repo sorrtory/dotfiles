@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import socket
 import subprocess
 import sys
@@ -46,6 +47,12 @@ def jsonc(text):
             out.append(char)
         index += 1
     return json.loads("".join(out))
+
+
+def operator_notes(text):
+    """Inventory // lines are designated safe, public operator notes."""
+    return [line.strip()[2:].strip() for line in text.splitlines()
+            if line.strip().startswith("//")]
 
 
 def object_at(value, name):
@@ -249,6 +256,10 @@ def compile_config(inventory, policy, concurrent=False):
                 for tag in sorted(active)
             ],
         }
+        config["experimental"] = {"clash_api": {
+            "external_controller": "127.0.0.1:19090",
+            "secret": secrets.token_urlsafe(32),
+        }}
     return config
 
 
@@ -261,7 +272,8 @@ def main():
         print("usage: vpn-inventory-config [--concurrent --bindings ABSOLUTE_LEDGER] INVENTORY POLICY ABSOLUTE_OUTPUT", file=sys.stderr)
         return 2
     try:
-        inventory = jsonc(Path(paths[0]).read_text())
+        inventory_text = Path(paths[0]).read_text()
+        inventory = jsonc(inventory_text)
         policy = jsonc(Path(paths[1]).read_text())
         config = compile_config(inventory, policy, concurrent)
     except (OSError, ValueError, InvalidConfig) as error:
@@ -273,6 +285,7 @@ def main():
     output = Path(paths[2])
     temporary = None
     ledger_temporary = None
+    control_temporary = None
     try:
         # Check every native entry before selecting one. An inactive route with
         # malformed protocol fields must not wait until a later host switch to
@@ -314,6 +327,18 @@ def main():
                 stream.write("\n")
             os.replace(ledger_temporary, bindings)
             ledger_temporary = None
+            control = bindings.parent / "vpn-control.json"
+            with tempfile.NamedTemporaryFile(mode="w", dir=control.parent,
+                                         prefix="vpn-control.", delete=False) as stream:
+                control_temporary = Path(stream.name)
+                json.dump({"controller": "http://127.0.0.1:19090",
+                           "secret": config["experimental"]["clash_api"]["secret"],
+                           "declarative_default": policy["defaults"][socket.gethostname()],
+                           "names": config["outbounds"][-1]["outbounds"],
+                           "notes": operator_notes(inventory_text)}, stream)
+                stream.write("\n")
+            os.replace(control_temporary, control)
+            control_temporary = None
         os.replace(temporary, output)
         temporary = None
     except (OSError, InvalidConfig) as error:
@@ -325,6 +350,8 @@ def main():
             temporary.unlink(missing_ok=True)
         if ledger_temporary is not None:
             ledger_temporary.unlink(missing_ok=True)
+        if control_temporary is not None:
+            control_temporary.unlink(missing_ok=True)
     return 0
 
 
