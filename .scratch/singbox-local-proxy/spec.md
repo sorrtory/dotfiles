@@ -1,6 +1,12 @@
 # Spec: sing-box local proxy
 
-Status: ready-for-agent
+Status: historical-reference
+
+This records the **initial local-proxy migration**, including its historical
+1.13.19 starting point and then-planned namespace work. It is not the design
+for the concurrent VPN rewrite. The current installed baseline is described
+in `docs/DECISIONS.md`; the target backend, captures and whole-host tunnel
+are in [the VPN egress spec](../vpn-egress/spec.md).
 
 ## Purpose
 

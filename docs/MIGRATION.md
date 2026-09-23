@@ -116,6 +116,11 @@ of migration.
 
 ### 7. VPN command
 
+This section records the installed VPN command. The
+[selectable egress spec](../.scratch/vpn-egress/spec.md) and its ticket map
+describe the planned concurrent-route rewrite; they do not change current
+fresh-machine steps until activated.
+
 Implemented on §13's shared backend. `vpn PROGRAM` runs one program as the
 invoking user in an on-demand, rootless capture namespace that forwards TCP and
 UDP through the backend; it creates no second WireGuard client and changes no
@@ -134,8 +139,9 @@ through the server timed out, stalling programs for minutes before fallback.
 
 Machines are bootstrapped fresh rather than migrated, so the legacy launcher and
 the native `/opt/Vesktop` retire with the reinstall instead of coexisting.
-Several identities, per-application identity and other Electron applications
-are follow-up work.
+Concurrent named egresses and per-application pins are planned in the
+selectable-egress spec linked above. Other Electron applications remain
+follow-up work.
 
 ### 8. MPV and Anime4K
 

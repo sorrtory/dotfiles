@@ -11,6 +11,10 @@ Fedora and Arch. Migration of the remaining legacy configuration is still in
 progress — see [docs/MIGRATION.md](docs/MIGRATION.md) for what has moved and
 what has not. The current profile targets user `z` on `x86_64-linux`.
 
+The [VPN egress spec](.scratch/vpn-egress/spec.md) describes the planned
+concurrent design. Installation instructions below describe the current
+one-identity configuration until that migration is activated.
+
 ## Install on a fresh machine
 
 Select that machine's exclusive VPN identity before activation: set

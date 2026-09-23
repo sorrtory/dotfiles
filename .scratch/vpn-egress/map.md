@@ -1,51 +1,50 @@
 # Selectable VPN egresses
 
-Make the backend's way out a selectable egress instead of the machine's single
-WireGuard identity: an encrypted inventory of sing-box entries, a switch
-command, and a whole-host tunnel that follows the selection on any protocol.
-See [spec.md](spec.md).
+Status: ready-for-agent
 
-Supersedes `.scratch/vpn-followups/` and absorbs the remainder of
-`.scratch/vpn-command/`, both retired in the commit that created this
-directory. Their text is in Git history.
+The [spec](spec.md) and [concurrent policy decisions](../vpn-policy-design/map.md)
+define a temporary default, simultaneous named pins, one shared
+credential-bearing backend and fail-closed capture. The implementation
+tickets below are numbered in dependency order. A ticket can start when all
+its blockers are complete. Host activation remains a separate operator
+approval, and normal use precedes legacy retirement.
 
-## Frontier
+## Main tickets
 
-[01: Compile the backend from an encrypted egress inventory](issues/01-egress-inventory.md).
-Tickets 05 and 06 are independent defects and may be taken at any time.
+| Ticket | Blocked by | What it delivers |
+| --- | --- | --- |
+| [01: AyuGram ownership](issues/01-ayugram-ownership.md) | None | AyuGram launcher and theme opt-in move out of shared VPN code with behavior intact. |
+| [02: Vesktop and theme ownership](issues/02-vesktop-theme-ownership.md) | None | Vesktop launcher and palette integration have separate owners with behavior intact. |
+| [03: Shared VPN runtime](issues/03-shared-vpn-runtime.md) | 01, 02 | The remaining core owns only `vpn` and capture. |
+| [04: Whole-host TUN](issues/04-whole-host-tun.md) | 03 | `vpn-up` and `vpn-down` use a supervised credential-free TUN on the current backend. |
+| [05: Native default inventory](issues/05-native-default-inventory.md) | 04 | Existing default traffic works from encrypted native JSONC. |
+| [06: Concurrent backend routes](issues/06-concurrent-backend-routes.md) | 05 | One backend serves selector/default and independent named listeners. |
+| [07: Runtime default control](issues/07-runtime-default-control.md) | 06 | `vpn-egress` switches, restores, reports and checks the temporary default. |
+| [08: One-off named capture](issues/08-one-off-named-capture.md) | 06 | `vpn --egress NAME` launches a route-bound capture. |
+| [09: Installed-app pins](issues/09-installed-app-pins.md) | 07, 08 | Vesktop and AyuGram pin concurrently; policy switches stop affected scopes. |
+| [10: Real protocol egress](issues/10-real-protocol-egress.md) | 09 + deployed server | A real non-WireGuard route works end to end; currently `needs-info`. |
+| [11: Everyday recovery](issues/11-everyday-recovery.md) | 09 | Real network-change and suspend evidence on the daily machine. |
+| [12: Legacy retirement](issues/12-retire-legacy-vpn.md) | 11 | Reviewed legacy VPN material is removed after normal use. |
 
-## Tickets
+The current main frontier is **01 and 02**. Tickets **07 and 08** can proceed
+in parallel after 06; neither blocks the other. Ticket 10 does not block
+recovery or retirement while no real non-WireGuard server exists.
 
-- [01: Compile the backend from an encrypted egress inventory](issues/01-egress-inventory.md) — ready-for-agent.
-- [02: Switch egress at runtime with `vpn-egress`](issues/02-runtime-selection.md) — ready-for-agent; blocked by 01.
-- [03: Whole-host tunnel follows the active egress](issues/03-whole-host-tun.md) — ready-for-agent; blocked by 02.
-- [04: Add a real VLESS or Hysteria2 egress](issues/04-native-protocol-egress.md) — needs-info; blocked by 01.
-- [05: Make AppArmor install and removal failure-recoverable](issues/05-apparmor-recovery.md) — ready-for-agent; P2; independent.
-- [06: Accept relative executable paths in vpn](issues/06-relative-executables.md) — ready-for-agent; P2; independent.
-- [07: Evidence for network change and suspend-to-RAM](issues/07-everyday-recovery-evidence.md) — ready-for-human; blocked by 03.
-- [08: Retire the legacy VPN material](issues/08-retire-legacy-vpn-material.md) — ready-for-human; blocked by 07.
+## Independent defects
 
-## Order
+- [13: AppArmor recovery](issues/13-apparmor-recovery.md) — no blockers, P2.
+- [14: Relative executable paths](issues/14-relative-executables.md) — no
+  blockers, P2.
 
-01, 02, 03 in sequence: each leaves a working machine, and 01 alone is already
-testable because it changes the source of the tunnel and nothing else. 04 may
-follow 01 whenever a real server exists, and is worth doing before 03 if one
-does. 05 and 06 are unrelated to the egress work and need no gate. 07 and 08
-are operator gates that close the effort.
+These can be taken at any time without changing the main cutover order.
+Automatic egress selection and additional sandboxed applications remain
+deferred.
 
-## Context
+## Verification gates
 
-- Design settled in a grilling session: egresses are not bound to devices, one
-  egress is active at a time, traffic is split by entry point before it reaches
-  the backend, and switching is a backend restart rather than a live selector.
-- Verified during that session, and relied on by the tickets: sing-box 1.14.1
-  accepts `//` comments but rejects unknown fields, all six WireGuard endpoints
-  are IP literals, unprivileged `SO_BINDTODEVICE` has been allowed since Linux
-  5.7, and a systemd user service cannot hold `CAP_NET_ADMIN`.
-- `vpn-command/07` (concurrent owners of the VPN identity) is resolved, not
-  carried over: commit 8dbbc20 replaced the refusal with the identity handover,
-  so a backend started by capture during `vpn-up` comes back keyless and bound
-  to the interface. Ticket 03 removes the situation entirely.
-- Deferred work — per-app egress pinning, automatic selection, further
-  sandboxed applications — is recorded in the spec rather than carried as
-  tickets.
+The Fedora staging VM has proved the synthetic route topology, including a
+full synthetic TUN configuration launched in a supervised root systemd unit
+under SELinux Enforcing. The implementation must repeat the relevant checks
+on each generated configuration. Real-credential staging checks await the
+operator's secret-recovery phase. The daily host adds real application use
+and network-change/suspend evidence after separately approved activations.

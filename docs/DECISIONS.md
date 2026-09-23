@@ -525,6 +525,11 @@ ever read when nothing else has set the root.
 
 ## Scripts and privileged networking
 
+The VPN decisions in this section describe the installed one-identity
+configuration. The [selectable egress spec](../.scratch/vpn-egress/spec.md)
+defines its planned replacement; these decisions are rewritten as each
+replacement slice is activated and verified.
+
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 
 A command the operator runs keeps its Bash source under `scripts/bin/`; the VPN

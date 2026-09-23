@@ -1,6 +1,6 @@
 # 02 — Point Firefox and VS Code at the local proxy
 
-Status: ready-for-agent
+Status: needs-triage
 
 Blocked by: 01
 
@@ -56,3 +56,12 @@ policy the PAC file already expresses, without making the proxy system-wide.
 - A domain on the PAC block list fails to load.
 - `apt` and `nix` still work with no proxy configuration in the environment.
 - Re-running activation twice leaves a single correct `user.js`.
+
+## Comments
+
+The Snap-specific activation path in this ticket predates the current
+Firefox module, which links a native-profile `user.js` and declares the PAC
+as encrypted runtime material. VS Code already uses the local HTTP proxy.
+Reassess whether any client behavior remains before implementing this old
+ticket; do not restore its plaintext PAC path or Snap profile script merely
+because its status was once ready.

@@ -2,158 +2,157 @@
 
 Status: ready-for-agent
 
-One unprivileged sing-box backend keeps serving the local proxy and the VPN
-command. This milestone makes the way out of that backend a selectable egress
-rather than the machine's single WireGuard identity, adds the protocols a
-WireGuard-only design cannot carry, and replaces the `wg-quick` whole-host
-tunnel with one that follows the same selection.
+This is the **target design**. The installed system still uses one per-machine
+WireGuard identity; [DECISIONS.md](../../docs/DECISIONS.md) and the README
+describe that current baseline until each migration slice lands. The
+[implementation map](map.md) orders the change, and the
+[policy map](../vpn-policy-design/map.md) preserves the decisions and proofs.
 
-It supersedes `.scratch/vpn-followups/`, retired in the commit that created
-this directory. That spec declared egresses in Nix, dispatched them through
-repository-owned protocol adapters, switched them live over sing-box's Clash
-controller and kept `wg-quick` for the whole-host tunnel. Each of those is
-reversed below. Its text remains in Git history.
+## The picture
 
-## Model
+One unprivileged sing-box backend loads every encrypted egress credential.
+It has one manually selected **active default** and direct listeners for
+named routes. Entry points choose their route before traffic reaches the
+backend; a named route never passes through the default selector.
+An egress is a named route, not a device identity: any machine with the
+inventory may choose it, subject to the WireGuard peer concurrency rule.
 
-- **Egress**: one selectable way for backend traffic to leave the machine,
-  named `<provider>-<location>-<protocol>-<name>`, for example
-  `vdsina-nl-wg-laptop`. The name is the tag sing-box uses.
-- **Active egress**: the one egress the backend is currently compiled against.
-  Exactly one exists at a time and every entry point shares it.
-- **Default egress**: the egress a machine selects when no runtime choice is
-  saved, named per hostname inside the encrypted policy.
-- **Entry point**: the local proxy, the VPN command's capture namespace, or
-  the whole-host TUN. Traffic is split by entry point before it reaches the
-  backend; the backend itself carries no routing policy.
+| Entry point | Backend path | IPv6 |
+| --- | --- | --- |
+| Local HTTP/SOCKS proxy | Default listener → manual selector | Always off |
+| `vpn PROGRAM` | On-demand default capture → default listener | Always off |
+| `vpn --egress NAME -- PROGRAM` | On-demand named capture → listener for `NAME` | Per named egress policy |
+| Installed app with a pin | Its named capture → listener for the pinned name | Per named egress policy |
+| `vpn-up` | Privileged, credential-free whole-host TUN → default listener | Always off |
 
-An egress is not bound to a device. Any machine may select any egress, which
-is what makes a failing tunnel recoverable by picking another. The cost is
-accepted deliberately: every machine holds every credential, so one
-compromised machine exposes all of them, and the operator is responsible for
-never running two clients on one WireGuard peer at the same time, because the
-server's peer endpoint roams between them.
+The active default applies only to unpinned traffic. `vpn-egress use NAME`
+changes it until reboot or Home Manager switch; either event restores the
+hostname's **declarative default**. An explicit `--egress` overrides an
+installed app's pin, which overrides the active default. Vesktop and AyuGram
+may therefore use different named egresses concurrently while the proxy and
+whole-host TUN use another. Existing connections may reconnect after a
+default switch; named captures do not change route.
 
-## Storage
+## Inventory and policy
 
-Two whole-file SOPS documents under `secrets/vpn/`, replacing
-`secrets/wireguard/`:
+Two whole-file SOPS ciphertext documents are the source of truth:
 
-- `egresses.jsonc` is a sing-box configuration fragment and nothing else: real
-  `endpoints` and `outbounds` arrays with their tags, exactly as sing-box
-  would take them. `sing-box check` validates the file directly, provider
-  JSON can be pasted in unchanged, and `//` comments carry the operator's
-  notes — which provider, which account, when it expires — so no separate map
-  file exists to fall out of date.
-- `policy.jsonc` carries what sing-box has no field for: the default egress
-  per hostname, and the egresses whose server has no IPv6.
+- `secrets/vpn/egresses.jsonc` contains native sing-box `endpoints` and
+  `outbounds`, tagged with stable names such as
+  `<provider>-<location>-<protocol>-<name>`. `//` comments hold safe operator
+  notes. There is no repository-owned protocol adapter or separate alias map.
+- `secrets/vpn/policy.jsonc` contains declarative defaults by hostname,
+  installed-app pins, and named egress IPv6 capability. Every reference must
+  name an inventory tag; an absent hostname default or unknown pin is an
+  error. No egress name or pin goes in a Nix expression.
 
-Both are ciphertext, so no provider, location or protocol name appears in the
-repository. Nothing in `home.nix` names an egress either; the machine finds
-its default by hostname. sing-box 1.14.1 accepts `//` comments but rejects
-unknown fields, which is why the operator's data lives in a second file rather
-than beside each entry.
+sing-box can check the native inventory directly, then the runtime compiler
+checks the combined backend configuration. Secrets are read only at runtime:
+no credential or API token enters Nix evaluation, arguments, the environment,
+logs, patches or the Nix store. The one backend holds all credentials, even
+for inactive routes. That accepted blast radius means one compromised machine
+could expose them all. A WireGuard peer still must not run on two clients at
+once; its server endpoint would roam. Old `wg-quick` use ends before the
+all-egress backend starts.
+The backend never has an unbound direct fallback. Current WireGuard server
+addresses are IP literals; a future egress with a hostname must bootstrap
+through fixed-address DoH bound to the physical route rather than host DNS.
 
-Plain `wg-quick` configurations for devices that do not run sing-box are the
-operator's own backups, kept outside this repository.
-
-## Runtime interface
+## Commands and failure behavior
 
 ```text
-vpn-egress              # list egresses with their notes, marking the active one
-vpn-egress status       # the active egress and where the choice came from
-vpn-egress use EGRESS   # switch
-vpn-egress default      # clear the saved choice
-vpn-up                  # whole-host tunnel on the active egress
-vpn-down
+vpn-egress              list names and safe notes; mark the active default
+vpn-egress status       read back the active and declarative defaults
+vpn-egress use NAME     temporarily select the default
+vpn-egress default      restore the declarative default now
+vpn-egress check NAME   run one named HTTPS reachability check
+vpn --egress NAME -- PROGRAM
+vpn-up / vpn-down       start / stop the whole-host TUN
 ```
 
-Switching recompiles the configuration for the newly selected egress and
-restarts the backend. There is no selector group and no Clash controller: the
-backend holds one egress at a time, credentials for unselected egresses never
-enter the running configuration, and no local control port exists for another
-process to find. The cost is that switching interrupts existing flows, which
-is acceptable for a manual action and is the same interruption a backend
-restart already causes.
+One loopback-only authenticated Clash API controls the manual selector and
+performs `GET /proxies/{NAME}/delay`. The bearer secret lives in a user-only
+runtime file and the selector choice is not persisted in sing-box's cache.
+`check` uses a five-second HTTPS HEAD probe; it reports unknown name,
+unavailable backend, failed probe and control error separately. It does not
+gate launches or prove DNS, UDP or future connectivity.
 
-The saved choice lives in the user's state directory and survives reboots; the
-default applies only when nothing is saved. A saved egress that no longer
-exists falls back to the default with a warning rather than failing to start.
+An unknown explicit name or invalid pin fails before launch. A configured
+egress that later becomes unreachable leaves its app on the same route with
+failed connections; it may reconnect when that route recovers. No entry point
+falls back to the default or host network because a route, backend, capture
+or listener fails. Backend DNS detours follow each selected route, and no
+tunneled application DNS uses the host resolver. Default-route DNS resolves
+IPv4 only, capture/TUN DNS returns no AAAA answers, and all default entry
+points reject IPv6 packets even when the chosen egress supports IPv6. A
+named capture follows its declared capability.
 
-## Whole-host tunnel
+## Capture and policy switches
 
-`vpn-up` starts a second, credential-free sing-box as a transient system unit
-under `sudo`. Its only outbound is SOCKS to the backend on loopback, so it
-follows whatever egress is active and holds no keys. This replaces `wg-quick`,
-the whole-host WireGuard interface, the identity handover marker and the
-keyless backend restart that went with them.
+Each `vpn` launch owns a user systemd app scope bound to a capture service
+for its resolved route. Scopes on one route share that capture; its last
+scope's exit stops it. Capture failure stops bound scopes and payloads,
+including apps that move their main process to another scope. A backend
+restart with compatible route definitions leaves captures and apps in place
+to reconnect; traffic is blocked during the outage.
+Installed app launchers cover ordinary commands, desktop entries and links;
+launching a package's raw executable can bypass the wrapper. This routing
+mechanism is not an application sandbox, and login/session state stays local.
 
-Verified constraints:
+A Home Manager switch validates the new inventory and policy before replacing
+runtime bindings. It stops an installed app scope whose pin changes or is
+removed. If a named route disappears or changes definition or IPv6 policy,
+it stops **all** scopes on that route, including one-off launches, before
+replacing the listener. A pin-only change does not stop an old capture still
+used by another scope. Each stop reports the app, old route and reason.
+Listener addresses cannot be reassigned to another tag while a capture is
+live. Readback compares the app's route, capture namespace PID/inode and
+backend listener binding, and distinguishes an attached route from a backend
+outage or mismatch. Failed reconciliation cannot silently reroute an app.
 
-- The backend binds its own upstream sockets to the physical interface
-  (`route.auto_detect_interface`), so its traffic to the VPN server is not
-  captured by the TUN and does not loop. Unprivileged `SO_BINDTODEVICE` has
-  been allowed since Linux 5.7.
-- `strict_route` stays off, because with it on, interface-bound traffic is
-  redirected back through sing-box.
-- A systemd user service cannot hold `CAP_NET_ADMIN`, so the TUN process is
-  privileged and the backend is not. The privileged half has no credentials.
-- All six current WireGuard endpoints are IP literals, so no name has to be
-  resolved before the tunnel exists. The host-DNS bootstrap exception is
-  deleted rather than narrowed. An egress that needs a hostname later resolves
-  it over DoH to a fixed address, dialed direct.
+## Whole-host TUN
 
-While the backend restarts, the TUN's SOCKS connection is refused and traffic
-fails rather than falling back to the host uplink. With the tunnel down, the
-host's direct connection is the ordinary state and nothing blocks it.
+`vpn-up` explicitly starts a supervised root sing-box TUN whose only outbound
+is SOCKS to the backend's default listener. It holds no provider credentials.
+The backend binds its upstream sockets to the physical interface using
+`route.auto_detect_interface`, preventing a loop; `strict_route` stays off.
+The TUN hijacks DNS so the host resolver follows it, excludes private and
+link-local routes to keep LAN/libvirt reachable, and rejects IPv6 default
+traffic. If the backend stops, whole-host traffic fails closed. After
+`vpn-down`, the host's ordinary direct connection resumes. Normal Home
+Manager activation never invokes sudo.
+The whole-host TUN does not change a VPNized app's capture route. Apps stay
+inside capture while it is up, so `vpn-down` cannot release them onto the
+host connection.
 
-## Invariants
+Fedora 44 SELinux denied a root transient unit that executed the Nix binary
+directly. A supervised root unit starting through host-labeled `/usr/bin/env`
+ran the **full synthetic** TUN configuration, including routing, DNS,
+selector changes, backend loss and cleanup. The generated production config
+must pass the same check, and other distributions must use a working
+host-labeled executable path. The fixture used synthetic physical-bound
+egresses, not real provider credentials. See the
+[staging proof](../vpn-policy-design/issues/11-whole-host-route-proof.md).
 
-- No unbound direct outbound is ever compiled into the backend or the TUN.
-- Tunneled traffic fails closed. Nothing falls back to the host uplink because
-  an egress is missing, a restart is in progress or an interface disappeared.
-- DNS follows the active egress. No entry point resolves through the host
-  resolver.
-- Credentials are parsed only at runtime and never reach Nix evaluation,
-  argv, the environment, logs or the Nix store.
-- Private and link-local ranges stay off the whole-host tunnel, which also
-  keeps the libvirt bridge and the staging VM reachable.
+## Migration and evidence
 
-## Documentation
+The [tickets](map.md) first split app, theme and shared VPN responsibilities
+without behavior changes. They then replace `wg-quick` with the TUN on the
+current backend; move the current default to encrypted native inventory;
+load concurrent routes; add default control and one-off named captures; and
+finally add installed-app pins and policy reconciliation. Each active cutover
+keeps the local proxy, default capture and whole-host path usable. Host
+activation needs separate operator approval; legacy machinery is removed
+only after normal use proves its replacement.
 
-Each slice rewrites the decisions it reverses, in the commit that reverses
-them. `docs/DECISIONS.md` currently states that each machine uses its own
-WireGuard identity, that only that identity is decrypted, that `wg-quick`
-brings up the whole-host tunnel and that resolving a WireGuard endpoint
-hostname is the sole host-DNS exception. `CONTEXT.md` defines **VPN identity**,
-which this milestone retires in favour of **egress**.
+The [local routing proof](../vpn-policy-design/issues/09-prove-routing-topology.md)
+and [Fedora staging proof](../vpn-policy-design/issues/11-whole-host-route-proof.md)
+established synthetic TCP, UDP, DNS, selector, IPv6 and fail-closed routing.
+They do not validate generated production config or any real provider.
+Staging's secret-recovery phase remains the operator's prerequisite for
+real-credential checks there. The daily host adds real Vesktop/AyuGram use,
+network-change and suspend evidence after approved activations.
 
-## Verification
-
-Fixtures first, then the staging VM: generated configuration validates,
-the tunnel comes up from the new files, `vpn-egress` switches and the choice
-survives a reboot, the whole-host TUN carries traffic through the backend,
-traffic fails rather than leaks while the backend restarts, and LAN plus the
-libvirt bridge stay reachable. The host adds only what needs real applications:
-Vesktop and AyuGram through capture while the whole-host tunnel is up. Host
-activation stays a separate operator approval.
-
-## Deferred
-
-- **Per-app and one-off egress pinning** (`vpn --egress`, a pinned VPNized
-  app). It needs a routing seam inside the backend, which contradicts the
-  split-before-the-backend model until there is a reason to pay for it.
-- **Automatic selection.** `urltest` measures latency and does not do ordered
-  failover or retry; ordered failover would be repository-owned health and
-  retry logic. Not before two real egresses have everyday use behind them.
-- **Additional sandboxed applications.** Unchanged: each needs an exact-path
-  AppArmor allowance and is added only when actually adopted.
-- **A double tunnel is accepted.** With the whole-host tunnel up, a VPNized
-  application's traffic still goes through capture's namespace and reaches the
-  same single egress twice over. The overhead is small, and the alternative —
-  making the launcher behave differently depending on invisible state — would
-  silently put an application on the direct connection after `vpn-down`.
-
-## Reference material
-
-- `reference/vpn-veth-port.sh` is a non-live legacy reference only.
+Automatic selection and health-based failover remain deferred. A real
+non-WireGuard egress is a separate `needs-info` ticket until a server and
+credential exist. More sandboxed applications are added only when adopted.
