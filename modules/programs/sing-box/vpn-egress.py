@@ -36,8 +36,15 @@ def api(control, method, path, body=None):
             data = response.read()
         return json.loads(data) if data else {}
     except urllib.error.HTTPError as error:
-        if "/delay?" in path and error.code not in (401, 403):
-            raise ProbeFailed("named HTTPS probe failed") from None
+        if "/delay?" in path and error.code in (408, 500, 504):
+            try:
+                message = json.loads(error.read()).get("message", "").lower()
+            except (ValueError, AttributeError):
+                message = ""
+            if any(term in message for term in (
+                    "timeout", "deadline", "connection", "network", "dial",
+                    "handshake", "tls", "eof")):
+                raise ProbeFailed("named HTTPS probe failed") from None
         raise ControlError(f"control API returned HTTP {error.code}") from None
     except (urllib.error.URLError, TimeoutError, OSError):
         raise BackendUnavailable("backend control API is unavailable") from None

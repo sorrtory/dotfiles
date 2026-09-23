@@ -20,7 +20,7 @@ restores the hostname's declarative choice.
 - [x] The loopback-only control API requires a runtime user-only bearer
       secret; no API token or VPN credential enters Nix, argv, environment,
       logs or the store. Selector state is not persisted across reboot.
-- [ ] Staging observes switch, reset, API refusal and fail-closed behavior
+- [x] Staging observes switch, reset, API refusal and fail-closed behavior
       before a separately approved host activation.
 
 ## Staging evidence
