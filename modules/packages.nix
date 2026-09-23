@@ -70,6 +70,7 @@ in
 
     cmake
     curl
+    eza
     exiftool
     fd
     ffmpeg

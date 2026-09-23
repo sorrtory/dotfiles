@@ -122,6 +122,10 @@ in
     shellAliases = {
       "p!" = "PAGER=less";
       path = "readlink -f";
+      # Keep the system `ls`; these opt-in views use eza's terminal icons.
+      la = "eza -a --icons=auto --group-directories-first";
+      ll = "eza -la --icons=auto --group-directories-first --git --header";
+      lt = "eza --tree --level=2 --icons=auto --group-directories-first";
       lg = "lazygit";
       lzd = "lazydocker";
       dps = ''docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Ports}}"'';
