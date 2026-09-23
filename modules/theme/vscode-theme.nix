@@ -10,10 +10,20 @@
 # keywords err — so an editor switch does not also mean relearning what a
 # color means.
 
-colors:
+{ lib, colors }:
 let
   inherit (colors) base mantle surface overlay text subtext muted accent accent2 error warning success info;
   inherit (colors) brightMagenta brightCyan brightBlue brightGreen brightYellow brightRed;
+  inherit (import ./color.nix { inherit lib; }) mix;
+
+  # VS Code's bundled Markdown grammar exposes heading.1.markdown through
+  # heading.6.markdown. Use the same four shades as Neovim and Sublime.
+  heading = [
+    (mix error base 0.14)
+    (mix accent text 0.10)
+    (mix accent2 base 0.06)
+    (mix info text 0.06)
+  ];
 
   # VS Code takes #rrggbbaa, so a translucent shade is the role plus two hex
   # digits. Selections and highlights have to let the text through.
@@ -230,12 +240,23 @@ builtins.toJSON {
     (rule [ "entity.other.attribute-name" ] { foreground = warning; })
     (rule [ "punctuation.definition.tag" ] { foreground = accent2; })
     (rule [ "entity.name.section" "markup.heading" ] { foreground = success; fontStyle = "bold"; })
+    (rule [ "heading.1.markdown entity.name.section.markdown" "heading.1.markdown punctuation.definition.heading.markdown" "markup.heading.setext.1.markdown" ] { foreground = builtins.elemAt heading 0; fontStyle = "bold"; })
+    (rule [ "heading.2.markdown entity.name.section.markdown" "heading.2.markdown punctuation.definition.heading.markdown" "markup.heading.setext.2.markdown" ] { foreground = builtins.elemAt heading 1; fontStyle = "bold"; })
+    (rule [ "heading.3.markdown entity.name.section.markdown" "heading.3.markdown punctuation.definition.heading.markdown" ] { foreground = builtins.elemAt heading 2; fontStyle = "bold"; })
+    (rule [ "heading.4.markdown entity.name.section.markdown" "heading.4.markdown punctuation.definition.heading.markdown" ] { foreground = builtins.elemAt heading 3; fontStyle = "bold"; })
+    (rule [ "heading.5.markdown entity.name.section.markdown" "heading.5.markdown punctuation.definition.heading.markdown" "heading.6.markdown entity.name.section.markdown" "heading.6.markdown punctuation.definition.heading.markdown" ] { foreground = muted; fontStyle = "bold"; })
     (rule [ "markup.bold" ] { fontStyle = "bold"; })
     (rule [ "markup.italic" ] { fontStyle = "italic"; })
     (rule [ "markup.underline.link" "markup.link" ] { foreground = accent2; })
     (rule [ "markup.inline.raw" "markup.raw" ] { foreground = brightCyan; })
     (rule [ "markup.quote" ] { foreground = muted; fontStyle = "italic"; })
     (rule [ "markup.list punctuation.definition.list.begin" ] { foreground = accent; })
+    (rule [ "string.other.link.title.markdown" "string.other.link.description.markdown" ] { foreground = text; fontStyle = "underline"; })
+    (rule [ "markup.underline.link.markdown" ] { foreground = muted; fontStyle = "underline"; })
+    (rule [ "punctuation.definition.link.markdown" "punctuation.definition.metadata.markdown" ] { foreground = overlay; })
+    (rule [ "markup.inline.raw.string.markdown" ] { foreground = warning; })
+    (rule [ "punctuation.definition.raw.markdown" ] { foreground = muted; })
+    (rule [ "markup.list punctuation.definition.list.begin.markdown" ] { foreground = subtext; })
     (rule [ "markup.inserted" ] { foreground = success; })
     (rule [ "markup.deleted" ] { foreground = error; })
     (rule [ "markup.changed" ] { foreground = accent; })

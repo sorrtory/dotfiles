@@ -439,6 +439,10 @@ palette by `modules/theme/vscode-theme.nix`. Both upstream extensions stay
 installed, so they can also be selected directly, and extensions installed by
 hand are untouched.
 
+The generated theme gives Markdown headings the same four palette-derived
+steps as Neovim and Sublime, with quieter links, inline code, quotes and list
+markers. VS Code's bundled Markdown grammar supplies the heading-level scopes.
+
 Transparency reaches VS Code the same way it reaches Spotify, Sublime Text
 and Obsidian: Electron never gives the window an alpha channel, so Blur my
 Shell fades it from the compositor, text included.

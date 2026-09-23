@@ -33,7 +33,7 @@ let
 
   # A theme the palette draws itself, for a palette with no native extension.
   generatedTheme = pkgs.writeText "dotfiles-color-theme.json"
-    (import ../theme/vscode-theme.nix colors);
+    (import ../theme/vscode-theme.nix { inherit lib colors; });
 
   extensionPublisher = "dotfiles";
   extensionName = "dotfiles-theme";
