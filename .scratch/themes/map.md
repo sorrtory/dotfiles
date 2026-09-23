@@ -14,9 +14,10 @@ app follows, generated from a single palette with per-app overrides. See
 - [06: Spotify](issues/06-spotify.md) — resolved; the Spicetify scheme is generated, every slot derived from the roles.
 - [07: Telegram](issues/07-telegram.md) — resolved; every key is generated from a table fitted once to the hand-made theme (323 keys have no fallback, so roots alone were not an option), packed at activation with the theme's wallpaper; the host check after the one-time Choose from file is the operator's.
 - [08: Obsidian](issues/08-obsidian.md) — resolved; generated to a fixed path named "Dotfiles"; the existing vault link must be remade once.
-- [09: Canonical docs and cleanup](issues/09-docs-and-cleanup.md) — ready-for-agent; blocked by 02–08 and 11.
+- [09: Canonical docs and cleanup](issues/09-docs-and-cleanup.md) — ready-for-agent; blocked by 02–08, 11 and 12.
 - [10: Instant Telegram apply](issues/10-instant-telegram-apply.md) — needs-info; blocked by 07 and upstream AyuGram.
 - [11: Vesktop](issues/11-vesktop.md) — resolved; the six families Discord derives its tokens from are generated, live through Vencord's themes directory, and the window is faded by Blur my Shell rather than drawn translucent.
+- [12: Zsh](issues/12-zsh.md) — resolved; prompt, highlighting, suggestion and completion generated from the roles into one live file the shell re-sources from `precmd`, loaded as `$ZSH_THEME=dotfiles` through a shim theme because a store symlink cannot carry a changing mtime. Checked end to end on the staging VM: activation writes both files, the notice lists Zsh as live, and an open shell recolors in place.
 
 Tickets 02–08 and 11 are independent of each other once 01 lands.
 
