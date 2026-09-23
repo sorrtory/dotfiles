@@ -339,7 +339,7 @@ The host-identifying half of `~/.ssh/config` is ciphertext for a different reaso
 
 WireGuard configurations are whole-file SOPS ciphertext decrypted to a user-owned path, with no privileged deployment step. The legacy `wg-quick` path accepted that user-owned config directly, so `/etc/wireguard/` was unnecessary. Its ciphertext remains during migration until the replacement is proven under normal use.
 
-The legacy WireGuard files are per-device identities. Each configuration names its legacy identity explicitly with `dotfiles.vpn.identity`, which has no default; the flake's `staging` configuration differs from `z` in that choice, and the home-manager phase remembers which configuration a machine activated. The legacy secondary `extra` configuration remains decrypted during migration. The native egress inventory changes the credential boundary deliberately: its one encrypted file contains the daily-host and staging peers, so either machine decrypts both and compromise of either exposes both. This accepts the shared-inventory exposure required for selectable egresses; it does not include the phone or other device identities. The compiler loads only the hostname-selected peer into the running backend while ticket 05 serves one default, and a peer is never used by both machines at once. Adding identities to the inventory increases this blast radius and requires an explicit migration decision.
+The legacy WireGuard files are per-device identities. Each configuration names its legacy identity explicitly with `dotfiles.vpn.identity`, which has no default; the flake's `staging` configuration differs from `z` in that choice, and the home-manager phase remembers which configuration a machine activated. The legacy secondary `extra` configuration remains decrypted during migration. The native egress inventory changes the credential boundary deliberately: its one encrypted file contains the daily-host and staging peers, so either machine decrypts both and compromise of either exposes both. This accepts the shared-inventory exposure required for selectable egresses; it does not include the phone or other device identities. Encrypted policy assigns each WireGuard peer to exactly one hostname, and the runtime compiler excludes peers owned by other hosts while loading shared outbounds such as VLESS. A peer is never used by both machines at once. Adding identities to the inventory increases this blast radius and requires an explicit migration decision.
 
 Secrets are named after the file they come from, so `wg-quick` takes the interface name from the basename and brings up the identity's name, such as `laptop`, and `extra`. A generic `wg0` would make the interface name identical across machines, which pays off only once something shared refers to an interface by name; nothing does, and renaming the one that needs it is a line of configuration when something eventually does. Until then the generic name costs a lookup every time someone reads a path and has to ask which device it means.
 
@@ -540,8 +540,9 @@ passed, including backend loss and recovery. The encrypted legacy profile
 stays available until network-change and suspend checks precede retirement.
 The backend credentials now come from whole-file encrypted native inventory
 and hostname policy, activated on the daily host after separate approval. Its
-installed compiler loads only the selected peer for each machine; concurrent
-loading waits for separately assigned peers or another provider.
+installed compiler loads only the selected peer for each machine. The staged
+concurrent compiler loads that host's assigned WireGuard peer plus the shared
+VLESS outbound; the daily host still awaits a separately approved cutover.
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 

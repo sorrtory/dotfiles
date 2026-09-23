@@ -10,12 +10,13 @@ describe that current baseline until each migration slice lands. The
 
 ## The picture
 
-One unprivileged sing-box backend loads every encrypted egress credential.
+One unprivileged sing-box backend loads every egress assigned to its host.
 It has one manually selected **active default** and direct listeners for
 named routes. Entry points choose their route before traffic reaches the
 backend; a named route never passes through the default selector.
-An egress is a named route, not a device identity: any machine with the
-inventory may choose it, subject to the WireGuard peer concurrency rule.
+An egress is a named route. Shared outbounds may be used by every machine with
+the inventory; each WireGuard peer is assigned to one hostname and is loaded
+only there, so its server endpoint cannot roam between clients.
 
 | Entry point | Backend path | IPv6 |
 | --- | --- | --- |
@@ -42,18 +43,19 @@ Two whole-file SOPS ciphertext documents are the source of truth:
   `<provider>-<location>-<protocol>-<name>`. `//` comments hold safe operator
   notes. There is no repository-owned protocol adapter or separate alias map.
 - `secrets/vpn/policy.jsonc` contains declarative defaults by hostname,
-  installed-app pins, and named egress IPv6 capability. Every reference must
+  WireGuard peer owners, installed-app pins, and named egress IPv6 capability. Every reference must
   name an inventory tag; an absent hostname default or unknown pin is an
   error. No egress name or pin goes in a Nix expression.
 
 sing-box can check the native inventory directly, then the runtime compiler
 checks the combined backend configuration. Secrets are read only at runtime:
 no credential or API token enters Nix evaluation, arguments, the environment,
-logs, patches or the Nix store. The one backend holds all credentials, even
-for inactive routes. That accepted blast radius means one compromised machine
-could expose them all. A WireGuard peer still must not run on two clients at
-once; its server endpoint would roam. Old `wg-quick` use ends before the
-all-egress backend starts.
+logs, patches or the Nix store. Each backend holds credentials for all routes
+available to its host, even inactive routes. The decrypted inventory still
+contains every peer, so compromise of either machine could expose both peers.
+An owner map prevents the backend from starting another host's WireGuard peer;
+the same peer must not run on two clients at once or its server endpoint would
+roam. Old `wg-quick` use ends before the concurrent backend starts.
 The backend never has an unbound direct fallback. Current WireGuard server
 addresses are IP literals; a future egress with a hostname must bootstrap
 through fixed-address DoH bound to the physical route rather than host DNS.

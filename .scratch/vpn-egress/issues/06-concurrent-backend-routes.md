@@ -21,8 +21,15 @@ passed `sing-box check` in candidate mode without starting another peer.
 Generated named UDP also followed its assigned synthetic route on the VM.
 The candidate currently requires a shared primary DNS address across routes,
 so a selector switch cannot retain the previous route's private resolver.
-Real concurrent DNS and IPv6 traffic, default switching, and a host cutover
-remain open.
+The operator added a shared VLESS outbound and confirmed both machines may use
+it concurrently. The encrypted policy now assigns each WireGuard peer to one
+hostname, independent of the temporary or declarative default. On the Fedora
+VM, the installed concurrent backend loaded its own WireGuard peer plus VLESS
+and served HTTPS and DNS over UDP through both generated listeners. IPv6 was
+rejected on both routes as declared. Default capture, whole-host TUN, backend
+loss and restoration, and `vpn-down` cleanup passed with that backend. The
+daily-host activation remains separately gated. Default switching belongs to
+ticket 07; named capture belongs to ticket 08.
 
 **What to build:** Load the encrypted egress inventory into one unprivileged
 backend. Keep the existing local proxy and default capture usable through a

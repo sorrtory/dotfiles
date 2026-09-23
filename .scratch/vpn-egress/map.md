@@ -22,13 +22,16 @@ approval, and normal use precedes legacy retirement.
 | [07: Runtime default control](issues/07-runtime-default-control.md) | 06 | `vpn-egress` switches, restores, reports and checks the temporary default. |
 | [08: One-off named capture](issues/08-one-off-named-capture.md) | 06 | `vpn --egress NAME` launches a route-bound capture. |
 | [09: Installed-app pins](issues/09-installed-app-pins.md) | 07, 08 | Vesktop and AyuGram pin concurrently; policy switches stop affected scopes. |
-| [10: Real protocol egress](issues/10-real-protocol-egress.md) | 09 + deployed server | A real non-WireGuard route works end to end; currently `needs-info`. |
+| [10: Real protocol egress](issues/10-real-protocol-egress.md) | 09 + deployed server | A real non-WireGuard route works end to end. |
 | [11: Everyday recovery](issues/11-everyday-recovery.md) | 09 | Real network-change and suspend evidence on the daily machine. |
 | [12: Legacy retirement](issues/12-retire-legacy-vpn.md) | 11 | Reviewed legacy VPN material is removed after normal use. |
 
-Tickets **01–05, 13 and 14** are resolved. Concurrent real WireGuard loading in ticket 06 awaits additional peer assignments; the operator chose to keep only the current host and staging defaults for now. Tickets **07 and 08** can proceed
-in parallel after 06; neither blocks the other. Ticket 10 does not block
-recovery or retirement while no real non-WireGuard server exists.
+Tickets **01–05, 13 and 14** are resolved. Ticket 06 now has the shared
+`orange-vless` route while each machine keeps its own WireGuard peer. The VM
+passed real concurrent-route checks; the daily-host cutover awaits separate
+approval. Tickets **07 and 08** can proceed in parallel after 06; neither
+blocks the other. Ticket 10's server and credential are now available, but its
+full command and app checks still depend on ticket 09.
 
 ## Independent defects
 

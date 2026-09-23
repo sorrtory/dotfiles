@@ -57,4 +57,39 @@ if compile >"$root/stdout" 2>"$root/stderr"; then
 fi
 grep -q 'shared primary DNS server' "$root/stderr" || fail 'missing DNS rejection'
 cp "$root/valid-egresses" "$root/egresses"
+
+# The shared VLESS-like route may run on both machines; each WireGuard peer
+# belongs only to the hostname that declares it as its default.
+private=$(printf '0%.0s' {1..32} | base64)
+public=$(printf '1%.0s' {1..32} | base64)
+cat > "$root/egresses" <<EOF2
+{"endpoints":[
+  {"type":"wireguard","tag":"host-wireguard","system":false,"address":["10.0.0.2/32"],"private_key":"$private","peers":[{"address":"203.0.113.1","port":51820,"public_key":"$public","allowed_ips":["0.0.0.0/0"]}]},
+  {"type":"wireguard","tag":"vm-wireguard","system":false,"address":["10.0.0.3/32"],"private_key":"$private","peers":[{"address":"203.0.113.2","port":51820,"public_key":"$public","allowed_ips":["0.0.0.0/0"]}]}
+],"outbounds":[{"type":"socks","tag":"shared-route","server":"127.0.0.1","server_port":15003}],"dns":{"servers":[
+  {"type":"udp","tag":"host-dns","server":"8.8.8.8","detour":"host-wireguard"},
+  {"type":"udp","tag":"vm-dns","server":"8.8.8.8","detour":"vm-wireguard"},
+  {"type":"udp","tag":"shared-dns","server":"8.8.8.8","detour":"shared-route"}
+]}}
+EOF2
+printf '{"defaults":{"%s":"host-wireguard","other-host":"vm-wireguard"},"wireguard_owners":{"host-wireguard":"%s","vm-wireguard":"other-host"},"pins":{},"ipv6":{"host-wireguard":false,"vm-wireguard":false,"shared-route":false}}\n' \
+  "$(hostname)" \
+  "$(hostname)" > "$root/policy"
+compile
+jq -e '
+  [.endpoints[].tag] == ["host-wireguard"] and
+  [.outbounds[].tag] == ["shared-route", "vpn-default-selector"] and
+  (.inbounds | all(.tag != "vpn-named-vm-wireguard")) and
+  (.dns.servers | all(.detour != "vm-wireguard"))
+' "$root/config" >/dev/null || fail 'exclusive peer entered concurrent backend'
+jq '.defaults["'"$(hostname)"'"] = "shared-route"' "$root/policy" > "$root/vless-default"
+mv "$root/vless-default" "$root/policy"
+compile
+jq -e '.outbounds[-1].default == "shared-route" and [.endpoints[].tag] == ["host-wireguard"]' \
+  "$root/config" >/dev/null || fail 'declarative default changed WireGuard ownership'
+jq 'del(.wireguard_owners."vm-wireguard")' "$root/policy" > "$root/missing-owner"
+mv "$root/missing-owner" "$root/policy"
+if compile >"$root/stdout" 2>"$root/stderr"; then
+  fail 'unowned WireGuard peer accepted'
+fi
 printf 'vpn concurrent compiler tests passed\n'

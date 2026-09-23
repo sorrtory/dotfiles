@@ -1,7 +1,14 @@
 # 10: Prove a real non-WireGuard egress
 
-Status: needs-info
-Blocked by: 09 (installed-app pins); a deployed server and credential are also required
+Status: ready-for-agent
+Blocked by: 09 (installed-app pins)
+
+The operator added a native `orange-vless` outbound and its encrypted policy
+entry on 2026-09-24, and confirmed that both machines may use it concurrently.
+The Fedora staging VM reached HTTPS and received DNS A answers over UDP
+through its named listener while its own WireGuard default remained active.
+Full one-off capture, pinned-app, selector and whole-host checks follow the
+preceding tickets; this ticket remains blocked by 09.
 
 **What to build:** Add a deployed VLESS or Hysteria2 egress using its native
 sing-box entry and select it through the existing default and named-route

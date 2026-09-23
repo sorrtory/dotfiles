@@ -100,18 +100,27 @@ def compile_config(inventory, policy, concurrent=False):
                 raise InvalidConfig("default DNS needs an IPv4 resolver")
         except ValueError:
             raise InvalidConfig("DNS server must use an IP literal") from None
-    if set(policy) != {"defaults", "pins", "ipv6"}:
-        raise InvalidConfig("policy must contain defaults, pins and ipv6")
+    required_policy = {"defaults", "pins", "ipv6"}
+    if set(policy) not in (required_policy, required_policy | {"wireguard_owners"}):
+        raise InvalidConfig("policy must contain defaults, pins, ipv6 and optional WireGuard owners")
     defaults = object_at(policy["defaults"], "defaults")
     pins = object_at(policy["pins"], "pins")
     ipv6 = object_at(policy["ipv6"], "ipv6")
+    owners = object_at(policy.get("wireguard_owners", {}), "WireGuard owners")
     if any(not isinstance(value, str) or value not in entries for value in defaults.values()):
         raise InvalidConfig("unknown declarative default")
     if any(not isinstance(value, str) or value not in entries for value in pins.values()):
         raise InvalidConfig("unknown installed-app pin")
     if set(ipv6) != set(entries) or any(type(value) is not bool for value in ipv6.values()):
         raise InvalidConfig("invalid IPv6 capability map")
-    selected = defaults.get(socket.gethostname())
+    wireguard_tags = {tag for tag, (_, route) in entries.items()
+                      if route["type"] == "wireguard"}
+    if owners and (set(owners) != wireguard_tags or
+                   any(not isinstance(host, str) or host not in defaults
+                       for host in owners.values())):
+        raise InvalidConfig("invalid WireGuard ownership map")
+    hostname = socket.gethostname()
+    selected = defaults.get(hostname)
     if selected is None:
         raise InvalidConfig("missing hostname default")
     kind, entry = entries[selected]
@@ -132,17 +141,28 @@ def compile_config(inventory, policy, concurrent=False):
         kind: [entry],
     }
     if concurrent:
-        missing_dns = set(entries) - {server["detour"] for server in servers}
+        # A WireGuard peer cannot run on two machines: the server would move
+        # its endpoint between them. Ownership is independent of the default;
+        # non-WireGuard outbounds may be shared by all inventory hosts.
+        if set(owners) != wireguard_tags:
+            raise InvalidConfig("WireGuard peer lacks an explicit hostname owner")
+        active = {tag for tag in entries if tag not in owners or owners[tag] == hostname}
+        if selected not in active:
+            raise InvalidConfig("hostname default is unavailable")
+        if any(tag not in active for tag in pins.values()):
+            raise InvalidConfig("installed-app pin is unavailable on this host")
+        active_servers = [server for server in servers if server["detour"] in active]
+        missing_dns = active - {server["detour"] for server in active_servers}
         if missing_dns:
             raise InvalidConfig("egress has no DNS server")
         # The default capture and whole-host TUN keep one resolver address
         # across selector changes. Until runtime DNS follows the selector's
         # choice, reject inventories whose routes need different primaries.
-        primary_dns = {tag: next(server["server"] for server in servers
-                                 if server["detour"] == tag) for tag in entries}
+        primary_dns = {tag: next(server["server"] for server in active_servers
+                                 if server["detour"] == tag) for tag in active}
         if len(set(primary_dns.values())) != 1:
             raise InvalidConfig("concurrent defaults need a shared primary DNS server")
-        ports = {tag: named_port(tag) for tag in entries}
+        ports = {tag: named_port(tag) for tag in active}
         if len(set(ports.values())) != len(ports):
             raise InvalidConfig("named listener port collision")
         selector = "vpn-default-selector"
@@ -150,18 +170,19 @@ def compile_config(inventory, policy, concurrent=False):
             raise InvalidConfig("reserved VPN tag in inventory")
         default_dns = {"type": "udp", "tag": "vpn-default-dns",
                        "server": selected_dns[0]["server"], "detour": selector}
-        named_inbounds = {tag: "vpn-named-" + tag for tag in entries}
-        config["endpoints"] = endpoints
-        config["outbounds"] = outbounds + [{"type": "selector", "tag": selector,
-                                           "outbounds": list(entries), "default": selected,
+        named_inbounds = {tag: "vpn-named-" + tag for tag in active}
+        config["endpoints"] = [route for route in endpoints if route["tag"] in active]
+        config["outbounds"] = [route for route in outbounds if route["tag"] in active] + [
+            {"type": "selector", "tag": selector,
+                                           "outbounds": sorted(active), "default": selected,
                                            "interrupt_exist_connections": False}]
         config["inbounds"] += [
             {"type": "mixed", "tag": named_inbounds[tag],
              "listen": "127.0.0.1", "listen_port": ports[tag]}
-            for tag in sorted(entries)
+            for tag in sorted(active)
         ]
         config["dns"] = {
-            "servers": [{"type": "local", "tag": "bootstrap"}, default_dns] + servers,
+            "servers": [{"type": "local", "tag": "bootstrap"}, default_dns] + active_servers,
             "final": default_dns["tag"],
             "rules": [
                 {"inbound": ["mixed", "http"], "query_type": ["AAAA"],
@@ -169,12 +190,12 @@ def compile_config(inventory, policy, concurrent=False):
             ] + [
                 {"inbound": [named_inbounds[tag]], "query_type": ["AAAA"],
                  "action": "predefined"}
-                for tag in sorted(entries) if not ipv6[tag]
+                for tag in sorted(active) if not ipv6[tag]
             ] + [
                 {"inbound": [named_inbounds[tag]], "action": "route",
-                 "server": next(server["tag"] for server in servers
+                "server": next(server["tag"] for server in active_servers
                                 if server["detour"] == tag)}
-                for tag in sorted(entries)
+                for tag in sorted(active)
             ],
         }
         config["route"] = {
@@ -186,11 +207,11 @@ def compile_config(inventory, policy, concurrent=False):
             ] + [
                 {"inbound": [named_inbounds[tag]], "ip_version": 6,
                  "action": "reject"}
-                for tag in sorted(entries) if not ipv6[tag]
+                for tag in sorted(active) if not ipv6[tag]
             ] + [
                 {"inbound": [named_inbounds[tag]], "action": "route",
                  "outbound": tag}
-                for tag in sorted(entries)
+                for tag in sorted(active)
             ],
         }
     return config
@@ -218,12 +239,15 @@ def main():
         # Check every native entry before selecting one. An inactive route with
         # malformed protocol fields must not wait until a later host switch to
         # surface its error. `check` parses the config without starting peers.
-        all_routes = config if concurrent else {
-            **config, "endpoints": inventory["endpoints"],
+        all_routes = {
+            **config, "route": {"final": policy["defaults"][socket.gethostname()],
+                                "auto_detect_interface": True},
+            "endpoints": inventory["endpoints"],
             "outbounds": inventory["outbounds"],
-            "dns": {**config["dns"], "servers":
-                    [{"type": "local", "tag": "bootstrap"}] +
-                    inventory["dns"]["servers"]},
+            "dns": {"servers": [{"type": "local", "tag": "bootstrap"}] +
+                    inventory["dns"]["servers"],
+                    "final": inventory["dns"]["servers"][0]["tag"]},
+            "inbounds": [],
         }
         with tempfile.NamedTemporaryFile(mode="w", dir=output.parent,
                                      prefix=output.name + ".", delete=False) as stream:

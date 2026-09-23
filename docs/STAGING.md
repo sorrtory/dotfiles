@@ -188,10 +188,23 @@ The default listener reached synthetic A, named A reached A, and named B
 reached B over HTTP and UDP. Disabling B broke its named HTTP listener while
 named A still worked.
 The installed VM backend was restarted afterward and its real-peer proxy
-returned HTTPS 204. The current encrypted inventory passed candidate-mode
-`sing-box check` without starting its second peer. Concurrent generated UDP,
-DNS and IPv6 traffic remain unmeasured, as does real concurrent operation
-without additional peer assignments.
+returned HTTPS 204. The then-current encrypted inventory passed candidate-mode
+`sing-box check` without starting its second peer. Concurrent generated DNS,
+IPv6 and real provider traffic were not measured in that initial synthetic run.
+
+The operator then added a shared native VLESS outbound. The compiler now uses
+explicit encrypted WireGuard ownership to load only `desktop-ubuntu` on the VM
+alongside VLESS, while a host candidate includes `laptop` alongside VLESS.
+The VM's activated concurrent generation served HTTPS through both its default
+WireGuard listener and named VLESS listener. Both listeners returned DNS A
+answers over UDP, while IPv6 requests failed as declared. Default capture
+served HTTPS and A records without AAAA records. The credential-free whole-host
+TUN used `vpn-host0` for public HTTPS and DNS, retained the libvirt gateway on
+`enp1s0`, and allowed capture HTTPS. Stopping the backend blocked whole-host
+traffic; restarting it restored HTTPS. `vpn-down` removed the TUN and restored
+the physical route and resolver. The revised encrypted ownership policy was
+then activated on the VM; both proxy listeners returned HTTPS 204. The daily
+host still runs its earlier single-route generation.
 
 ## Mirroring the working tree
 

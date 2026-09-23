@@ -28,6 +28,7 @@ cat > "$root/policy.jsonc" <<EOF2
 {
   // The default is restored whenever the backend starts.
   "defaults": {"$hostname": "fixture-main-wireguard-a"},
+  "wireguard_owners": {"fixture-main-wireguard-a": "$hostname"},
   "pins": {},
   "ipv6": {"fixture-main-wireguard-a": false}
 }
