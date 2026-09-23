@@ -33,7 +33,8 @@ def http_error(code, message):
     return HTTPError("http://127.0.0.1/", code, "test", {},
                      io.BytesIO((f'{{"message":"{message}"}}').encode()))
 
-check(http_error(500, "context deadline exceeded"), module.ProbeFailed)
+check(http_error(503, "An error occurred in the delay test"), module.ProbeFailed)
+check(http_error(504, "Request timeout"), module.ProbeFailed)
 check(http_error(500, "internal control failure"), module.ControlError)
 check(http_error(404, "route missing"), module.ControlError)
 check(http_error(401, "unauthorized"), module.ControlError)

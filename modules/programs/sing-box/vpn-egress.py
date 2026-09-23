@@ -36,15 +36,10 @@ def api(control, method, path, body=None):
             data = response.read()
         return json.loads(data) if data else {}
     except urllib.error.HTTPError as error:
-        if "/delay?" in path and error.code in (408, 500, 504):
-            try:
-                message = json.loads(error.read()).get("message", "").lower()
-            except (ValueError, AttributeError):
-                message = ""
-            if any(term in message for term in (
-                    "timeout", "deadline", "connection", "network", "dial",
-                    "handshake", "tls", "eof")):
-                raise ProbeFailed("named HTTPS probe failed") from None
+        # sing-box reports a failed delay test as 503 and its five-second
+        # deadline as 504. Other statuses indicate a control/API problem.
+        if "/delay?" in path and error.code in (503, 504):
+            raise ProbeFailed("named HTTPS probe failed") from None
         raise ControlError(f"control API returned HTTP {error.code}") from None
     except (urllib.error.URLError, TimeoutError, OSError):
         raise BackendUnavailable("backend control API is unavailable") from None
