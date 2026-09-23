@@ -168,8 +168,16 @@ backend blocked whole-host traffic; restarting it restored whole-host and
 capture HTTPS. `vpn-down` removed the TUN and restored the physical route and
 resolver. The first TUN run exposed an old hard-coded DNS detour tag; the
 runtime generator and synthetic fixture were corrected before the passing run.
-The daily host still uses its preceding generation pending separate approval
-for this inventory cutover.
+The daily host activated the separately approved clean generation
+`/nix/store/q73ba55i24sc6k85mjlx9x7vnlca8v62-home-manager-generation`
+with the prior generation retained for rollback. Its proxy and capture carried
+HTTPS; captured DNS returned A records and no AAAA records, and UDP STUN
+received a matching response. IPv6 HTTPS failed without a global route. With
+`vpn-up`, public HTTPS and DNS used `vpn-host0`, LAN traffic stayed on Wi-Fi,
+and capture HTTPS still worked. Stopping the user backend blocked whole-host
+traffic and restarting it restored whole-host and capture HTTPS. After
+`vpn-down`, the root unit and TUN interface were absent, public IPv4 routed
+through Wi-Fi, the Wi-Fi resolver was selected, and direct HTTPS worked.
 
 ## Mirroring the working tree
 
