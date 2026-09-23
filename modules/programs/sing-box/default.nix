@@ -18,12 +18,9 @@ let
     runtimeInputs = [ pkgs.coreutils pkgs.jq cfg.package ];
     text = builtins.readFile ./generate-config.sh;
   };
-  # vpn-up leaves the whole-host interface's name here while it owns the
-  # identity; the runtime directory, like the interface, is gone after reboot.
   prepare = pkgs.writeShellScript "sing-box-prepare" ''
-    interface=$(cat -- "$1/whole-host-vpn" 2>/dev/null || true)
     exec ${lib.getExe generator} ${lib.optionalString (!cfg.ipv6.enable) "--no-ipv6"} \
-      ${config.sops.secrets."sing-box-wireguard".path} "$1/sing-box/config.json" ''${interface:+"$interface"}
+      ${config.sops.secrets."sing-box-wireguard".path} "$1/sing-box/config.json"
   '';
 in
 {

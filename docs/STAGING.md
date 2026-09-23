@@ -116,6 +116,34 @@ image does not ship, and `02-nix` installs Nix onto a read-only `/`. It was
 replaced by this Workstation VM rather than fixed. Supporting rpm-ostree remains
 unstarted work with no effort opened.
 
+## Selectable VPN migration staging, 2026-09-23
+
+The first implementation slice split AyuGram, Vesktop, theme registration and
+shared capture ownership, and added relative executable paths to `vpn`. The
+staging generation built and activated on Fedora 44. Installed command symlinks,
+Vesktop's desktop entry, AyuGram's desktop and D-Bus entries, and both theme
+files were present. The Vesktop launcher check passed. `vpn -- curl` reached
+HTTPS through the VM's own WireGuard identity, with a different public IPv4
+address from an ordinary host request.
+
+The generated whole-host TUN configuration passed `sing-box check` and started
+as a supervised root `vpn-host.service` through `/usr/bin/env` under Fedora
+SELinux. Public IPv4 routed through `vpn-host0`, while the VM gateway stayed on
+`enp1s0`. The resolver chose the TUN link; a direct query to its DNS returned
+an A answer and no AAAA answer. Ordinary HTTPS and `vpn -- curl` worked while
+the TUN was active. Stopping the user backend blocked ordinary HTTPS; starting
+it restored a 204 response without restarting the TUN. Two `vpn-up`/`vpn-down`
+cycles restored direct public routing and the original resolver and removed
+`vpn-host0`. The root config held no provider credential. These observations
+apply to the generated staging configuration and the VM's real WireGuard peer.
+Daily-host activation, network-change and suspend checks remain separate.
+
+The independent AppArmor recovery fix passed its load/unload fault-injection
+checks on staging. Fedora has no restricted user namespaces, so the normal
+`apparmor` phase correctly reported already satisfied without installing
+profiles. Kernel-policy lifecycle checks on an enforcing AppArmor host remain
+unmeasured.
+
 ## Mirroring the working tree
 
 The guest copy is a plain directory, not a clone, so every edit, commit and Git

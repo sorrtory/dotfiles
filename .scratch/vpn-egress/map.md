@@ -26,7 +26,7 @@ approval, and normal use precedes legacy retirement.
 | [11: Everyday recovery](issues/11-everyday-recovery.md) | 09 | Real network-change and suspend evidence on the daily machine. |
 | [12: Legacy retirement](issues/12-retire-legacy-vpn.md) | 11 | Reviewed legacy VPN material is removed after normal use. |
 
-The current main frontier is **01 and 02**. Tickets **07 and 08** can proceed
+Tickets **01–03, 13 and 14** are resolved on staging. Ticket **04** is claimed and awaits separately approved daily-host activation and normal-use observation. Tickets **07 and 08** can proceed
 in parallel after 06; neither blocks the other. Ticket 10 does not block
 recovery or retirement while no real non-WireGuard server exists.
 

@@ -98,7 +98,8 @@ if ! jq -n --rawfile profile "$profile" --arg bind "$interface" \
       {type: "mixed", tag: "mixed", listen: "127.0.0.1", listen_port: 1080},
       {type: "http", tag: "http", listen: "127.0.0.1", listen_port: 3128}
     ],
-    route: ({final: "tunnel", default_domain_resolver: "tunnel-dns-0"} +
+    route: ({final: "tunnel", default_domain_resolver: "tunnel-dns-0",
+      auto_detect_interface: true} +
       if $ipv6 then {} else {rules: [{ip_version: 6, action: "reject"}]} end)
   }
 ' >"$temporary" 2>/dev/null || [[ ! -s "$temporary" ]]; then

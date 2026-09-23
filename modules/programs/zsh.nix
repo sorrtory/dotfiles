@@ -1,8 +1,6 @@
 { config, lib, pkgs, ... }:
 
 let
-  wireguardConfig = lib.escapeShellArg
-    config.sops.secrets."wireguard/${config.dotfiles.vpn.identity}.conf".path;
   themeFile = "${config.dotfiles.theme.dataDir}/zsh.zsh";
   zshCustom = "${config.xdg.dataHome}/dotfiles/zsh-custom";
 in
@@ -143,41 +141,37 @@ in
         unset http_proxy https_proxy all_proxy no_proxy NO_PROXY
       '';
 
-      # Whole-host WireGuard on this machine's VPN identity. sudo cannot
-      # resolve a bare name from the Nix profile, and wg-quick wants the config
-      # path because the configuration does not live in /etc/wireguard; it
-      # names the interface after the file. The sing-box backend uses the same
-      # identity, and two clients on one peer key make the server's endpoint
-      # roam, so the backend hands it over rather than stopping: the marker
-      # restarts it keyless, bound to the interface, so the local proxy and
-      # tunneled programs keep working through the whole-host tunnel and fail
-      # closed without it. The backend lets go before wg-quick claims the key
-      # and takes it back only after the interface is gone.
+      # Explicit whole-host capture, supervised by host systemd. The root
+      # process reads only the credential-free adapter configuration.
       "vpn-up" = ''
-        local interface=${config.dotfiles.vpn.identity} marker=$XDG_RUNTIME_DIR/whole-host-vpn
-        if [[ -e /sys/class/net/$interface ]]; then
-          print -u2 "vpn-up: $interface is already up"
+        local runtime=$XDG_RUNTIME_DIR/vpn-host
+        if [[ -e /sys/class/net/vpn-host0 ]]; then
+          print -u2 'vpn-up: already up'
           return 1
         fi
-        sudo -v || return
-        print -r -- $interface >| $marker
-        if ! systemctl --user try-restart sing-box.service ||
-          ! sudo "$(command -v wg-quick)" up ${wireguardConfig}; then
-          if [[ ! -e /sys/class/net/$interface ]]; then
-            rm -f -- $marker
-            systemctl --user try-restart sing-box.service
+        if [[ -e /sys/class/net/${config.dotfiles.vpn.identity} ]]; then
+          print -u2 'vpn-up: legacy WireGuard interface is active; bring it down first'
+          return 1
+        fi
+        mkdir -p -m 700 -- $runtime || return
+        ${config.dotfiles.vpn.hostConfigCommand} $XDG_RUNTIME_DIR/sing-box/config.json $runtime/config.json || return
+        sudo systemd-run --unit=vpn-host --collect --property=Type=exec \
+          /usr/bin/env ${config.dotfiles.vpn.singBoxExecutable} run -c $runtime/config.json || return
+        local tries=0
+        until [[ -e /sys/class/net/vpn-host0 ]]; do
+          if (( ++tries >= 50 )); then
+            print -u2 'vpn-up: TUN did not start'
+            sudo systemctl stop vpn-host.service
+            return 1
           fi
-          return 1
-        fi
+          sleep 0.1
+        done
       '';
 
       "vpn-down" = ''
-        local interface=${config.dotfiles.vpn.identity}
-        if [[ -e /sys/class/net/$interface ]]; then
-          sudo "$(command -v wg-quick)" down ${wireguardConfig} || return
-        fi
-        rm -f -- $XDG_RUNTIME_DIR/whole-host-vpn
-        systemctl --user try-restart sing-box.service
+        sudo systemctl stop vpn-host.service || return
+        rm -f -- $XDG_RUNTIME_DIR/vpn-host/config.json
+        rmdir -- $XDG_RUNTIME_DIR/vpn-host 2>/dev/null || true
       '';
     };
   };

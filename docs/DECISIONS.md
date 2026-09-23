@@ -532,10 +532,17 @@ ever read when nothing else has set the root.
 
 ## Scripts and privileged networking
 
-The VPN decisions in this section describe the installed one-identity
-configuration. The [selectable egress spec](../.scratch/vpn-egress/spec.md)
-defines its planned replacement; these decisions are rewritten as each
-replacement slice is activated and verified.
+The VPN decisions in this section describe the daily host's installed
+one-identity configuration. The [selectable egress spec](../.scratch/vpn-egress/spec.md)
+defines its planned replacement. The app module split and whole-host TUN have
+passed Fedora staging, but daily-host activation still needs operator approval.
+The staged `vpn-up` generates a credential-free config from the user backend's
+resolver, starts a root sing-box TUN through host-labeled `/usr/bin/env`, and
+keeps the backend's WireGuard credential in its user service. `vpn-down` stops
+that unit. The backend binds its upstream sockets to the detected physical
+interface, and the root TUN forwards only to its loopback SOCKS listener. The
+active `wg-quick` handover path is removed from the staged shell functions;
+the encrypted legacy profile stays available until normal use proves the TUN.
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 
