@@ -537,7 +537,10 @@ whole-host TUN passed Fedora staging and were activated on the daily host on
 detected physical interface, and the root TUN forwards only to its loopback
 SOCKS listener. Daily-host proxy, application capture and one complete whole-host TUN cycle
 passed, including backend loss and recovery. The encrypted legacy profile
-stays available until network-change and suspend checks precede retirement.
+stays available until network-change and suspend checks precede retirement. The next staged
+slice moves backend credentials to whole-file encrypted native inventory and
+hostname policy. Its compiler loads only the selected peer for each machine;
+concurrent loading waits for separately assigned peers or another provider.
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 

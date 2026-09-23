@@ -14,21 +14,24 @@ let
     exec ${lib.getExe' program.package program.executable} "$@"
   '';
   generator = pkgs.writeShellApplication {
-    name = "sing-box-config";
-    runtimeInputs = [ pkgs.coreutils pkgs.jq cfg.package ];
-    text = builtins.readFile ./generate-config.sh;
+    name = "vpn-inventory-config";
+    runtimeInputs = [ pkgs.python3 cfg.package ];
+    text = ''
+      exec ${lib.getExe pkgs.python3} ${./compile-inventory.py} "$@"
+    '';
   };
   prepare = pkgs.writeShellScript "sing-box-prepare" ''
-    exec ${lib.getExe generator} ${lib.optionalString (!cfg.ipv6.enable) "--no-ipv6"} \
-      ${config.sops.secrets."sing-box-wireguard".path} "$1/sing-box/config.json"
+    exec ${lib.getExe generator} \
+      ${config.sops.secrets."vpn-egresses".path} \
+      ${config.sops.secrets."vpn-policy".path} \
+      "$1/sing-box/config.json"
   '';
 in
 {
   options.dotfiles.localProxy = {
     enable = lib.mkEnableOption "the per-machine sing-box local proxy";
     package = lib.mkPackageOption pkgs "sing-box" { };
-    # A property of the VPN server, not of one identity: every profile keeps
-    # its IPv6 address and route, so turning this on needs no secret edit.
+    # Retained during migration; the selectable default is always IPv4-only.
     ipv6.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -77,6 +80,10 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [{
+      assertion = !cfg.ipv6.enable;
+      message = "dotfiles.localProxy.ipv6.enable is obsolete: default VPN routes are IPv4-only.";
+    }];
     home.packages = [ cfg.package ] ++ map proxyProgram cfg.wrappedPrograms;
 
     # For programs that take a proxy argument instead of needing to be wrapped:
@@ -84,15 +91,20 @@ in
     # drift from the service it is meant to reach.
     home.sessionVariables.PROXY = proxyUrl;
 
-    sops.secrets."sing-box-wireguard" = {
-      sopsFile = ../../../secrets/wireguard + "/${config.dotfiles.vpn.identity}.conf";
+    sops.secrets."vpn-egresses" = {
+      sopsFile = ../../../secrets/vpn/egresses.jsonc;
+      format = "binary";
+      mode = "0600";
+    };
+    sops.secrets."vpn-policy" = {
+      sopsFile = ../../../secrets/vpn/policy.jsonc;
       format = "binary";
       mode = "0600";
     };
 
     systemd.user.services.sing-box = {
       Unit = {
-        Description = "Per-machine WireGuard local proxy";
+        Description = "Selected VPN egress backend and local proxy";
         Wants = [ "sops-nix.service" ];
         After = [ "sops-nix.service" ];
       };

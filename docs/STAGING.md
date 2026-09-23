@@ -7,8 +7,12 @@ syncs back.
 
 ## Current VM
 
-`fedora` in libvirt, reachable at `z@192.168.122.21`. It runs **Fedora 44
-Workstation** with 2 vCPUs, about 3.8 GiB of RAM and a 30 GiB `/`. Its
+`fedora` in libvirt, reachable at `z@192.168.122.21`. Its guest hostname
+is `fedora-staging` since 2026-09-23: the daily host is also `fedora`, and the
+encrypted VPN policy needs distinct hostname keys for their independent peers.
+A snapshot revert restores the old guest hostname; set it back to
+`fedora-staging` before activating an inventory-based VPN generation. It runs
+**Fedora 44 Workstation** with 2 vCPUs, about 3.8 GiB of RAM and a 30 GiB `/`. Its
 session is GNOME on Wayland with gdm active, the same session type as the
 operator's desktop, so GNOME work — dconf settings, launchers, Shell extensions,
 session environment variables — can be judged here rather than only on the host.
@@ -139,13 +143,30 @@ it restored a 204 response without restarting the TUN. Two `vpn-up`/`vpn-down`
 cycles restored direct public routing and the original resolver and removed
 `vpn-host0`. The root config held no provider credential. These observations
 apply to the generated staging configuration and the VM's real WireGuard peer.
-Daily-host activation, network-change and suspend checks remain separate.
+The approved daily-host TUN activation and normal-use cycle passed separately;
+network-change and suspend checks remain later work.
 
 The independent AppArmor recovery fix passed its load/unload fault-injection
 checks on staging. Fedora has no restricted user namespaces, so the normal
 `apparmor` phase correctly reported already satisfied without installing
 profiles. Kernel-policy lifecycle checks on an enforcing AppArmor host remain
 unmeasured.
+
+## Native VPN inventory staging, 2026-09-23
+
+Two whole-file SOPS documents now carry native WireGuard endpoint definitions,
+route DNS servers, and hostname policy. The runtime compiler checked every
+native entry and selected only the VM's assigned `desktop-ubuntu` peer after
+its guest hostname was changed to `fedora-staging`. Its generated backend passed
+`sing-box check`. After staging activation, the local proxy and `vpn -- curl`
+carried real HTTPS with the VM peer. The generated whole-host TUN carried HTTPS
+and DNS, while a simultaneous `vpn` capture still worked. Stopping the user
+backend blocked whole-host traffic; restarting it restored whole-host and
+capture HTTPS. `vpn-down` removed the TUN and restored the physical route and
+resolver. The first TUN run exposed an old hard-coded DNS detour tag; the
+runtime generator and synthetic fixture were corrected before the passing run.
+The daily host still uses its preceding generation pending separate approval
+for this inventory cutover.
 
 ## Mirroring the working tree
 

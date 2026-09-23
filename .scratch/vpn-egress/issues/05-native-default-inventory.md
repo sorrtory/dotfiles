@@ -1,6 +1,6 @@
 # 05: Serve the current default from encrypted native inventory
 
-Status: ready-for-agent
+Status: claimed
 Blocked by: 04 (whole-host TUN)
 
 **What to build:** Replace the current backend's WireGuard profile source
@@ -21,3 +21,14 @@ ticket 06.
 - [ ] Synthetic fixture checks precede real-credential checks. Staging real
       credentials await the operator's secret recovery; daily-host activation
       is separately approved with a rollback generation available.
+
+## Staging result
+
+The two encrypted whole-file JSONC documents compile to one selected current
+WireGuard peer per hostname. The synthetic compiler fixture covers names,
+missing references, native entry validation, DNS and secret-safe failure. The
+Fedora VM, renamed `fedora-staging` because the daily host is also `fedora`,
+decrypted its assigned peer and carried proxy, captured and whole-host HTTPS
+and DNS. Backend loss failed closed and recovery restored traffic. See
+`docs/STAGING.md`. Daily-host activation remains a separate operator approval;
+this ticket stays claimed until that cutover is checked.

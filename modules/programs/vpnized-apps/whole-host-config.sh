@@ -8,7 +8,8 @@ backend=$1 output=$2
 temporary=$(mktemp "${output}.XXXXXXXX")
 trap 'rm -f -- "$temporary"' EXIT
 jq -e '
-  [.dns.servers[] | select(.type == "udp" and .detour == "tunnel") | .server] as $dns |
+  .route.final as $selected |
+  [.dns.servers[] | select(.type == "udp" and .detour == $selected) | .server] as $dns |
   if ($dns | length) == 0 then error("missing tunnel resolver") else
   {
     log: {level: "warn"},
