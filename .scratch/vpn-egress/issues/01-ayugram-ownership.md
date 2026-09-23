@@ -1,6 +1,6 @@
 # 01: Give AyuGram its own module
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: None (can start immediately)
 
 **What to build:** Keep AyuGram's VPN launch behavior intact while moving its
@@ -15,3 +15,7 @@ apps module. This is the first behavior-preserving part of the module split.
       enabled, without placing the theme implementation in VPN runtime code.
 - [ ] A reviewed generation is checked on staging before any separately
       approved daily-host activation.
+
+## Answer
+
+AyuGram packaging and its D-Bus launcher now live in `modules/programs/ayugram.nix`; its Telegram theme remains owned by the theme module. Staging built and activated the generation, and the installed command, desktop and D-Bus entries point to the launcher.

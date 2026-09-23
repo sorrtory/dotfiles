@@ -1,6 +1,6 @@
 # 02: Give Vesktop and its theme separate owners
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: None (can start immediately)
 
 **What to build:** Keep Vesktop's captured command, desktop links and palette
@@ -16,3 +16,7 @@ its stylesheet registration into the theme layer.
       status still reports whether Vesktop has enabled it.
 - [ ] Staging confirms the launcher and theme behavior before any separately
       approved daily-host activation.
+
+## Answer
+
+Vesktop packaging now lives in `modules/programs/vesktop.nix`, while stylesheet registration lives in `modules/theme/vesktop.nix`. Staging built and activated the generation, exposed the VPN command and desktop entry, installed the fixed-path stylesheet, and passed the existing launcher check.

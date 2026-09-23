@@ -141,7 +141,7 @@ in
 {
   # Telegram's theme needs an activation step and a package, so it is a
   # module of its own rather than one more translator function.
-  imports = [ ./telegram.nix ];
+  imports = [ ./telegram.nix ./vesktop.nix ];
 
   options.dotfiles.theme = {
     name = mkOption {

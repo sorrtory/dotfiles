@@ -7,6 +7,7 @@
     ./modules/packages.nix
     ./modules/directories.nix
     ./modules/scripts.nix
+    ./modules/programs/ayugram.nix
     ./modules/programs/direnv.nix
     ./modules/programs/firefox.nix
     ./modules/programs/git.nix
@@ -22,6 +23,7 @@
     ./modules/programs/tmux.nix
     ./modules/programs/vault.nix
     ./modules/programs/vpnized-apps
+    ./modules/programs/vesktop.nix
     ./modules/programs/vscode.nix
     ./modules/programs/wezterm.nix
     ./modules/programs/yazi.nix

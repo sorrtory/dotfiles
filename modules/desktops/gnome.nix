@@ -222,7 +222,7 @@ let
       command = "spotify";
       wmClass = "/^[Ss]potify$/";
     };
-    # vpnized-apps/default.nix replaces this command with the launcher that
+    # modules/programs/vesktop.nix replaces this command with the launcher that
     # always routes Vesktop through the VPN, same as telegram below.
     vesktop = {
       binding = "<Super>d";

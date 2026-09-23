@@ -2,14 +2,16 @@
 
 let
   proxy = config.dotfiles.localProxy;
-  cfg = config.dotfiles.vpnizedApps;
-  theme = config.dotfiles.theme;
-  configRoot = "${config.home.homeDirectory}/Documents/dotfiles/configs/vesktop";
 
   captureConfig = pkgs.writeShellApplication {
     name = "vpn-capture-config";
     runtimeInputs = [ pkgs.coreutils pkgs.jq proxy.package ];
     text = builtins.readFile ./capture-config.sh;
+  };
+  hostConfig = pkgs.writeShellApplication {
+    name = "vpn-host-config";
+    runtimeInputs = [ pkgs.coreutils pkgs.jq proxy.package ];
+    text = builtins.readFile ./whole-host-config.sh;
   };
   enter = pkgs.writeShellApplication {
     name = "vpn-enter";
@@ -27,81 +29,29 @@ let
     text = builtins.readFile ../../../scripts/bin/vpn.sh;
   };
 
-  vesktopLauncher = pkgs.writeShellApplication {
-    name = "vesktop";
-    runtimeEnv = {
-      VPN_COMMAND = lib.getExe vpn;
-      VPN_VESKTOP = lib.getExe pkgs.vesktop;
-    };
-    text = builtins.readFile ./vesktop.sh;
-  };
-  # The package with its command and desktop entry replaced by the launcher,
-  # so the terminal, the icon and discord:// links all go through the VPN.
-  vesktop = pkgs.symlinkJoin {
-    name = "vesktop-vpn-${pkgs.vesktop.version}";
-    paths = [ pkgs.vesktop ];
-    postBuild = ''
-      rm "$out/bin/vesktop" "$out/share/applications/vesktop.desktop"
-      ln -s ${lib.getExe vesktopLauncher} "$out/bin/vesktop"
-      substitute ${pkgs.vesktop}/share/applications/vesktop.desktop \
-        "$out/share/applications/vesktop.desktop" \
-        --replace-fail 'Exec=vesktop %U' 'Exec=${lib.getExe vesktopLauncher} %U'
-    '';
-  };
-
-  ayugramLauncher = pkgs.writeShellApplication {
-    name = "AyuGram";
-    runtimeEnv = {
-      VPN_COMMAND = lib.getExe vpn;
-      VPN_AYUGRAM = lib.getExe pkgs.ayugram-desktop;
-    };
-    text = builtins.readFile ./ayugram.sh;
-  };
-  # The package with its command and desktop entry replaced by the launcher,
-  # so the terminal, the icon and tg:// links all go through the VPN. A plain
-  # Qt binary, unlike Vesktop's Electron, so it needs no AppArmor userns
-  # allowance to run under the VPN command. The entry is DBusActivatable, so
-  # GNOME starts it through the D-Bus service file and never reads its Exec;
-  # that file is replaced too.
-  ayugram = pkgs.symlinkJoin {
-    name = "ayugram-vpn-${pkgs.ayugram-desktop.version}";
-    paths = [ pkgs.ayugram-desktop ];
-    postBuild = ''
-      rm "$out/bin/AyuGram" "$out/share/applications/com.ayugram.desktop.desktop" \
-        "$out/share/dbus-1/services/com.ayugram.desktop.service"
-      ln -s ${lib.getExe ayugramLauncher} "$out/bin/AyuGram"
-      substitute ${pkgs.ayugram-desktop}/share/applications/com.ayugram.desktop.desktop \
-        "$out/share/applications/com.ayugram.desktop.desktop" \
-        --replace-fail 'Exec=env DESKTOPINTEGRATION=1 AyuGram -- %U' \
-          'Exec=env DESKTOPINTEGRATION=1 ${lib.getExe ayugramLauncher} -- %U'
-      substitute ${pkgs.ayugram-desktop}/share/dbus-1/services/com.ayugram.desktop.service \
-        "$out/share/dbus-1/services/com.ayugram.desktop.service" \
-        --replace-fail 'Exec=${lib.getExe pkgs.ayugram-desktop}' \
-          'Exec=${lib.getExe ayugramLauncher}'
-    '';
-  };
 in
 {
-  options.dotfiles.vpnizedApps.vesktop.enable =
-    lib.mkEnableOption "Vesktop, always launched through the VPN";
-  options.dotfiles.vpnizedApps.ayugram.enable =
-    lib.mkEnableOption "AyuGram, always launched through the VPN";
+  options.dotfiles.vpn.command = lib.mkOption {
+    type = lib.types.path;
+    readOnly = true;
+    default = lib.getExe vpn;
+    description = "The shared VPN launcher path used by installed applications.";
+  };
 
-  config = lib.mkMerge [
-    {
-      assertions = [
-        {
-          assertion = cfg.vesktop.enable -> proxy.enable;
-          message = "dotfiles.vpnizedApps.vesktop requires dotfiles.localProxy.enable.";
-        }
-        {
-          assertion = cfg.ayugram.enable -> proxy.enable;
-          message = "dotfiles.vpnizedApps.ayugram requires dotfiles.localProxy.enable.";
-        }
-      ];
-    }
+  options.dotfiles.vpn.hostConfigCommand = lib.mkOption {
+    type = lib.types.path;
+    readOnly = true;
+    default = lib.getExe hostConfig;
+    description = "Build the credential-free whole-host TUN configuration.";
+  };
+  options.dotfiles.vpn.singBoxExecutable = lib.mkOption {
+    type = lib.types.path;
+    readOnly = true;
+    default = lib.getExe proxy.package;
+    description = "sing-box executable used by the whole-host TUN.";
+  };
 
-    (lib.mkIf proxy.enable {
+  config = lib.mkIf proxy.enable {
       home.packages = [ vpn ];
 
       # Capture creates its rootless network namespace with this binary.
@@ -133,66 +83,5 @@ in
           Restart = "no";
         };
       };
-    })
-
-    (lib.mkIf (proxy.enable && cfg.vesktop.enable) {
-      home.packages = [ vesktop ];
-
-      # Vesktop's two wrappers exec Nixpkgs' Electron 43, whose sandbox needs a
-      # user namespace. Applications sharing that Electron share the profile,
-      # and usedBy fails the build if Vesktop moves to another Electron.
-      dotfiles.apparmor.usernsAllowances."electron-${lib.versions.major pkgs.electron_43.version}" = {
-        executable = "${pkgs.electron_43.unwrapped}/libexec/electron/electron";
-        usedBy = [ pkgs.vesktop ];
-      };
-
-      # Live-editable, so changes made in Vesktop's UI land in the repository.
-      xdg.configFile."vesktop/settings.json".source =
-        config.lib.file.mkOutOfStoreSymlink "${configRoot}/settings.json";
-
-      # Vesktop's first-launch tour runs whenever state.json lacks firstLaunch.
-      # It would overwrite the tray settings and can write an autostart entry
-      # that starts Electron directly, outside the VPN. Seed the file once; it
-      # holds window state and stays machine-local afterwards.
-      home.activation.seedVesktopState = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-        state=${lib.escapeShellArg "${config.xdg.configHome}/vesktop/state.json"}
-        if [[ ! -e $state ]]; then
-          run mkdir -p "$(dirname "$state")"
-          run cp --no-preserve=mode ${pkgs.writeText "vesktop-state.json" ''{ "firstLaunch": false }''} "$state"
-        fi
-      '';
-
-      # Vencord reads every stylesheet in its themes directory and re-reads
-      # one whenever that directory changes, so a switch recolors the running
-      # client. The name never changes; what is behind it does. Which themes
-      # are enabled is Vencord's own settings file, machine-local state this
-      # does not own, so enabling it is a one-time step like Obsidian's.
-      dotfiles.theme.liveFiles."${config.xdg.configHome}/vesktop/themes/Dotfiles.css" =
-        pkgs.writeText "Dotfiles.css"
-          (import ../../theme/vesktop-theme.nix { inherit lib; } (theme.forApp "vesktop"));
-
-      dotfiles.theme.apps.vesktop = {
-        label = "Vesktop";
-        apply = "live";
-        setup = "enable Dotfiles under Settings → Themes";
-        # Vencord rewrites this file itself, so the enabled list is read back
-        # rather than assumed. No file means Vesktop has never started.
-        check = ''
-          settings=${lib.escapeShellArg "${config.xdg.configHome}/vesktop/settings/settings.json"}
-          [[ -e $settings ]] || exit 0
-          ${lib.getExe pkgs.jq} -e '(.enabledThemes // []) | index("Dotfiles.css")' "$settings" >/dev/null \
-            || echo "Dotfiles is not enabled under Settings → Themes"
-        '';
-      };
-    })
-
-    (lib.mkIf (proxy.enable && cfg.ayugram.enable) {
-      home.packages = [ ayugram ];
-
-      # Telegram's colors come from the palette like every other themed
-      # app; modules/theme/telegram.nix generates and packs the theme, and
-      # names the fixed path the client is pointed at once by hand.
-      dotfiles.theme.telegram.enable = true;
-    })
-  ];
+  };
 }
