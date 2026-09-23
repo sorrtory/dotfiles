@@ -1,7 +1,14 @@
 # 06: Serve concurrent default and named egress routes
 
-Status: ready-for-agent
+Status: needs-info
 Blocked by: 05 (native default inventory)
+
+The operator chose to keep only the current host and staging WireGuard peers.
+Those peers are already active on their respective machines, so loading both
+in one backend would make one peer roam between clients. Concurrent real-route
+validation needs additional independent peers or another provisioned egress.
+The existing synthetic routing proof remains available for implementation
+checks, but cannot establish real concurrent operation on these identities.
 
 **What to build:** Load the encrypted egress inventory into one unprivileged
 backend. Keep the existing local proxy and default capture usable through a
