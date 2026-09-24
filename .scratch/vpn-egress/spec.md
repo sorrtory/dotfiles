@@ -159,6 +159,6 @@ Staging's secret-recovery phase remains the operator's prerequisite for
 real-credential checks there. The daily host adds real Vesktop/AyuGram use,
 network-change and suspend evidence after approved activations.
 
-Automatic selection and health-based failover remain deferred. A real
-non-WireGuard egress is a separate `needs-info` ticket until a server and
-credential exist. More sandboxed applications are added only when adopted.
+Automatic selection and health-based failover remain deferred. The operator
+supplied a real VLESS server and credential; ticket 10 records its deployment
+and verification. More sandboxed applications are added only when adopted.
