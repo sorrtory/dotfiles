@@ -5,7 +5,7 @@ root=$(mktemp -d)
 trap 'rm -rf -- "$root"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 cat > "$root/egresses" <<'JSON'
-{"endpoints":[],"outbounds":[
+{"outbounds":[
   {"type":"socks","tag":"route-a","server":"127.0.0.1","server_port":15001},
   {"type":"socks","tag":"route-b","server":"127.0.0.1","server_port":15002}
 ],"dns":{"servers":[
@@ -110,7 +110,7 @@ else:
 PY
 )
 cat > "$root/egresses" <<EOF2
-{"endpoints":[],"outbounds":[{"type":"socks","tag":"$old_tag","server":"127.0.0.1","server_port":15001}],"dns":{"servers":[{"type":"udp","tag":"collision-dns","server":"8.8.8.8","detour":"$old_tag"}]}}
+{"outbounds":[{"type":"socks","tag":"$old_tag","server":"127.0.0.1","server_port":15001}],"dns":{"servers":[{"type":"udp","tag":"collision-dns","server":"8.8.8.8","detour":"$old_tag"}]}}
 EOF2
 printf '{"defaults":{"%s":"%s"},"pins":{},"ipv6":{"%s":false}}\n' \
   "$(hostname)" "$old_tag" "$old_tag" > "$root/policy"
@@ -126,10 +126,10 @@ grep -q 'reserved by another route' "$root/stderr" || fail 'missing port reserva
 private=$(printf '0%.0s' {1..32} | base64)
 public=$(printf '1%.0s' {1..32} | base64)
 cat > "$root/egresses" <<EOF2
-{"endpoints":[
+{"outbounds":[
   {"type":"wireguard","tag":"host-wireguard","system":false,"address":["10.0.0.2/32"],"private_key":"$private","peers":[{"address":"203.0.113.1","port":51820,"public_key":"$public","allowed_ips":["0.0.0.0/0"]}]},
-  {"type":"wireguard","tag":"vm-wireguard","system":false,"address":["10.0.0.3/32"],"private_key":"$private","peers":[{"address":"203.0.113.2","port":51820,"public_key":"$public","allowed_ips":["0.0.0.0/0"]}]}
-],"outbounds":[{"type":"socks","tag":"shared-route","server":"127.0.0.1","server_port":15003}],"dns":{"servers":[
+  {"type":"wireguard","tag":"vm-wireguard","system":false,"address":["10.0.0.3/32"],"private_key":"$private","peers":[{"address":"203.0.113.2","port":51820,"public_key":"$public","allowed_ips":["0.0.0.0/0"]}]},
+  {"type":"socks","tag":"shared-route","server":"127.0.0.1","server_port":15003}],"dns":{"servers":[
   {"type":"udp","tag":"host-dns","server":"8.8.8.8","detour":"host-wireguard"},
   {"type":"udp","tag":"vm-dns","server":"8.8.8.8","detour":"vm-wireguard"},
   {"type":"udp","tag":"shared-dns","server":"8.8.8.8","detour":"shared-route"}

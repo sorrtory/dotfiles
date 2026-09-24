@@ -93,7 +93,8 @@ Let Home Manager own `.zshrc`. Preserve selected aliases, history, environment v
 
 The original slice recreated per-device `wg-quick` profiles as whole-file
 SOPS ciphertext with user-owned decrypted paths. The installed selectable VPN
-now reads native WireGuard endpoints from encrypted egress inventory instead.
+now reads WireGuard definitions from the encrypted, unified `outbounds`
+inventory and compiles them into sing-box endpoints.
 Its policy assigns each peer to one hostname; a machine loads only its own peer
 and shared non-WireGuard routes. No profile is deployed under `/etc/wireguard/`.
 The older per-device ciphertext was removed from this repository after the
@@ -121,8 +122,11 @@ of migration.
 
 This section records the installed VPN command. The
 [decision log](DECISIONS.md#scripts-and-privileged-networking) describes the
-current design; legacy retirement remains the final VPN migration step.
-The module split, supervised whole-host TUN, native inventory, runtime
+current design. The reviewed in-repository legacy implementation and six old
+encrypted WireGuard profiles were retired after normal-use checks. The
+historical `~/Projects/scripts` and `~/Projects/secrets` repositories remain
+outside this migration; neither is used by the installed VPN.
+The module split, supervised whole-host TUN, encrypted inventory, runtime
 selection and named captures were activated on the daily host by 2026-09-24.
 
 Implemented on §13's shared backend. `vpn PROGRAM` runs one program as the
@@ -313,7 +317,7 @@ settings. UDP-dependent applications use §7's VPN command into the same
 backend.
 
 Run it as a `systemd` user service with no privilege, loading this host's
-assigned WireGuard peer and shared egresses from encrypted native inventory.
+assigned WireGuard peer and shared egresses from encrypted inventory.
 The backend itself creates no host TUN, route or resolver change. Expose a
 `mixed` inbound on
 `127.0.0.1:1080` and an `http` inbound on `127.0.0.1:3128`, which are exactly
@@ -328,10 +332,11 @@ The local proxy service is implemented and verified on the Ubuntu staging VM, in
 restart, cleanup and startup before login after reboot. Namespace capture and
 Discord UDP are delivered by §7.
 
-LXD, its container, Shadowsocks, and the legacy `iptables` bridge helper are
-retired rather than migrated. The operator retires the host-side machinery by
-reinstalling, so the slice itself removes documentation and repository
-references, not running host state.
+The legacy `ssProxy` LXD container, both `shadowsocks-rust` ends, its derived
+bridge address, and the `init_bridge_proxy` helper with its `iptables`
+MASQUERADE rules were retired rather than migrated. The operator retires
+host-side machinery by reinstalling; this repository neither installs nor
+manages that legacy proxy.
 
 ## Additional candidates
 

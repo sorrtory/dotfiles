@@ -12,6 +12,7 @@ progress — see [docs/MIGRATION.md](docs/MIGRATION.md) for what has moved and
 what has not. The current profile targets user `z` on `x86_64-linux`.
 
 The installed selectable VPN is described in
+[the operator guide](docs/VPN.md) and
 [the decision log](docs/DECISIONS.md#scripts-and-privileged-networking). The
 encrypted inventory supplies this machine's WireGuard peer and shared routes;
 encrypted hostname policy selects the default and installed-application pins.

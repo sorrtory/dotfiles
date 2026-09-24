@@ -10,14 +10,13 @@ hostname=$(hostname)
 cat > "$root/egresses.jsonc" <<EOF2
 {
   // Safe note: synthetic WireGuard peer for compiler verification.
-  "endpoints": [{
+  "outbounds": [{
     "type": "wireguard", "tag": "fixture-main-wireguard-a",
     "system": false, "address": ["10.0.0.2/32"],
     "private_key": "$private", "mtu": 1420,
     "peers": [{"address": "203.0.113.1", "port": 51820,
       "public_key": "$public", "allowed_ips": ["0.0.0.0/0"]}]
   }],
-  "outbounds": [],
   "dns": {"servers": [
     {"type":"udp", "tag":"fixture-dns-0", "server":"1.1.1.1", "detour":"fixture-main-wireguard-a"},
     {"type":"udp", "tag":"fixture-dns-1", "server":"9.9.9.9", "detour":"fixture-main-wireguard-a"}
@@ -77,10 +76,10 @@ cp "$root/valid-policy" "$root/policy.jsonc"
 sed -i 's/"pins": {}/"pins": {"vesktop": "unknown-route"}/' "$root/policy.jsonc"
 rejected
 cp "$root/valid-policy" "$root/policy.jsonc"
-sed -i 's/"outbounds": \[\]/"outbounds": [{"type":"block","tag":"fixture-main-wireguard-a"}]/' "$root/egresses.jsonc"
+sed -i 's/"outbounds": \[{/"outbounds": [{"type":"block","tag":"fixture-main-wireguard-a"}, {/' "$root/egresses.jsonc"
 rejected
 cp "$root/valid-egresses" "$root/egresses.jsonc"
-sed -i 's/"outbounds": \[\]/"outbounds": [{"type":"wireguard","tag":"invalid-unused"}]/' "$root/egresses.jsonc"
+sed -i 's/"outbounds": \[{/"outbounds": [{"type":"wireguard","tag":"invalid-unused"}, {/' "$root/egresses.jsonc"
 sed -i 's/"fixture-main-wireguard-a": false/"fixture-main-wireguard-a": false, "invalid-unused": false/' "$root/policy.jsonc"
 rejected
 cp "$root/valid-policy" "$root/policy.jsonc"

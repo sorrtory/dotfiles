@@ -17,8 +17,8 @@ Replace the glob-and-write `user.js` script with a declared profile.
    `network.proxy.socks_remote_dns`.
 2. Declare the extension set. Select deliberately rather than mirroring
    whatever is installed; userscripts belong to the `monkeys` repository.
-3. Delete the activation script from `singbox-local-proxy` ticket 02 and
-   confirm the prefs still apply.
+3. Replace the current native-profile activation link in
+   `modules/programs/firefox.nix` and confirm the prefs still apply.
 
 ## Constraints
 

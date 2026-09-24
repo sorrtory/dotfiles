@@ -36,7 +36,7 @@ software knows Snap is not an option and knows why `snapd` is still installed.
   application review.
 - The legacy `install.conf` declared exactly three snaps — `lxd`, `obsidian`,
   `yazi`. Obsidian is already a Home Manager package, Yazi becomes one in the
-  `native-configs` effort, and LXD is retired by `singbox-local-proxy`. With
+  `native-configs` effort, and the LXD proxy is retired. With
   Firefox, the set is closed; the policy is a statement of a reached state,
   not an aspiration.
 

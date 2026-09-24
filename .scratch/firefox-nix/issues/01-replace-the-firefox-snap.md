@@ -25,8 +25,8 @@ and is readable without snap confinement in the way.
    with no obvious cause. Do this as privileged host work in the bootstrap
    flow, following the non-nagging style of `06-docker.sh` — no reboot
    prompt, no "log out and back in" message.
-5. Retire anything that globs `~/snap/firefox`, including the activation
-   script added by `singbox-local-proxy` ticket 02.
+5. Retire anything that globs `~/snap/firefox`. The old local-proxy ticket's
+   proposed Snap-profile activation script was never installed.
 
 ## Constraints
 

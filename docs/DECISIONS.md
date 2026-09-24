@@ -291,7 +291,7 @@ Each phase enables `set -euo pipefail`, sources `scripts/bootstrap/common/phase.
 
 Shared implementation lives under `scripts/bootstrap/common/` and is excluded from phase discovery. `phase.sh` owns the phase command contract, `output.sh` prefixes human-facing output with the logical phase name, `packages.sh` owns host package-manager adapters, and `sops-config.sh` reads the configured age recipient back out of `.sops.yaml`. That last one is also used outside the phases, by the recovery app under `scripts/repo/`: it lives here anyway because a phase may only source from `common/`, so the alternative would have a phase reaching into `scripts/repo/` instead, which crosses the sharper boundary. The packaged recovery app has no repository beside it, so its build copies `sops-config.sh` and `.sops.yaml` into the store by content and points the script at them; that keeps one implementation of the lookup rather than a second copy of the recipient. `require_commands` only validates; the explicitly mutating `ensure_commands` installs missing same-named packages through APT, DNF, or Pacman and fails clearly on unsupported hosts. Phase files use the common output helpers rather than calling `printf` directly.
 
-The initial numbered flow starts with the ensure-only `host-deps` phase, installs Nix, runs `03-secret-recovery`, and then uses `04-home-manager` to activate the complete secret-bearing profile without privilege. `05-yt-dlp` installs the verified user-owned release binary, and the deliberately privileged `06-docker` phase establishes host Docker integration with an explicit full-reset uninstall. `scripts/bootstrap/02-host-deps.sh` is the authoritative inventory of commands required by later phases; documentation describes that responsibility without duplicating its changing contents. The Home Manager phase records a fingerprint of the flake source it activated, allowing its read-only status check to detect repository changes without evaluating Nix or using the network. Migrate the LXD proxy as its own ticketed Bash task.
+The initial numbered flow starts with the ensure-only `host-deps` phase, installs Nix, runs `03-secret-recovery`, and then uses `04-home-manager` to activate the complete secret-bearing profile without privilege. `05-yt-dlp` installs the verified user-owned release binary, and the deliberately privileged `06-docker` phase establishes host Docker integration with an explicit full-reset uninstall. `scripts/bootstrap/02-host-deps.sh` is the authoritative inventory of commands required by later phases; documentation describes that responsibility without duplicating its changing contents. The Home Manager phase records a fingerprint of the flake source it activated, allowing its read-only status check to detect repository changes without evaluating Nix or using the network. The retired LXD proxy was replaced by the sing-box user service described below.
 
 Nautilus's built-in console action is not a default-terminal interface: upstream
 hard-codes GNOME Console's D-Bus identity, and Fedora patches that identity to
@@ -550,7 +550,7 @@ selected default. The app module split and whole-host TUN
 passed Fedora staging and were activated on the daily host on 2026-09-23 with
 operator approval. The backend binds upstream sockets to the detected physical
 interface, and the root TUN forwards only to its loopback SOCKS listener.
-Backend credentials come from whole-file encrypted native inventory and
+Backend credentials come from whole-file encrypted inventory and
 hostname policy. Its compiler loads only that host's assigned WireGuard peer
 plus shared VLESS. The concurrent generation passed staging and was activated
 on the daily host after separate approval. Real suspend and Wi-Fi-change checks
@@ -560,14 +560,38 @@ alternate network, WireGuard stayed unreachable while VLESS worked; returning
 to the original network restored WireGuard without a restart. The TUN kept
 failed selected traffic off the physical route. The evidence supports a
 network-specific WireGuard reachability problem, not a client recovery defect.
+The whole-file encrypted inventory contains every peer, even though the
+compiled backend loads only the peer assigned to its hostname. Access to a
+machine's decrypted inventory therefore exposes the other peer definitions.
 The authenticated runtime `vpn-egress` selector is now active on the daily
 host; its token is generated in a private runtime file rather than in Nix.
+Encrypted `secrets/vpn/egresses.jsonc` owns one `outbounds` list of route
+definitions. The compiler turns WireGuard entries into sing-box endpoints
+when generating the private runtime configuration. `secrets/vpn/policy.jsonc`
+assigns each hostname its
+WireGuard peer, declarative default, installed-app pins and named-route IPv6
+policy. Route names are stable inventory tags, not positions or public Nix
+options. This source file is deliberately simpler than sing-box's final JSON:
+the operator edits one list, while the compiler takes responsibility for
+sing-box's protocol-specific placement and validates the generated file.
+Every tag has the same selection semantics; the compiler includes
+all available tags in one selector. An explicit
+`vpn --egress NAME` takes precedence over an installed app pin, which takes
+precedence over the active default. `vpn-egress use NAME`
+temporarily changes only unpinned proxy, `vpn` and whole-host traffic;
+`vpn-egress default`, reboot or a Home Manager switch restores the declarative
+default. Default traffic stays IPv4-only; named captures follow their route's
+IPv6 policy. An unknown name is rejected, and an unreachable selected route
+blocks traffic rather than changing routes. `vpn-egress check NAME` is a
+short HTTPS reachability probe, not a DNS, UDP or future-availability guarantee.
 The one-off named capture launcher passed staging and was activated on the
 daily host after operator authorization. Each named app scope binds to a
 route-specific capture; the last scope's exit stops that capture. A Home
 Manager switch validates incoming encrypted inventory before stopping scopes
-whose app pin or named route definition changed. Unaffected scopes retain
+whose app pin changed or whose named route definition changed, including
+one-off scopes on that route. Unaffected scopes retain
 their capture namespace; the backend restarts against the new inventory.
+Automatic route selection and health-based failover remain deferred.
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 
@@ -652,12 +676,12 @@ sing-box and does not start another WireGuard client.
 Generate the proxy configuration at service start from whole-file SOPS
 ciphertext, into a private user runtime directory. Validate it before starting
 sing-box and keep keys out of arguments, environment variables, diagnostics,
-and the Nix store. Application DNS goes through the tunnel; resolving a
-WireGuard endpoint hostname is the sole host-DNS bootstrap exception. Capture
-copies only resolver addresses from that configuration, and each tunneled
-program gets a private resolver file in its own mount namespace, never the
-host's. With no
-profile DNS, use 1.1.1.1 through the tunnel. The explicit `user-linger` bootstrap
+and the Nix store. Application DNS goes through its selected route. The
+current inventory uses IP-literal server addresses; the compiler rejects
+hostname servers until physical-route bootstrap resolution is designed.
+Capture copies only resolver addresses from that configuration, and each
+tunneled program gets a private resolver file in its own mount namespace,
+never the host's. The explicit `user-linger` bootstrap
 phase enables startup before login; Home Manager activation stays unprivileged.
 Linger is shared by user services, so that ensure-only phase does not disable
 it on uninstall.

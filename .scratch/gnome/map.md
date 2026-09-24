@@ -68,7 +68,7 @@ its `home.nix` import and `targets.genericLinux`, and the others extend them.
 - Resolved by [06](issues/06-ayugram.md): AyuGram installs from the binary
   cache and renders without a GPU on the VM. Logging in is left to the
   operator.
-- Running this effort alongside the VPN effort, now `.scratch/vpn-egress/`:
+- When this effort ran alongside the selectable VPN implementation:
   - Its files don't overlap, apart from one import line in `home.nix`.
   - The staging VM is shared, and `rsync --delete` mirrors a whole tree.
     Two efforts syncing different working trees would overwrite each other's

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile encrypted-at-rest native egresses into a private backend config."""
+"""Compile one encrypted egress list into a private sing-box config."""
 
 import ipaddress
 import hashlib
@@ -61,6 +61,12 @@ def object_at(value, name):
     return value
 
 
+def native_routes(routes):
+    """Place one source list into the sections required by sing-box."""
+    return ([route for route in routes if route["type"] == "wireguard"],
+            [route for route in routes if route["type"] != "wireguard"])
+
+
 def named_port(tag):
     # A tag keeps its binding when inventory order or other entries change.
     return 20000 + int.from_bytes(hashlib.sha256(tag.encode()).digest()[:4], "big") % 40000
@@ -93,27 +99,28 @@ def binding_ledger(path, config):
 def compile_config(inventory, policy, concurrent=False):
     inventory = object_at(inventory, "inventory")
     policy = object_at(policy, "policy")
-    if set(inventory) != {"endpoints", "outbounds", "dns"}:
-        raise InvalidConfig("inventory must contain native endpoints, outbounds and DNS")
-    endpoints = inventory["endpoints"]
-    outbounds = inventory["outbounds"]
-    if not isinstance(endpoints, list) or not isinstance(outbounds, list):
-        raise InvalidConfig("endpoints and outbounds must be lists")
+    if set(inventory) != {"outbounds", "dns"}:
+        raise InvalidConfig("inventory must contain outbounds and DNS")
+    routes = inventory["outbounds"]
+    if not isinstance(routes, list):
+        raise InvalidConfig("outbounds must be a list")
     entries = {}
-    for kind, group in (("endpoints", endpoints), ("outbounds", outbounds)):
-        for entry in group:
-            if not isinstance(entry, dict):
-                raise InvalidConfig("egress entry must be an object")
-            tag = entry.get("tag")
-            if not isinstance(tag, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", tag):
-                raise InvalidConfig("invalid egress name")
-            if tag in entries:
-                raise InvalidConfig("duplicate egress name")
-            if entry.get("type") == "direct" and not entry.get("bind_interface"):
-                raise InvalidConfig("unbound direct outbound")
-            entries[tag] = (kind, entry)
+    for entry in routes:
+        if not isinstance(entry, dict):
+            raise InvalidConfig("egress entry must be an object")
+        tag = entry.get("tag")
+        if not isinstance(tag, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", tag):
+            raise InvalidConfig("invalid egress name")
+        if tag in entries:
+            raise InvalidConfig("duplicate egress name")
+        if entry.get("type") == "direct" and not entry.get("bind_interface"):
+            raise InvalidConfig("unbound direct outbound")
+        if not isinstance(entry.get("type"), str):
+            raise InvalidConfig("egress type is required")
+        entries[tag] = entry
     if not entries:
         raise InvalidConfig("empty inventory")
+    endpoints, outbounds = native_routes(routes)
     dns = object_at(inventory["dns"], "dns")
     if set(dns) != {"servers"} or not isinstance(dns["servers"], list):
         raise InvalidConfig("invalid DNS server inventory")
@@ -148,7 +155,7 @@ def compile_config(inventory, policy, concurrent=False):
         raise InvalidConfig("unknown installed-app pin")
     if set(ipv6) != set(entries) or any(type(value) is not bool for value in ipv6.values()):
         raise InvalidConfig("invalid IPv6 capability map")
-    wireguard_tags = {tag for tag, (_, route) in entries.items()
+    wireguard_tags = {tag for tag, route in entries.items()
                       if route["type"] == "wireguard"}
     if owners and (set(owners) != wireguard_tags or
                    any(not isinstance(host, str) or host not in defaults
@@ -161,7 +168,8 @@ def compile_config(inventory, policy, concurrent=False):
     selected = defaults.get(hostname)
     if selected is None:
         raise InvalidConfig("missing hostname default")
-    kind, entry = entries[selected]
+    entry = entries[selected]
+    kind = "endpoints" if entry["type"] == "wireguard" else "outbounds"
     selected_dns = [server for server in servers if server["detour"] == selected]
     if not selected_dns:
         raise InvalidConfig("selected egress has no DNS server")
@@ -179,7 +187,7 @@ def compile_config(inventory, policy, concurrent=False):
         kind: [entry],
     }
     if concurrent:
-        for _, route in entries.values():
+        for route in entries.values():
             addresses = ([peer.get("address") for peer in route.get("peers", [])]
                          if route["type"] == "wireguard" else
                          [route["server"]] if "server" in route else [])
@@ -219,6 +227,8 @@ def compile_config(inventory, policy, concurrent=False):
                        "server": selected_dns[0]["server"], "detour": selector}
         named_inbounds = {tag: "vpn-named-" + tag for tag in active}
         config["endpoints"] = [route for route in endpoints if route["tag"] in active]
+        # One source list gives every egress the same tag semantics. Split
+        # only when emitting sing-box's required native sections.
         config["outbounds"] = [route for route in outbounds if route["tag"] in active] + [
             {"type": "selector", "tag": selector,
                                            "outbounds": sorted(active), "default": selected,
@@ -297,11 +307,12 @@ def main():
         # Check every native entry before selecting one. An inactive route with
         # malformed protocol fields must not wait until a later host switch to
         # surface its error. `check` parses the config without starting peers.
+        all_endpoints, all_outbounds = native_routes(inventory["outbounds"])
         all_routes = {
             **config, "route": {"final": policy["defaults"][socket.gethostname()],
                                 "auto_detect_interface": True},
-            "endpoints": inventory["endpoints"],
-            "outbounds": inventory["outbounds"],
+            "endpoints": all_endpoints,
+            "outbounds": all_outbounds,
             "dns": {"servers": [{"type": "local", "tag": "bootstrap"}] +
                     inventory["dns"]["servers"],
                     "final": inventory["dns"]["servers"][0]["tag"]},

@@ -145,7 +145,7 @@ A peer assigned exclusively to one machine. Another machine or client must not u
 _Avoid_: VPN egress, shared key
 
 **VPN egress**:
-A named route to a provider available to a machine. A machine can have several egresses, while each WireGuard identity remains exclusive to its owner.
+A named route to a provider available to a machine. Its name is one selection identity for defaults, application pins and one-off launches, regardless of transport; each WireGuard identity remains exclusive to its owner.
 _Avoid_: WireGuard identity, VPN command
 
 **Active default egress**:

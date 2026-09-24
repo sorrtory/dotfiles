@@ -13,11 +13,12 @@ extensions can be declared, and sops-rendered secrets are readable by it. See
 
 ## Context
 
-- Split out of [`singbox-local-proxy`](../singbox-local-proxy/map.md), which
-  needed Firefox pointed at a proxy but could not encrypt the PAC while snap
-  confinement denied every path sops-nix renders to.
-- Ticket 02 deletes the interim activation script that
-  `singbox-local-proxy` ticket 02 introduces.
+- Split out of the completed local-proxy effort, retained in Git history.
+  Its Snap-specific Firefox ticket was superseded by this effort. The current
+  proxy and PAC settings are in [README.md](../../README.md#local-proxy) and
+  `configs/firefox/user.js`.
+- The old Snap-profile activation script was never installed; this effort
+  still owns the decision to package Firefox and manage its native profile.
 - Ticket 01 also carries the APT preferences pin, and ticket 04 the Snap
   sourcing policy. Both were settled in the grilling session that promoted
   this effort into `docs/MIGRATION.md` as slice 14: `snapd` stays as host

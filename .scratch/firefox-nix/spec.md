@@ -14,14 +14,15 @@ not assumed. From inside the snap:
   `/home/z/.bashrc` returns `Permission denied`.
 - `/run/user/1000/secrets.d/...` returns `Permission denied`; the snap has its
   own runtime directory at `/run/user/1000/snap.firefox`.
-- Non-hidden real-home paths are readable, which is the only reason
-  `~/Documents/secrets/proxy.pac` works today.
+- Non-hidden real-home paths were readable, which was why the historical
+  `~/Documents/secrets/proxy.pac` path worked in that Snap setup.
 
 Two consequences drive this effort. First, the profile directory has a random
-name, so prefs can only be written by a script that globs for it — which is
-why `singbox-local-proxy` ticket 02 ships an activation script rather than a
-file declaration. Second, sops-rendered secrets are unreachable by a confined
-Firefox, so the PAC file cannot be encrypted while the snap owns the browser.
+name, so prefs could only be written by a script that globs for it — the
+completed local-proxy effort proposed such a script but never installed it.
+Second, sops-rendered secrets are unreachable by a confined Firefox, so the
+PAC file cannot be delivered to that Snap profile. The current native-profile
+module already declares encrypted `secrets/proxy.pac`.
 
 De-snapping removes both limits at once.
 
@@ -36,8 +37,8 @@ In scope:
 
 Out of scope:
 
-- The proxy itself. `singbox-local-proxy` owns the transport; this effort only
-  changes who reads the PAC and from where.
+- The proxy itself, which the installed sing-box user service owns; this
+  effort changes who reads the PAC and from where.
 - Browser userscripts, which `docs/MIGRATION.md` assigns to the separate
   `monkeys` repository.
 - Making login and session state declarative. `AGENTS.md` rule 9 keeps that
