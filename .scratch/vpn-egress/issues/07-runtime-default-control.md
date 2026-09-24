@@ -1,6 +1,6 @@
 # 07: Control and check the temporary default
 
-Status: claimed
+Status: resolved
 Blocked by: 06 (concurrent backend routes)
 
 **What to build:** Give the operator `vpn-egress` to list named routes,
@@ -36,5 +36,17 @@ With the whole-host TUN up, switching to VLESS kept public HTTPS on
 `vpn-host0` and default capture HTTPS working; restoring WireGuard returned
 204. A transient named WireGuard probe failed once during that check, then
 passed both with and without the TUN. `vpn-down` restored the direct route and
-the staging sudo helper was removed. Daily-host activation remains a separate
-approval gate.
+the staging sudo helper was removed.
+
+## Daily-host cutover
+
+The operator separately approved and activated clean generation
+`/nix/store/3cji66l6aznpx96dcwlnqmh0gc1aghna-home-manager-generation`, with
+`/nix/store/v61d2g0f0v0vgs445vmxlzq71h5ghw46-home-manager-generation`
+retained for rollback. VLESS named check, selector readback, proxy and default
+capture HTTPS passed, and `default` restored the laptop WireGuard route. With
+operator-run `vpn-up`, public HTTPS followed `vpn-host0` after selecting VLESS,
+default capture stayed usable, and returning to WireGuard still passed HTTPS.
+Operator-run `vpn-down` removed the TUN, restored the direct Wi-Fi route and
+resolver, and direct HTTPS returned 204. The active selector read back the
+declarative WireGuard route after cleanup.

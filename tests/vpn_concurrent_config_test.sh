@@ -56,6 +56,18 @@ jq -c '[.inbounds[] | select(.tag | startswith("vpn-named-")) | {tag,listen_port
 mkdir "$root/capture" "$root/host"
 bash "$repo/modules/programs/vpnized-apps/capture-config.sh" "$root/config" "$root/capture"
 bash "$repo/modules/programs/vpnized-apps/whole-host-config.sh" "$root/config" "$root/host/config.json"
+mkdir "$root/named-a" "$root/named-b"
+bash "$repo/modules/programs/vpnized-apps/capture-config.sh" "$root/config" "$root/named-a" "$(printf 'route-a' | od -An -tx1 | tr -d '[:space:]')"
+bash "$repo/modules/programs/vpnized-apps/capture-config.sh" "$root/config" "$root/named-b" "$(printf 'route-b' | od -An -tx1 | tr -d '[:space:]')"
+jq -e --slurpfile backend "$root/config" '
+  .outbounds[0].server_port == ($backend[0].inbounds[] | select(.tag == "vpn-named-route-a") | .listen_port) and
+  .dns.servers[0].tag == "dns-a" and .dns.strategy == "ipv4_only"
+' "$root/named-a/config.json" >/dev/null || fail 'named route-a capture binding'
+jq -e --slurpfile backend "$root/config" '
+  .outbounds[0].server_port == ($backend[0].inbounds[] | select(.tag == "vpn-named-route-b") | .listen_port) and
+  .dns.servers[0].tag == "dns-b" and (.dns | has("strategy") | not) and
+  (.network_namespaces[0].tag == "apps")
+' "$root/named-b/config.json" >/dev/null || fail 'named route-b capture binding or IPv6'
 jq -e '.dns.strategy == "ipv4_only" and .dns.servers == [{"type":"udp","tag":"vpn-default-dns","server":"8.8.8.8","detour":"proxy"}]' \
   "$root/capture/config.json" >/dev/null || fail 'default capture DNS or IPv6'
 jq -e '.dns.servers[0].server == "8.8.8.8"' "$root/host/config.json" >/dev/null ||

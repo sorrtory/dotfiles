@@ -543,6 +543,10 @@ and hostname policy, activated on the daily host after separate approval. Its
 installed compiler loads only that host's assigned WireGuard peer plus the
 shared VLESS outbound. The concurrent generation passed staging and was
 activated on the daily host after separate approval.
+The authenticated runtime `vpn-egress` selector is now active on the daily
+host; its token is generated in a private runtime file rather than in Nix.
+The one-off named capture launcher has passed staging and awaits a separate
+daily-host activation.
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 

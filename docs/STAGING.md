@@ -223,6 +223,21 @@ restart restored both and capture HTTPS. `vpn-down` removed the TUN, restored
 Wi-Fi routing and DNS, and direct HTTPS succeeded. The previous generation
 remains available for rollback.
 
+Ticket 07's runtime default control passed on staging: unauthenticated API
+requests returned 401; named VLESS checks, proxy and default capture switching,
+selector readback, unknown-name preservation, backend-unavailable reporting
+and restart reset worked. With the TUN up, selecting VLESS carried public
+HTTPS through `vpn-host0`; `vpn-down` restored direct routing. The separately
+approved daily host repeated selection under its TUN and direct-route cleanup.
+
+Ticket 08's named capture passed on staging: VLESS and WireGuard named
+launches, UDP DNS A/no AAAA, unpinned launch, unknown-name rejection before
+payload execution, shared capture scopes, last-exit cleanup, bound payload
+termination on capture stop, and named/default failure during backend outage.
+Listener port, capture port, namespace inode and scope dependency matched. A
+Home Manager activation stopped a live named scope before service reload. Its
+daily-host cutover awaits separate approval.
+
 ## Mirroring the working tree
 
 The guest copy is a plain directory, not a clone, so every edit, commit and Git

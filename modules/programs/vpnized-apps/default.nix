@@ -25,6 +25,9 @@ let
     runtimeEnv = {
       VPN_ENTER = lib.getExe enter;
       VPN_SYSTEMD_RUN = lib.getExe' pkgs.systemd "systemd-run";
+      VPN_OD = lib.getExe' pkgs.coreutils "od";
+      VPN_TR = lib.getExe' pkgs.coreutils "tr";
+      VPN_JQ = lib.getExe pkgs.jq;
     };
     text = builtins.readFile ../../../scripts/bin/vpn.sh;
   };
@@ -54,6 +57,25 @@ in
   config = lib.mkIf proxy.enable {
       home.packages = [ vpn ];
 
+      # Until policy reconciliation can compare route definitions, stop every
+      # live named scope before sing-box can rebind a listener on HM switch.
+      home.activation.stopNamedVpnScopes = lib.hm.dag.entryBefore [ "onFilesChange" ] ''
+        while read -r unit _; do
+          [ -n "$unit" ] || continue
+          requires=$(${lib.getExe' pkgs.systemd "systemctl"} --user show "$unit" -p Requires --value 2>/dev/null || true)
+          case "$requires" in
+            *vpn-capture@*)
+              echo "Stopping named VPN scope $unit before route update"
+              ${lib.getExe' pkgs.systemd "systemctl"} --user stop "$unit"
+              ;;
+          esac
+        done < <(${lib.getExe' pkgs.systemd "systemctl"} --user list-units --all --type=scope --plain --no-legend 'vpn-app-*.scope' 2>/dev/null || true)
+        while read -r unit _; do
+          [ -n "$unit" ] || continue
+          ${lib.getExe' pkgs.systemd "systemctl"} --user stop "$unit"
+        done < <(${lib.getExe' pkgs.systemd "systemctl"} --user list-units --all --type=service --plain --no-legend 'vpn-capture@*.service' 2>/dev/null || true)
+      '';
+
       # Capture creates its rootless network namespace with this binary.
       dotfiles.apparmor.usernsAllowances.sing-box = {
         executable = lib.getExe proxy.package;
@@ -80,6 +102,25 @@ in
           ExecStart = "${lib.getExe proxy.package} run -c %t/vpn-capture/config.json";
           NoNewPrivileges = true;
           # Do not automatically replace a live application's namespace.
+          Restart = "no";
+        };
+      };
+      systemd.user.services."vpn-capture@" = {
+        Unit = {
+          Description = "On-demand named VPN capture for %I";
+          Wants = [ "sing-box.service" ];
+          After = [ "sing-box.service" ];
+          StopWhenUnneeded = true;
+          StartLimitIntervalSec = 0;
+        };
+        Service = {
+          Type = "simple";
+          RuntimeDirectory = "vpn-capture-%i";
+          RuntimeDirectoryMode = "0700";
+          UMask = "0077";
+          ExecStartPre = "${lib.getExe captureConfig} %t/sing-box/config.json %t/vpn-capture-%i %I";
+          ExecStart = "${lib.getExe proxy.package} run -c %t/vpn-capture-%i/config.json";
+          NoNewPrivileges = true;
           Restart = "no";
         };
       };

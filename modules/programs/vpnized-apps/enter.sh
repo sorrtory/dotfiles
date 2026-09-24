@@ -31,7 +31,7 @@ fi
 [[ $EUID != 0 ]] || die 'run this command as your ordinary desktop user'
 [[ ${1-} == /* && -f ${1-} && -x ${1-} ]] || die 'expected an absolute executable path'
 : "${VPN_USER_PATH:?vpn: the vpn command must set VPN_USER_PATH}"
-runtime=${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is required}/vpn-capture
+runtime=${VPN_CAPTURE_RUNTIME:-${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is required}/vpn-capture}
 holder=
 for ((attempt = 0; attempt < 100; attempt++)); do
   if [[ -r $runtime/namespace.pid ]]; then
