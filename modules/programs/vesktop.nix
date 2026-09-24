@@ -40,6 +40,7 @@ in
       }];
     }
     (lib.mkIf (proxy.enable && cfg.enable) {
+      dotfiles.vpnizedApps.registered = [ "vesktop" ];
       home.packages = [ vesktop ];
 
       # Vesktop's two wrappers exec Nixpkgs' Electron 43, whose sandbox needs a

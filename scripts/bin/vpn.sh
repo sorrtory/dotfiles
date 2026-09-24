@@ -24,7 +24,7 @@ while [[ $# -gt 0 ]]; do
     -h|--help) usage; exit 0 ;;
     --capture-path) capture_path=true; shift ;;
     --app)
-      [[ $# -ge 2 && $2 == vesktop || $# -ge 2 && $2 == ayugram ]] || die 'invalid app key'
+      [[ $# -ge 2 && $2 =~ ^[a-z][a-z0-9-]*$ ]] || die 'invalid app key'
       app=$2; shift 2 ;;
     --egress)
       [[ $# -ge 2 && -n $2 ]] || die 'missing egress name'
@@ -38,11 +38,11 @@ if [[ $capture_path == false ]]; then
 fi
 [[ $EUID != 0 ]] || die 'run as your ordinary desktop user, not root'
 
-if [[ -z $egress && -n $app ]]; then
+if [[ -n $app ]]; then
   selection=$("$VPN_EGRESS_COMMAND" resolve "$app") || die 'cannot resolve installed-app pin'
   case "$selection" in
     default) ;;
-    named:*) egress=${selection#named:} ;;
+    named:*) [[ -n $egress ]] || egress=${selection#named:} ;;
     *) die 'invalid installed-app pin resolution' ;;
   esac
 fi

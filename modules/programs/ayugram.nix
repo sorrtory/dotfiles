@@ -48,6 +48,7 @@ in
       }];
     }
     (lib.mkIf (proxy.enable && cfg.enable) {
+      dotfiles.vpnizedApps.registered = [ "ayugram" ];
       home.packages = [ ayugram ];
 
       # Telegram's colors come from the palette like every other themed

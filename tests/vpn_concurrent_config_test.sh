@@ -4,6 +4,7 @@ repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 root=$(mktemp -d)
 trap 'rm -rf -- "$root"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
+printf '["vesktop","ayugram"]\n' > "$root/apps.json"
 cat > "$root/egresses" <<'JSON'
 {"outbounds":[
   {"type":"socks","tag":"route-a","server":"127.0.0.1","server_port":15001},
@@ -16,7 +17,8 @@ JSON
 printf '{"defaults":{"%s":"route-a"},"pins":{},"ipv6":{"route-a":false,"route-b":true}}\n' \
   "$(hostname)" > "$root/policy"
 compile() {
-  python3 "$repo/modules/programs/sing-box/compile-inventory.py" --concurrent \
+  python3 "$repo/modules/programs/sing-box/compile-inventory.py" \
+    --apps "$root/apps.json" --concurrent \
     --bindings "$root/listeners.json" \
     "$root/egresses" "$root/policy" "$root/config"
 }

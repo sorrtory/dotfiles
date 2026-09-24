@@ -4,6 +4,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import socket
 import subprocess
 import sys
@@ -181,18 +182,24 @@ def main():
         control = json.loads(path.read_text())
         names = control["names"]
         default = control["declarative_default"]
+        apps = control["apps"]
+        pins = control.get("pins", {})
         if (not isinstance(names, list) or default not in names or
-                not isinstance(control.get("pins", {}), dict)):
+                not isinstance(apps, list) or
+                any(not isinstance(app, str) or
+                    not re.fullmatch(r"[a-z][a-z0-9-]*", app) for app in apps) or
+                len(apps) != len(set(apps)) or
+                not isinstance(pins, dict) or not set(pins).issubset(apps)):
             raise ControlError("invalid control metadata")
     except (OSError, ValueError, KeyError, TypeError, ControlError) as error:
         print(f"vpn-egress: {error if isinstance(error, ControlError) else 'cannot read private control file'}", file=sys.stderr)
         return 4
     if command == "resolve":
         app = arguments[0]
-        if app not in ("vesktop", "ayugram"):
+        if app not in apps:
             print("vpn-egress: unknown app key", file=sys.stderr)
             return 3
-        pin = control.get("pins", {}).get(app)
+        pin = pins.get(app)
         if pin is not None and pin not in names:
             print("vpn-egress: invalid installed-app pin", file=sys.stderr)
             return 4

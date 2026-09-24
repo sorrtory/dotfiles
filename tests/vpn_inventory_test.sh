@@ -7,6 +7,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 private=$(printf "0%.0s" {1..32} | base64)
 public=$(printf "1%.0s" {1..32} | base64)
 hostname=$(hostname)
+printf '["vesktop","ayugram"]\n' > "$root/apps.json"
 cat > "$root/egresses.jsonc" <<EOF2
 {
   // Safe note: synthetic WireGuard peer for compiler verification.
@@ -34,6 +35,7 @@ cat > "$root/policy.jsonc" <<EOF2
 EOF2
 compile() {
   python3 "$repo/modules/programs/sing-box/compile-inventory.py" \
+    --apps "$root/apps.json" \
     "$root/egresses.jsonc" "$root/policy.jsonc" "$root/config.json"
 }
 compile

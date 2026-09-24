@@ -67,7 +67,10 @@ def main():
     new_pins = new_control.get("pins", {})
     pin_changes = {app for app in set(old_pins) | set(new_pins)
                    if old_pins.get(app) != new_pins.get(app)}
-    legacy_scopes = "pins" not in old_control
+    old_apps = set(old_control.get("apps", []))
+    new_apps = set(new_control.get("apps", []))
+    known_apps = sorted(old_apps | new_apps, key=len, reverse=True)
+    legacy_scopes = "pins" not in old_control or "apps" not in old_control
     try:
         scopes = systemctl("list-units", "--all", "--type=scope", "--plain",
                            "--no-legend", "vpn-app-*.scope")
@@ -85,9 +88,10 @@ def main():
             tag = (bytes.fromhex(attached.removeprefix("vpn-capture@")
                                  .removesuffix(".service")).decode()
                    if attached.startswith("vpn-capture@") else "default")
-            app = next((key for key in ("vesktop", "ayugram")
+            app = next((key for key in known_apps
                         if unit.startswith("vpn-app-" + key + "-")), "one-off")
             reason = ("pre-pin scope identity unknown" if legacy_scopes else
+                      "app unregistered" if app in old_apps and app not in new_apps else
                       "app pin changed" if app in pin_changes else
                       "named route definition changed or removed" if tag in changed else
                       None)

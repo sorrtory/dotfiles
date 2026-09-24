@@ -96,9 +96,15 @@ def binding_ledger(path, config):
     return {**previous, **current}
 
 
-def compile_config(inventory, policy, concurrent=False):
+def compile_config(inventory, policy, apps, concurrent=False):
     inventory = object_at(inventory, "inventory")
     policy = object_at(policy, "policy")
+    if (not isinstance(apps, list) or
+            any(not isinstance(app, str) or
+                not re.fullmatch(r"[a-z][a-z0-9-]*", app) for app in apps) or
+            len(apps) != len(set(apps))):
+        raise InvalidConfig("invalid installed-app registry")
+    registered_apps = set(apps)
     if set(inventory) != {"outbounds", "dns"}:
         raise InvalidConfig("inventory must contain outbounds and DNS")
     routes = inventory["outbounds"]
@@ -147,11 +153,13 @@ def compile_config(inventory, policy, concurrent=False):
     owners = object_at(policy.get("wireguard_owners", {}), "WireGuard owners")
     if any(not isinstance(value, str) or value not in entries for value in defaults.values()):
         raise InvalidConfig("unknown declarative default")
-    if any(host not in defaults or not isinstance(apps, dict) or
-           any(app not in ("vesktop", "ayugram") or
+    if any(host not in defaults or not isinstance(host_pins, dict) or
+           any(not isinstance(app, str) or
+               not re.fullmatch(r"[a-z][a-z0-9-]*", app) or
+               host == socket.gethostname() and app not in registered_apps or
                not isinstance(route, str) or route not in entries
-               for app, route in apps.items())
-           for host, apps in pins.items()):
+               for app, route in host_pins.items())
+           for host, host_pins in pins.items()):
         raise InvalidConfig("unknown installed-app pin")
     if set(ipv6) != set(entries) or any(type(value) is not bool for value in ipv6.values()):
         raise InvalidConfig("invalid IPv6 capability map")
@@ -281,18 +289,24 @@ def compile_config(inventory, policy, concurrent=False):
 
 
 def main():
-    concurrent = len(sys.argv) == 7 and sys.argv[1:3] == ["--concurrent", "--bindings"]
-    bindings = Path(sys.argv[3]) if concurrent else None
-    paths = sys.argv[4:] if concurrent else sys.argv[1:]
+    if len(sys.argv) < 3 or sys.argv[1] != "--apps":
+        print("usage: vpn-inventory-config --apps REGISTRY [--concurrent --bindings ABSOLUTE_LEDGER] INVENTORY POLICY ABSOLUTE_OUTPUT", file=sys.stderr)
+        return 2
+    app_registry = Path(sys.argv[2])
+    arguments = sys.argv[3:]
+    concurrent = len(arguments) == 6 and arguments[:2] == ["--concurrent", "--bindings"]
+    bindings = Path(arguments[2]) if concurrent else None
+    paths = arguments[3:] if concurrent else arguments
     if (len(paths) != 3 or not os.path.isabs(paths[2]) or
             concurrent and not bindings.is_absolute()):
-        print("usage: vpn-inventory-config [--concurrent --bindings ABSOLUTE_LEDGER] INVENTORY POLICY ABSOLUTE_OUTPUT", file=sys.stderr)
+        print("usage: vpn-inventory-config --apps REGISTRY [--concurrent --bindings ABSOLUTE_LEDGER] INVENTORY POLICY ABSOLUTE_OUTPUT", file=sys.stderr)
         return 2
     try:
         inventory_text = Path(paths[0]).read_text()
         inventory = jsonc(inventory_text)
         policy = jsonc(Path(paths[1]).read_text())
-        config = compile_config(inventory, policy, concurrent)
+        apps = json.loads(app_registry.read_text())
+        config = compile_config(inventory, policy, apps, concurrent)
     except (OSError, ValueError, InvalidConfig) as error:
         # Parser exceptions can include input fragments. Only our fixed messages
         # leave this boundary; credentials and private tags never enter logs.
@@ -353,6 +367,7 @@ def main():
                            "secret": config["experimental"]["clash_api"]["secret"],
                            "declarative_default": policy["defaults"][socket.gethostname()],
                            "names": config["outbounds"][-1]["outbounds"],
+                           "apps": apps,
                            "pins": policy["pins"].get(socket.gethostname(), {}),
                            "notes": operator_notes(inventory_text)}, stream)
                 stream.write("\n")

@@ -2,6 +2,8 @@
 
 let
   proxy = config.dotfiles.localProxy;
+  registeredApps = config.dotfiles.vpnizedApps.registered;
+  appRegistry = pkgs.writeText "vpnized-app-registry.json" (builtins.toJSON registeredApps);
 
   captureConfig = pkgs.writeShellApplication {
     name = "vpn-capture-config";
@@ -35,11 +37,25 @@ let
 
 in
 {
+  options.dotfiles.vpnizedApps.registered = lib.mkOption {
+    type = lib.types.listOf (lib.types.strMatching "[a-z][a-z0-9-]*");
+    default = [ ];
+    internal = true;
+    description = "Application IDs contributed by enabled VPNized app modules.";
+  };
+
   options.dotfiles.vpn.command = lib.mkOption {
     type = lib.types.path;
     readOnly = true;
     default = lib.getExe vpn;
     description = "The shared VPN launcher path used by installed applications.";
+  };
+
+  options.dotfiles.vpn.appRegistry = lib.mkOption {
+    type = lib.types.path;
+    readOnly = true;
+    default = appRegistry;
+    description = "JSON list of application IDs installed with VPN launchers.";
   };
 
   options.dotfiles.vpn.hostConfigCommand = lib.mkOption {
@@ -56,6 +72,10 @@ in
   };
 
   config = lib.mkIf proxy.enable {
+      assertions = [{
+        assertion = lib.length registeredApps == lib.length (lib.unique registeredApps);
+        message = "VPNized app modules must register distinct application IDs.";
+      }];
       home.packages = [ vpn ];
 
       # Validate incoming ciphertext before changing live scopes, then stop
@@ -77,7 +97,7 @@ in
             ${lib.getExe pkgs.sops} decrypt ${config.sops.secrets."vpn-policy".sopsFile} > "$validation/policy" 2>/dev/null || exit 1
           PATH=${lib.makeBinPath [ proxy.package ]}:$PATH \
             ${lib.getExe pkgs.python3} ${../sing-box/compile-inventory.py} \
-              --concurrent --bindings "$validation/vpn-listeners.json" \
+              --apps ${appRegistry} --concurrent --bindings "$validation/vpn-listeners.json" \
               "$validation/egresses" "$validation/policy" "$validation/config.json" || {
                 echo 'VPN inventory validation failed; live scopes kept' >&2
                 exit 1

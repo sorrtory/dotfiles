@@ -51,8 +51,10 @@ def scenario(old, new, old_pins, new_pins, expected):
     with tempfile.TemporaryDirectory() as root:
         paths = [Path(root) / part for part in ("old", "new", "old-control", "new-control")]
         for path, value in zip(paths, (old, new,
-                                       {"names": ["route-a", "route-b"], "pins": old_pins},
-                                       {"names": ["route-a", "route-b"], "pins": new_pins})):
+                                       {"names": ["route-a", "route-b"],
+                                        "apps": ["vesktop", "ayugram"], "pins": old_pins},
+                                       {"names": ["route-a", "route-b"],
+                                        "apps": ["vesktop", "ayugram"], "pins": new_pins})):
             path.write_text(json.dumps(value))
         with patch.object(module, "systemctl", side_effect=systemctl), \
              patch.object(module.subprocess, "run", return_value=subprocess.CompletedProcess([], 3, "inactive", "")), \
