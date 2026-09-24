@@ -237,6 +237,14 @@ termination on capture stop, and named/default failure during backend outage.
 Listener port, capture port, namespace inode and scope dependency matched. A
 Home Manager activation stopped a live named scope before service reload. Its
 daily-host cutover awaits separate approval.
+The review fix then validated new SOPS ciphertext before any named scope stop:
+a temporary invalid encrypted VM policy made activation fail while its live
+named payload stayed alive, and the original ciphertext and good generation
+were restored. `vpn-egress inspect orange-vless` reported matching scope,
+namespace and listener while attached, then `backend-outage` during backend
+stop without losing the namespace.
+Changing only the private runtime config's named outbound rule made `inspect`
+report `mismatch` and exit 8; restoring that file returned `attached`.
 
 ## Mirroring the working tree
 

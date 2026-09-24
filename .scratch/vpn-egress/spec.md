@@ -69,6 +69,7 @@ vpn-egress status       read back the active and declarative defaults
 vpn-egress use NAME     temporarily select the default
 vpn-egress default      restore the declarative default now
 vpn-egress check NAME   run one named HTTPS reachability check
+vpn-egress inspect NAME read back a named capture's scope, namespace and listener
 vpn --egress NAME -- PROGRAM
 vpn-up / vpn-down       start / stop the whole-host TUN
 ```

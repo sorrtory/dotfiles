@@ -60,6 +60,25 @@ in
       # Until policy reconciliation can compare route definitions, stop every
       # live named scope before sing-box can rebind a listener on HM switch.
       home.activation.stopNamedVpnScopes = lib.hm.dag.entryBefore [ "onFilesChange" ] ''
+        # Validate the incoming encrypted inventory before touching live
+        # scopes. sops-nix rotates runtime secrets later in activation, so
+        # decrypt the new ciphertext privately for this preflight.
+        (
+          umask 077
+          validation=$(${lib.getExe' pkgs.coreutils "mktemp"} -d "$XDG_RUNTIME_DIR/vpn-validate.XXXXXXXX") || exit 1
+          trap '${lib.getExe' pkgs.coreutils "rm"} -rf -- "$validation"' EXIT
+          if [ -f "$XDG_RUNTIME_DIR/vpn-listeners.json" ]; then
+            ${lib.getExe' pkgs.coreutils "cp"} -- "$XDG_RUNTIME_DIR/vpn-listeners.json" "$validation/vpn-listeners.json" || exit 1
+          fi
+          SOPS_AGE_KEY_FILE=${lib.escapeShellArg config.sops.age.keyFile} \
+            ${lib.getExe pkgs.sops} decrypt ${config.sops.secrets."vpn-egresses".sopsFile} > "$validation/egresses" 2>/dev/null || exit 1
+          SOPS_AGE_KEY_FILE=${lib.escapeShellArg config.sops.age.keyFile} \
+            ${lib.getExe pkgs.sops} decrypt ${config.sops.secrets."vpn-policy".sopsFile} > "$validation/policy" 2>/dev/null || exit 1
+          PATH=${lib.makeBinPath [ proxy.package ]}:$PATH \
+            ${lib.getExe pkgs.python3} ${../sing-box/compile-inventory.py} \
+              --concurrent --bindings "$validation/vpn-listeners.json" \
+              "$validation/egresses" "$validation/policy" "$validation/config.json" || exit 1
+        ) || { echo 'VPN inventory validation failed; live named scopes kept' >&2; exit 1; }
         while read -r unit _; do
           [ -n "$unit" ] || continue
           requires=$(${lib.getExe' pkgs.systemd "systemctl"} --user show "$unit" -p Requires --value 2>/dev/null || true)

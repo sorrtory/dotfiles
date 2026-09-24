@@ -4,6 +4,8 @@
 import json
 import os
 from pathlib import Path
+import socket
+import subprocess
 import sys
 import urllib.error
 import urllib.parse
@@ -47,11 +49,88 @@ def api(control, method, path, body=None):
         raise ControlError("invalid backend control response") from None
 
 
+def unit_active(unit):
+    try:
+        result = subprocess.run(["systemctl", "--user", "is-active", unit],
+                                capture_output=True, text=True, check=False)
+        return result.stdout.strip() == "active"
+    except OSError:
+        return False
+
+
+def inspect_capture(runtime, name):
+    encoded = name.encode().hex()
+    unit = f"vpn-capture@{encoded}.service"
+    backend = Path(runtime) / "sing-box/config.json"
+    capture = Path(runtime) / f"vpn-capture-{encoded}"
+    try:
+        config = json.loads(backend.read_text())
+        ports = [item["listen_port"] for item in config["inbounds"]
+                 if item.get("tag") == "vpn-named-" + name]
+        port = ports[0] if len(ports) == 1 else None
+        routes = [rule.get("outbound") for rule in config["route"]["rules"]
+                  if rule.get("inbound") == ["vpn-named-" + name]
+                  and rule.get("action") == "route"]
+        routing_matches = routes == [name]
+    except (OSError, ValueError, KeyError, TypeError):
+        port = None
+        routing_matches = False
+    backend_up = unit_active("sing-box.service")
+    capture_up = unit_active(unit)
+    listener_up = False
+    if port is not None and backend_up:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=.3):
+                listener_up = True
+        except OSError:
+            pass
+    try:
+        adapter = json.loads((capture / "config.json").read_text())
+        binding_matches = adapter["outbounds"][0]["server_port"] == port
+        pid = int((capture / "namespace.pid").read_text().strip())
+        inode = os.readlink(f"/proc/{pid}/ns/net")
+        isolated = inode != os.readlink("/proc/self/ns/net")
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        binding_matches, pid, inode, isolated = False, None, None, False
+    scopes = subprocess.run(
+        ["systemctl", "--user", "list-units", "--all", "--type=scope",
+         "--plain", "--no-legend", "vpn-app-*.scope"],
+        capture_output=True, text=True, check=False)
+    attached = []
+    if scopes.returncode == 0:
+        for line in scopes.stdout.splitlines():
+            scope = line.split()[0] if line.split() else ""
+            if not scope:
+                continue
+            relation = subprocess.run(
+                ["systemctl", "--user", "show", scope, "-p", "Requires", "--value"],
+                capture_output=True, text=True, check=False)
+            if relation.returncode == 0 and unit in relation.stdout.split():
+                attached.append(scope)
+    if not attached and not capture_up:
+        state = "idle"
+    elif not backend_up:
+        state = "backend-outage"
+    elif capture_up and attached and listener_up and binding_matches and routing_matches and isolated:
+        state = "attached"
+    else:
+        state = "mismatch"
+    print(f"route: {name}")
+    print(f"backend: {'active' if backend_up else 'inactive'}")
+    print(f"listener: 127.0.0.1:{port if port is not None else 'missing'} ({'up' if listener_up else 'down'})")
+    print(f"routing: {'matched' if routing_matches else 'mismatch'}")
+    print(f"capture: {'active' if capture_up else 'inactive'}")
+    print(f"namespace: {pid if pid is not None else 'missing'} {inode or ''}".rstrip())
+    print(f"scopes: {len(attached)}")
+    print(f"state: {state}")
+    return {"attached": 0, "idle": 0, "backend-outage": 7, "mismatch": 8}[state]
+
+
 def main():
     command = sys.argv[1] if len(sys.argv) > 1 else "list"
     arguments = sys.argv[2:]
-    if command not in ("list", "status", "use", "default", "check") or len(arguments) != (1 if command in ("use", "check") else 0):
-        print("usage: vpn-egress [list|status|use NAME|default|check NAME]", file=sys.stderr)
+    if command not in ("list", "status", "use", "default", "check", "inspect") or len(arguments) != (1 if command in ("use", "check", "inspect") else 0):
+        print("usage: vpn-egress [list|status|use NAME|default|check NAME|inspect NAME]", file=sys.stderr)
         return 2
     runtime = os.environ.get("XDG_RUNTIME_DIR")
     if not runtime:
@@ -69,9 +148,11 @@ def main():
     except (OSError, ValueError, KeyError, TypeError, ControlError) as error:
         print(f"vpn-egress: {error if isinstance(error, ControlError) else 'cannot read private control file'}", file=sys.stderr)
         return 4
-    if command in ("use", "check") and arguments[0] not in names:
+    if command in ("use", "check", "inspect") and arguments[0] not in names:
         print("vpn-egress: unknown egress name", file=sys.stderr)
         return 3
+    if command == "inspect":
+        return inspect_capture(runtime, arguments[0])
     try:
         selector = api(control, "GET", "/proxies/vpn-default-selector")
         active = selector["now"]

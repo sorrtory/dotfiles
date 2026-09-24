@@ -40,3 +40,15 @@ a distinct namespace inode and the scope's capture dependency. A Home Manager
 activation while a named scope was live stopped that scope before service
 reload; the scope exited 143 and the capture stopped. Daily-host activation
 remains separately gated.
+
+Review follow-up added an incoming-inventory preflight before stopping scopes.
+A temporary invalid encrypted staging policy made activation exit 1 while a
+named payload and capture remained active; restoring the known-good generation
+succeeded. `vpn-egress inspect orange-vless` read back an attached scope,
+matching listener and capture port, namespace PID/inode and dependency. With
+the backend stopped it reported `backend-outage` and exit 7 while the same
+namespace and scope remained; restarting the backend restored service.
+Changing the private runtime config's named routing rule to a different
+outbound made `inspect` report `mismatch` and exit 8; restoring the config
+returned it to `attached`. The backend itself was not reconfigured by that
+readback fixture.
