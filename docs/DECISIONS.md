@@ -631,7 +631,13 @@ used only for sing-box so the rest of the environment keeps its release pin.
 The initial local proxy ran 1.13.19 with no TUN or host route/resolver changes.
 
 A VPNized application is installed by the module and reached only through the
-VPN command. `dotfiles.vpnizedApps.vesktop.enable` replaces Vesktop's command,
+VPN command. Each enabled app module contributes its ID to
+`dotfiles.vpnizedApps.registered`; the generated list is the registry used to
+validate policy pins, resolve app routes and reconcile running scopes. App
+modules still own their launch paths because commands, desktop entries and
+D-Bus activation vary by package. The encrypted policy only maps registered
+app IDs to named egresses, with an absent pin following the active default.
+`dotfiles.vpnizedApps.vesktop.enable` replaces Vesktop's command,
 desktop entry and `discord://` handler with a launcher. Electron hands a second
 launch, links included, to the instance already running, and a running process
 cannot move into another namespace, so the launcher refuses when Vesktop's main
