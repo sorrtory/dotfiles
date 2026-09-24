@@ -58,6 +58,39 @@ def unit_active(unit):
         return False
 
 
+def scope_namespace_matches(scope, inode, cgroup_root=Path("/sys/fs/cgroup")):
+    """Find a payload process in this scope's capture namespace."""
+    relation = subprocess.run(
+        ["systemctl", "--user", "show", scope, "-p", "ControlGroup", "--value"],
+        capture_output=True, text=True, check=False)
+    group = relation.stdout.strip()
+    if relation.returncode or not group.startswith("/"):
+        return False
+    cgroup = (cgroup_root / group.lstrip("/")).resolve()
+    if not cgroup.is_relative_to(cgroup_root):
+        return False
+    try:
+        pending = [int(pid) for pid in (cgroup / "cgroup.procs").read_text().split()]
+    except (OSError, ValueError):
+        return False
+    seen = set()
+    while pending:
+        pid = pending.pop()
+        if pid in seen:
+            continue
+        seen.add(pid)
+        try:
+            if os.readlink(f"/proc/{pid}/ns/net") == inode:
+                return True
+            # Electron can move a child to its own cgroup; it remains a
+            # descendant of the launcher while vpn-enter waits for it.
+            children = Path(f"/proc/{pid}/task/{pid}/children").read_text()
+            pending.extend(int(child) for child in children.split())
+        except (OSError, ValueError):
+            continue
+    return False
+
+
 def inspect_capture(runtime, name):
     encoded = name.encode().hex()
     unit = f"vpn-capture@{encoded}.service"
@@ -107,11 +140,14 @@ def inspect_capture(runtime, name):
                 capture_output=True, text=True, check=False)
             if relation.returncode == 0 and unit in relation.stdout.split():
                 attached.append(scope)
+    scope_matches = {scope: scope_namespace_matches(scope, inode)
+                     for scope in attached} if inode else {}
     if not attached and not capture_up:
         state = "idle"
     elif not backend_up:
         state = "backend-outage"
-    elif capture_up and attached and listener_up and binding_matches and routing_matches and isolated:
+    elif (capture_up and attached and listener_up and binding_matches and
+          routing_matches and isolated and all(scope_matches.values())):
         state = "attached"
     else:
         state = "mismatch"
@@ -122,6 +158,8 @@ def inspect_capture(runtime, name):
     print(f"capture: {'active' if capture_up else 'inactive'}")
     print(f"namespace: {pid if pid is not None else 'missing'} {inode or ''}".rstrip())
     print(f"scopes: {len(attached)}")
+    for scope, matches in sorted(scope_matches.items()):
+        print(f"scope: {scope} namespace: {'matched' if matches else 'mismatch'}")
     print(f"state: {state}")
     return {"attached": 0, "idle": 0, "backend-outage": 7, "mismatch": 8}[state]
 

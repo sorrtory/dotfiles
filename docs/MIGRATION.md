@@ -118,9 +118,9 @@ of migration.
 
 This section records the installed VPN command. The
 [selectable egress spec](../.scratch/vpn-egress/spec.md) and its ticket map
-describe the remaining concurrent-route rewrite. The module split and
-supervised whole-host TUN and native inventory were activated on the daily host
-on 2026-09-23; runtime selection and named captures are still planned.
+describe the remaining recovery and legacy-retirement work. The module split,
+supervised whole-host TUN, native inventory, runtime selection and named
+captures were activated on the daily host by 2026-09-24.
 
 Implemented on §13's shared backend. `vpn PROGRAM` runs one program as the
 invoking user in an on-demand, rootless capture namespace that forwards TCP and
@@ -149,9 +149,9 @@ used the TUN; DNS selected `vpn-host0`; LAN and link-local routes stayed on
 it restored both whole-host and captured traffic, and `vpn-down` restored the
 ordinary route and resolver. Network-change and suspend checks remain in the
 later recovery ticket.
-Concurrent named egresses and per-application pins are planned in the
-selectable-egress spec linked above. Other Electron applications remain
-follow-up work.
+Concurrent named egresses are active on the daily host. Per-application pins
+passed staging and await daily-host normal-use activation. Other Electron
+applications remain follow-up work.
 
 ### 8. MPV and Anime4K
 
