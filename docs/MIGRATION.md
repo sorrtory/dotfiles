@@ -149,9 +149,9 @@ used the TUN; DNS selected `vpn-host0`; LAN and link-local routes stayed on
 it restored both whole-host and captured traffic, and `vpn-down` restored the
 ordinary route and resolver. Network-change and suspend checks remain in the
 later recovery ticket.
-Concurrent named egresses are active on the daily host. Per-application pins
-passed staging and await daily-host normal-use activation. Other Electron
-applications remain follow-up work.
+Concurrent named egresses and Vesktop/AyuGram pins are active on the daily
+host. Both apps stayed on separate named routes through a temporary default
+switch and backend restart. Other Electron applications remain follow-up work.
 
 ### 8. MPV and Anime4K
 

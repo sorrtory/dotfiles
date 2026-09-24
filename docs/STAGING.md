@@ -331,8 +331,14 @@ restart restored `attached` and HTTPS 204 without changing their routes.
 A temporary encrypted pin change stopped only the affected app scope. A
 temporary encrypted inventory that removed VLESS stopped the AyuGram and
 one-off VLESS scopes while Vesktop's WireGuard scope stayed attached. The VM's
-intended ciphertext and generation were restored afterward. Actual graphical
-app launch and normal-use evidence on the daily host remain for ticket 09.
+intended ciphertext and generation were restored afterward. The separately
+authorized daily-host generation then launched actual AyuGram on VLESS and
+Vesktop on the host's `laptop` WireGuard peer. Both remained attached in
+distinct capture namespaces while the active default changed. Both carried
+HTTPS 204 and UDP DNS A answers, returned no AAAA answers, and blocked IPv6
+HTTPS. Backend stop reported `backend-outage` and blocked traffic; restart
+restored `attached` and HTTPS 204 on both routes. The default was restored to
+WireGuard. Ticket 09 records the exact generation and review result.
 
 ## What a VM cannot verify
 
