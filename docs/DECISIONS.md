@@ -545,8 +545,11 @@ shared VLESS outbound. The concurrent generation passed staging and was
 activated on the daily host after separate approval.
 The authenticated runtime `vpn-egress` selector is now active on the daily
 host; its token is generated in a private runtime file rather than in Nix.
-The one-off named capture launcher has passed staging and awaits a separate
-daily-host activation.
+The one-off named capture launcher passed staging and was activated on the
+daily host after operator authorization. Each named app scope binds to a
+route-specific capture; the last scope's exit stops that capture. A Home
+Manager switch validates incoming encrypted inventory before stopping live
+named scopes and rebinding listeners.
 
 Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
 

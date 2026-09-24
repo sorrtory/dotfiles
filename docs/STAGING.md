@@ -245,6 +245,12 @@ namespace and listener while attached, then `backend-outage` during backend
 stop without losing the namespace.
 Changing only the private runtime config's named outbound rule made `inspect`
 report `mismatch` and exit 8; restoring that file returned `attached`.
+The daily host then activated the ticket 08 generation with operator approval.
+Named VLESS HTTPS and UDP DNS A/no AAAA passed alongside the default capture.
+Under the whole-host TUN, named, default and whole-host HTTPS returned 204.
+Backend stop blocked all three paths while the captures stayed active;
+restart restored both app captures. `vpn-down` removed the TUN, restored the
+Wi-Fi route and DNS, and direct HTTPS returned 204.
 
 ## Mirroring the working tree
 

@@ -1,6 +1,6 @@
 # 08: Launch one-off programs through a named capture
 
-Status: claimed
+Status: resolved
 Blocked by: 06 (concurrent backend routes)
 
 **What to build:** `vpn --egress NAME -- PROGRAM` runs one command through a
@@ -52,3 +52,21 @@ Changing the private runtime config's named routing rule to a different
 outbound made `inspect` report `mismatch` and exit 8; restoring the config
 returned it to `attached`. The backend itself was not reconfigured by that
 readback fixture.
+
+## Daily-host cutover
+
+The operator authorized Home Manager switches and VPN commands, and the host
+activated clean generation
+`/nix/store/vvk4y5aqxyc17znc1w0q0zq2akpw4bd7-home-manager-generation`.
+The previous ticket 07 generation
+`/nix/store/3cji66l6aznpx96dcwlnqmh0gc1aghna-home-manager-generation`
+remains available for rollback. Named VLESS HTTPS, UDP DNS A/no AAAA,
+unpinned default capture HTTPS, and readback passed. With the whole-host TUN
+up, named, default and whole-host HTTPS all returned 204; public routing used
+`vpn-host0` and LAN kept Wi-Fi. With both captures active, backend stop made
+named, default and whole-host HTTPS fail closed; `inspect` reported
+`backend-outage`, and backend restart restored both captures. Authorized
+`vpn-down` removed the TUN, restored the Wi-Fi route and resolver, and direct
+HTTPS returned 204. The broad shell suite had 40 passes and two unrelated
+environment failures (Docker bootstrap privilege and missing `script(1)` for
+the vault test); all VPN tests passed.
