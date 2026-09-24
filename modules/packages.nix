@@ -153,7 +153,6 @@ in
     vim
 
     wget
-    wireguard-tools
     wl-clipboard
 
     # The X11 half of the same job. Both the tmux copy-mode chain and Yazi's

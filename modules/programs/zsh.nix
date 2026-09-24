@@ -153,10 +153,6 @@ in
           print -u2 'vpn-up: already up'
           return 1
         fi
-        if [[ -e /sys/class/net/${config.dotfiles.vpn.identity} ]]; then
-          print -u2 'vpn-up: legacy WireGuard interface is active; bring it down first'
-          return 1
-        fi
         mkdir -p -m 700 -- $runtime || return
         ${config.dotfiles.vpn.hostConfigCommand} $XDG_RUNTIME_DIR/sing-box/config.json $runtime/config.json || return
         sudo systemd-run --unit=vpn-host --collect --property=Type=exec \

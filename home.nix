@@ -68,9 +68,6 @@
   dotfiles.terminal = "wezterm";
 
   dotfiles.localProxy.enable = true;
-  # Change this to switch VPN profiles. The staging configuration in flake.nix
-  # overrides it, because the VM runs alongside this machine.
-  dotfiles.vpn.identity = "laptop";
   dotfiles.vpnizedApps.vesktop.enable = true;
   # AyuGram replaces the official Telegram client; calls need UDP, so it is
   # a VPNized app rather than a plain proxy wrapper. Login and session state

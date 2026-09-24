@@ -140,9 +140,21 @@ _Avoid_: Whole-host VPN, proxy setting, root command launcher
 An application the user environment installs so that every ordinary way of starting it goes through the VPN command.
 _Avoid_: Proxied app, sandboxed app
 
-**VPN identity**:
-The one tunnel peer a machine is allowed to use, never used by another machine or client at the same time.
-_Avoid_: Profile, shared key
+**WireGuard identity**:
+A peer assigned exclusively to one machine. Another machine or client must not use that peer at the same time.
+_Avoid_: VPN egress, shared key
+
+**VPN egress**:
+A named route to a provider available to a machine. A machine can have several egresses, while each WireGuard identity remains exclusive to its owner.
+_Avoid_: WireGuard identity, VPN command
+
+**Active default egress**:
+The currently selected route for VPN traffic without an explicit name or application pin. A temporary selection can differ from the machine's declarative default.
+_Avoid_: Only VPN route, application pin
+
+**Pinned application egress**:
+The named route assigned to a VPNized application independently of the active default.
+_Avoid_: Active default egress, whole-host route
 
 **Local proxy**:
 The user environment's tunnel entry point for applications that explicitly send connections through their proxy settings.

@@ -117,11 +117,10 @@
         in
         {
           z = mkHome [ ];
-          # The staging VM runs at the same time as the host, so it must not
-          # share the host's VPN identity. Nothing else differs.
-          staging = mkHome [
-            { dotfiles.vpn.identity = nixpkgs.lib.mkForce "desktop-ubuntu"; }
-          ];
+          # Keep the staging output name for bootstrap compatibility. The
+          # encrypted hostname policy, rather than a module override, assigns
+          # the VM its exclusive WireGuard peer.
+          staging = mkHome [ ];
         };
     };
 }

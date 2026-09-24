@@ -11,20 +11,21 @@ Fedora and Arch. Migration of the remaining legacy configuration is still in
 progress — see [docs/MIGRATION.md](docs/MIGRATION.md) for what has moved and
 what has not. The current profile targets user `z` on `x86_64-linux`.
 
-The [VPN egress spec](.scratch/vpn-egress/spec.md) describes the planned
-concurrent design. Installation instructions below describe the current
-one-identity configuration until that migration is activated.
+The installed selectable VPN is described in
+[the decision log](docs/DECISIONS.md#scripts-and-privileged-networking). The
+encrypted inventory supplies this machine's WireGuard peer and shared routes;
+encrypted hostname policy selects the default and installed-application pins.
 
 ## Install on a fresh machine
 
-Select that machine's exclusive VPN identity before activation: set
-`dotfiles.vpn.identity` in `home.nix`. Never run two machines or clients with
-the same identity at once. Existing ciphertext names are listed in the
-[proxy module](modules/programs/sing-box/default.nix). A staging VM runs
-alongside the main machine, so it uses the `staging` configuration, which
-differs only in identity: start its bootstrap with
-`DOTFILES_HOME_CONFIGURATION=staging`. The choice is remembered by later
-`home-manager` phase runs.
+Before activation, the encrypted VPN policy must contain the machine's
+hostname and assign it its own WireGuard peer from the encrypted inventory.
+Never run two machines or clients with the same peer at once. The staging VM
+runs alongside the main machine with hostname `fedora-staging`, which has a
+separate peer. It can use the `staging` Home Manager output name for bootstrap
+compatibility: start with `DOTFILES_HOME_CONFIGURATION=staging`. The selected
+output name is remembered by later `home-manager` phase runs; the hostname
+policy, rather than that output name, selects the peer.
 
 ```bash
 git clone https://github.com/sorrtory/dotfiles.git ~/Documents/dotfiles
@@ -134,18 +135,28 @@ The downloaders do have one, so they are not wrapped. `$PROXY` holds the HTTP
 listener's address, and the `download` command translates it into whichever
 spelling its backend uses. See [Downloading and converting](#downloading-and-converting).
 
-Use `systemctl --user status sing-box` to inspect the service and
-`systemctl --user restart sing-box` after changing its encrypted profile.
-`vpn-up` and `vpn-down` bring this machine's identity up and down as a
-whole-host WireGuard interface. sing-box uses the same identity, so while the
-interface is up it restarts without it and only passes traffic into the
-interface: Firefox, the proxy wrappers and `vpn` programs keep working through
-the whole-host tunnel, and lose networking rather than going direct if it
-disappears. `vpn-down` gives the identity back to sing-box.
+Use `systemctl --user status sing-box` to inspect the backend. The encrypted
+inventory and hostname policy select which routes this machine may use. Run
+`vpn-egress list` to see them, `vpn-egress status` to read the active and
+declarative defaults, `vpn-egress use NAME` to select a temporary default, and
+`vpn-egress default` to restore the declarative one. `vpn-egress check NAME`
+tests a named route through the backend. The local proxy, plain `vpn` command
+and whole-host TUN follow the active default. Installed-app pins and
+`vpn --egress NAME -- PROGRAM` stay on their named routes when it changes.
+
+`vpn-up` explicitly starts a supervised, credential-free whole-host TUN using
+the same user backend; `vpn-down` stops it and restores ordinary host routing.
+The backend keeps its own credentials, so this does not start or hand over a
+second WireGuard client. These commands need sudo at runtime; Home Manager
+activation does not. While the TUN is active, public IPv4 and host DNS follow
+the selected default. A failed selected route blocks that traffic instead of
+falling back to the physical connection. LAN and link-local routes remain on
+the physical interface. The default routes are currently IPv4-only.
 
 `vpn PROGRAM [ARGUMENT...]` runs one program with all of its traffic, UDP and
 DNS included, inside a namespace that reaches the network only through this
-backend. It loses networking rather than going direct when the tunnel is down.
+backend. Its capture works whether the whole-host TUN is up or down; a failed
+backend or selected route blocks its traffic rather than going direct.
 Electron and Chromium apps other than Vesktop are not supported yet.
 
 Vesktop and AyuGram are installed this way: each one's command, menu entry

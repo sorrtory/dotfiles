@@ -34,32 +34,5 @@
       format = "binary";
       mode = "0600";
     };
-
-    # Only this machine's WireGuard identity is decrypted here. All six device
-    # configurations are kept as ciphertext so any machine can recover its own,
-    # but materializing the phone's and the desktops' keys on a laptop would
-    # let one compromised machine impersonate every device on the network.
-    #
-    # Named after the file they come from, so a path says what it is without a
-    # lookup. wg-quick takes the interface name from the basename, so these
-    # bring up e.g. `laptop` and `extra` rather than wg0 and wg1. A generic name
-    # would only pay off once something shared between machines refers to an
-    # interface by name, and nothing does; when something does, renaming the
-    # one that needs it is a line here.
-    #
-    # The identity's file is this machine's own tunnel, for the whole-host
-    # vpn-up function; sing-box decrypts the same identity separately. extra
-    # is shared across machines by legacy use, never by the sing-box backend.
-    "wireguard/${config.dotfiles.vpn.identity}.conf" = {
-      sopsFile = ../secrets/wireguard + "/${config.dotfiles.vpn.identity}.conf";
-      format = "binary";
-      mode = "0600";
-    };
-
-    "wireguard/extra.conf" = {
-      sopsFile = ../secrets/wireguard/extra.conf;
-      format = "binary";
-      mode = "0600";
-    };
   };
 }

@@ -91,13 +91,16 @@ Let Home Manager own `.zshrc`. Preserve selected aliases, history, environment v
 
 ### 5. WireGuard
 
-Recreate selected WireGuard configurations as whole-file SOPS ciphertext,
-decrypted to a user-owned path. There is no privileged deployment step and
-nothing for the bootstrap flow to do: `wg-quick` accepts a config file path, so
-`/etc/wireguard/` is unnecessary and the configuration never lands root-owned on
-disk. Bringing a whole-host interface up needs privilege and stays an explicit
-runtime action; per-application tunneling needs no host interface and belongs to
-§7. See `docs/DECISIONS.md`.
+The original slice recreated per-device `wg-quick` profiles as whole-file
+SOPS ciphertext with user-owned decrypted paths. The installed selectable VPN
+now reads native WireGuard endpoints from encrypted egress inventory instead.
+Its policy assigns each peer to one hostname; a machine loads only its own peer
+and shared non-WireGuard routes. No profile is deployed under `/etc/wireguard/`.
+The older per-device ciphertext was removed from this repository after the
+replacement passed normal-use checks; Git history retains the migration
+record. The whole-host TUN is a separate, credential-free runtime action;
+per-application capture needs no host interface. See
+`docs/DECISIONS.md`.
 
 ### 6. SSH keys and configuration
 
@@ -117,10 +120,10 @@ of migration.
 ### 7. VPN command
 
 This section records the installed VPN command. The
-[selectable egress spec](../.scratch/vpn-egress/spec.md) and its ticket map
-describe the remaining recovery and legacy-retirement work. The module split,
-supervised whole-host TUN, native inventory, runtime selection and named
-captures were activated on the daily host by 2026-09-24.
+[decision log](DECISIONS.md#scripts-and-privileged-networking) describes the
+current design; legacy retirement remains the final VPN migration step.
+The module split, supervised whole-host TUN, native inventory, runtime
+selection and named captures were activated on the daily host by 2026-09-24.
 
 Implemented on §13's shared backend. `vpn PROGRAM` runs one program as the
 invoking user in an on-demand, rootless capture namespace that forwards TCP and
@@ -130,11 +133,13 @@ entry and `discord://` handler always go through the VPN. `docs/DECISIONS.md`
 records the design and [VESKTOP-APPARMOR.md](VESKTOP-APPARMOR.md) the Ubuntu
 policy it needs.
 
-Verified on the Ubuntu staging VM, bootstrapped through every phase: tunneled launches
-from all three entry points, a voice call, private DNS, IPv6 through the tunnel,
-refusal of an untunneled Vesktop, backend restart, capture failure, relaunch
-and a dropped link. A change to a different network and a real suspend-to-RAM
-are not yet verified. IPv6 is now off by default
+Verified on the historical Ubuntu staging VM, bootstrapped through every
+phase: tunneled launches from all three entry points, a voice call, private
+DNS, IPv6 through the tunnel, refusal of an untunneled Vesktop, backend
+restart, capture failure, relaunch and a dropped link. The current Fedora
+daily host later passed real suspend and physical Wi-Fi-change checks with and
+without the whole-host TUN; the disposable VM cannot establish those facts.
+IPv6 is now off by default
 (`dotfiles.localProxy.ipv6.enable`): on the laptop every IPv6 connection
 through the server timed out, stalling programs for minutes before fallback.
 
@@ -147,8 +152,12 @@ started `vpn-up` and stopped it with `vpn-down`. Public HTTPS and UDP STUN
 used the TUN; DNS selected `vpn-host0`; LAN and link-local routes stayed on
 `wlp1s0`; IPv6 was rejected. Stopping the backend blocked HTTPS, restarting
 it restored both whole-host and captured traffic, and `vpn-down` restored the
-ordinary route and resolver. Network-change and suspend checks remain in the
-later recovery ticket.
+ordinary route and resolver. The [daily-host recovery record](STAGING.md#daily-host-vpn-recovery-2026-09-24)
+records the later network-change and suspend checks. On one alternate network,
+WireGuard remained unreachable while VLESS worked, then recovered without a
+restart on returning to the original network. With the TUN active, the failed
+WireGuard default did not fall back to the physical route; selecting VLESS
+restored whole-host HTTPS through the same TUN.
 Concurrent named egresses and Vesktop/AyuGram pins are active on the daily
 host. Both apps stayed on separate named routes through a temporary default
 switch and backend restart. Other Electron applications remain follow-up work.
@@ -303,17 +312,17 @@ applications opt in through the proxy environment variables or their own
 settings. UDP-dependent applications use §7's VPN command into the same
 backend.
 
-Run it as a `systemd` user service with no privilege, tunneling through a
-userspace WireGuard endpoint so no kernel module, TUN device, routing change,
-or resolver change is involved. Expose a `mixed` inbound on
+Run it as a `systemd` user service with no privilege, loading this host's
+assigned WireGuard peer and shared egresses from encrypted native inventory.
+The backend itself creates no host TUN, route or resolver change. Expose a
+`mixed` inbound on
 `127.0.0.1:1080` and an `http` inbound on `127.0.0.1:3128`, which are exactly
 the endpoints the existing `proxy-on` shell alias already exports.
 
-The WireGuard migration already supplies whole-file SOPS ciphertext. Select
-one exclusive peer identity per machine, generate the sing-box configuration
-on tmpfs at startup, and use it for both entry points. The initial local proxy
-does not require TUN support or a sing-box upgrade; §7's namespace capture
-does. The explicit `user-linger` phase enables startup before login.
+The original local proxy used one exclusive peer from a decrypted `wg-quick`
+profile. The installed compiler now reads the encrypted inventory and hostname
+policy, then generates the backend configuration on tmpfs at startup. The
+explicit `user-linger` phase enables startup before login.
 
 The local proxy service is implemented and verified on the Ubuntu staging VM, including
 restart, cleanup and startup before login after reboot. Namespace capture and
@@ -359,7 +368,8 @@ Mine the legacy manager, link script, installer, package list, secrets-fetch log
 The intended flow is:
 
 1. clone the public dotfiles repository
-2. set this machine's `dotfiles.vpn.identity`, then run `scripts/bootstrap.sh install`
+2. ensure the encrypted VPN policy has this machine's hostname and assigned
+   WireGuard peer, then run `scripts/bootstrap.sh install`
 3. let `01-host-deps` establish bootstrap prerequisites and `02-nix` install Nix
 4. authenticate GitHub when `03-secret-recovery` invokes the flake recovery app and clones the private recovery repository
 5. enter the main KeePassXC vault password so the phase can restore and verify the private age identity

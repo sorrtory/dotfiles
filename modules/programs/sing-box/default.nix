@@ -75,17 +75,6 @@ in
     };
   };
 
-  # No default: a silently shared identity makes the server's peer endpoint
-  # roam between machines, so every configuration must name its own.
-  options.dotfiles.vpn.identity = lib.mkOption {
-    type = lib.types.enum [ "laptop" "desktop-ubuntu" "desktop-old" "desktop-win" "phone" ];
-    description = ''
-      This machine's exclusive VPN identity: the encrypted profile under
-      secrets/wireguard/. Never run another client with the same identity
-      concurrently.
-    '';
-  };
-
   options.dotfiles.vpn.egressControlPackage = lib.mkOption {
     type = lib.types.package;
     readOnly = true;

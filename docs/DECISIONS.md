@@ -338,13 +338,28 @@ A migrated key that carries its own passphrase still needs that passphrase on a 
 
 The host-identifying half of `~/.ssh/config` is ciphertext for a different reason than the keys are: it is not a credential, but this repository is public, and host names, login names and ports together are a target list that published history would make permanent. The operator-independent half stays readable in `configs/ssh/config` and pulls the rest in through `Include`.
 
-WireGuard configurations are whole-file SOPS ciphertext decrypted to a user-owned path, with no privileged deployment step. The legacy `wg-quick` path accepted that user-owned config directly, so `/etc/wireguard/` was unnecessary. Its ciphertext remains during migration until the replacement is proven under normal use.
+The native VPN inventory and hostname policy are whole-file SOPS ciphertext.
+The inventory contains the daily-host and staging WireGuard peers, so either
+machine decrypts both and compromise of either exposes both. This accepts the
+shared-inventory exposure required for selectable egresses; it does not include
+phone or other device identities. Encrypted policy assigns each WireGuard peer
+to exactly one hostname, and the runtime compiler excludes peers owned by
+other hosts while loading shared routes such as VLESS. A peer is never used by
+both machines at once. Adding identities to the inventory increases this blast
+radius and requires an explicit migration decision.
 
-The legacy WireGuard files are per-device identities. Each configuration names its legacy identity explicitly with `dotfiles.vpn.identity`, which has no default; the flake's `staging` configuration differs from `z` in that choice, and the home-manager phase remembers which configuration a machine activated. The legacy secondary `extra` configuration remains decrypted during migration. The native egress inventory changes the credential boundary deliberately: its one encrypted file contains the daily-host and staging peers, so either machine decrypts both and compromise of either exposes both. This accepts the shared-inventory exposure required for selectable egresses; it does not include the phone or other device identities. Encrypted policy assigns each WireGuard peer to exactly one hostname, and the runtime compiler excludes peers owned by other hosts while loading shared outbounds such as VLESS. A peer is never used by both machines at once. Adding identities to the inventory increases this blast radius and requires an explicit migration decision.
+The older per-device WireGuard ciphertext, its `wg-quick` declarations and
+profile converter were removed from this repository after the replacement
+passed normal-use checks. Git history retains the migration record. The
+former whole-host handover between `wg-quick` and sing-box is no longer
+installed; the user backend keeps its assigned peer while the separate root
+TUN runs.
 
-Secrets are named after the file they come from, so `wg-quick` takes the interface name from the basename and brings up the identity's name, such as `laptop`, and `extra`. A generic `wg0` would make the interface name identical across machines, which pays off only once something shared refers to an interface by name; nothing does, and renaming the one that needs it is a line of configuration when something eventually does. Until then the generic name costs a lookup every time someone reads a path and has to ask which device it means.
-
-Starting the whole-host TUN needs `CAP_NET_ADMIN`. It is an explicit runtime action rather than machine setup; bootstrap and normal Home Manager activation do not start it. The root process is supervised by host systemd and reads only the credential-free generated config. `wireguard-tools` remains in the user package set for the retained legacy path until that path is retired.
+Starting the whole-host TUN needs `CAP_NET_ADMIN`. It is an explicit runtime
+action rather than machine setup; bootstrap and normal Home Manager activation
+do not start it. The root process is supervised by host systemd and reads only
+the credential-free generated config. The user profile no longer installs
+`wireguard-tools` for the retired handover.
 
 Normal Home Manager activation does not create host network interfaces. It owns the unprivileged sing-box user service, whose userspace WireGuard endpoint needs no host interface. The application VPN command creates a TUN inside a rootless network namespace. The installed whole-host command explicitly starts a root supervised TUN at runtime. User namespaces widen what an unprivileged process can reach in the kernel, which is why Ubuntu restricts them; the application VPN decisions below record how that is handled.
 
@@ -530,20 +545,21 @@ ever read when nothing else has set the root.
 
 ## Scripts and privileged networking
 
-The VPN decisions in this section describe the installed one-identity
-backend and application capture. The [selectable egress spec](../.scratch/vpn-egress/spec.md)
-defines the remaining concurrent-route migration. The app module split and
-whole-host TUN passed Fedora staging and were activated on the daily host on
-2026-09-23 with operator approval. The backend binds upstream sockets to the
-detected physical interface, and the root TUN forwards only to its loopback
-SOCKS listener. Daily-host proxy, application capture and one complete whole-host TUN cycle
-passed, including backend loss and recovery. The encrypted legacy profile
-stays available until network-change and suspend checks precede retirement.
-The backend credentials now come from whole-file encrypted native inventory
-and hostname policy, activated on the daily host after separate approval. Its
-installed compiler loads only that host's assigned WireGuard peer plus the
-shared VLESS outbound. The concurrent generation passed staging and was
-activated on the daily host after separate approval.
+The installed VPN uses one backend with concurrent named routes and a manually
+selected default. The app module split and whole-host TUN
+passed Fedora staging and were activated on the daily host on 2026-09-23 with
+operator approval. The backend binds upstream sockets to the detected physical
+interface, and the root TUN forwards only to its loopback SOCKS listener.
+Backend credentials come from whole-file encrypted native inventory and
+hostname policy. Its compiler loads only that host's assigned WireGuard peer
+plus shared VLESS. The concurrent generation passed staging and was activated
+on the daily host after separate approval. Real suspend and Wi-Fi-change checks
+with and without the TUN are recorded in the
+[daily-host recovery record](STAGING.md#daily-host-vpn-recovery-2026-09-24). On an
+alternate network, WireGuard stayed unreachable while VLESS worked; returning
+to the original network restored WireGuard without a restart. The TUN kept
+failed selected traffic off the physical route. The evidence supports a
+network-specific WireGuard reachability problem, not a client recovery defect.
 The authenticated runtime `vpn-egress` selector is now active on the daily
 host; its token is generated in a private runtime file rather than in Nix.
 The one-off named capture launcher passed staging and was activated on the
@@ -628,10 +644,9 @@ VS Code and Obsidian are not VPNized applications. They need no UDP, so each
 uses the local HTTP proxy through its own per-process setting, `http.proxy` or
 `--proxy-server`, never a session-wide proxy variable.
 
-Each machine uses its own WireGuard peer identity. Never share `extra` between
-simultaneously connected machines, or run another `wg-quick` client concurrently
-with sing-box using the same identity: independent clients make the server's
-peer endpoint roam between them. The staged whole-host TUN forwards through
+Each machine uses its own WireGuard peer identity. Never run another client
+with the same peer concurrently: independent clients make the server's peer
+endpoint roam between them. The installed whole-host TUN forwards through
 sing-box and does not start another WireGuard client.
 
 Generate the proxy configuration at service start from whole-file SOPS

@@ -358,6 +358,33 @@ selected under `vpn-up`, public HTTPS 204 and UDP STUN passed over
 restored the Wi-Fi route, resolver and direct HTTPS 204. The default selector
 was returned to the laptop WireGuard peer.
 
+## Daily-host VPN recovery, 2026-09-24
+
+Real suspend/resume was observed on the daily host with Vesktop and AyuGram
+running in their pinned capture scopes, once with the whole-host TUN down and
+once with it up. With the TUN down, host HTTPS and captured DNS had brief
+post-resume failures and recovered without restarting a service; the app scopes
+kept their identities. With the TUN up, the first post-resume samples already
+returned host HTTPS 204 and pinned-capture DNS answers. Public routing and DNS
+remained on `vpn-host0` until the planned `vpn-down` restored Wi-Fi routing.
+
+Two observed physical Wi-Fi changes followed, with long-lived probes in the
+Vesktop and AyuGram pinned scopes. On the alternate network, the WireGuard
+pin did not carry HTTPS during roughly 4.5 minutes of observation; VLESS
+returned HTTPS 204 after one transient failure. Returning to the original
+network restored WireGuard by the first two-second probe without a backend or
+capture restart. With the TUN up, the selected WireGuard default kept public
+traffic on `vpn-host0` and timed out on that alternate network instead of
+falling back to Wi-Fi. Temporarily selecting VLESS restored host HTTPS through
+the same TUN. Returning to the original network restored both pinned routes;
+the declarative default and then ordinary Wi-Fi routing were restored. Both
+captured DNS probes returned A answers and no AAAA answers across the changes.
+These app-key probes exercised route and scope survival; the GUI binaries were
+used in the earlier suspend checks. Sampling bounds recovery to the first
+successful observation, not an exact link-up instant. The result supports a
+network-specific WireGuard reachability problem but does not establish DPI as
+its cause. A VM pause cannot reproduce a physical Wi-Fi change.
+
 ## What a VM cannot verify
 
 The guest has no usable GPU, so anything reaching a real driver — the `nix-gpu`
@@ -369,8 +396,10 @@ Settings a session only reads at login still need a real re-login, not a
 reconnect: `environment.d`, newly installed GNOME extensions and XKB options.
 This VM can give one, since its session is GNOME on Wayland like the host's.
 
-A VM running alongside the host must use the `staging` configuration and its own
-VPN identity. Never run the same identity in two places at once.
+A VM running alongside the host must use its own hostname in the encrypted VPN
+policy and its own WireGuard peer. The `staging` Home Manager output name remains
+available for bootstrap compatibility, while hostname policy selects the peer.
+Never run the same peer in two places at once.
 
 ## Historical Ubuntu verification
 
