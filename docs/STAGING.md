@@ -318,6 +318,22 @@ plain SSH connection. Launch a graphical program into the session with
 `systemd-run --user --unit=<name> --setenv=WAYLAND_DISPLAY=wayland-0`: started
 with `&` from an SSH command it dies with the connection.
 
+## Installed VPN app pins, 2026-09-24
+
+The encrypted policy now pins Vesktop to the VM's `desktop-ubuntu` WireGuard
+peer and AyuGram to `orange-vless`; the host has its own `laptop` peer. On the
+Fedora 44 VM, simultaneous app-key scopes attached to distinct named capture
+namespaces. Changing the active default kept both pins and their HTTPS 204
+responses. Each capture returned UDP DNS A answers, no AAAA answers, and
+blocked IPv6 HTTPS. Backend loss reported `backend-outage` for both captures;
+restart restored `attached` and HTTPS 204 without changing their routes.
+
+A temporary encrypted pin change stopped only the affected app scope. A
+temporary encrypted inventory that removed VLESS stopped the AyuGram and
+one-off VLESS scopes while Vesktop's WireGuard scope stayed attached. The VM's
+intended ciphertext and generation were restored afterward. Actual graphical
+app launch and normal-use evidence on the daily host remain for ticket 09.
+
 ## What a VM cannot verify
 
 The guest has no usable GPU, so anything reaching a real driver — the `nix-gpu`

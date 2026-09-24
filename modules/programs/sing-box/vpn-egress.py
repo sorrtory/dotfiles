@@ -129,8 +129,8 @@ def inspect_capture(runtime, name):
 def main():
     command = sys.argv[1] if len(sys.argv) > 1 else "list"
     arguments = sys.argv[2:]
-    if command not in ("list", "status", "use", "default", "check", "inspect") or len(arguments) != (1 if command in ("use", "check", "inspect") else 0):
-        print("usage: vpn-egress [list|status|use NAME|default|check NAME|inspect NAME]", file=sys.stderr)
+    if command not in ("list", "status", "use", "default", "check", "inspect", "resolve") or len(arguments) != (1 if command in ("use", "check", "inspect", "resolve") else 0):
+        print("usage: vpn-egress [list|status|use NAME|default|check NAME|inspect NAME|resolve APP]", file=sys.stderr)
         return 2
     runtime = os.environ.get("XDG_RUNTIME_DIR")
     if not runtime:
@@ -143,11 +143,23 @@ def main():
         control = json.loads(path.read_text())
         names = control["names"]
         default = control["declarative_default"]
-        if not isinstance(names, list) or default not in names:
+        if (not isinstance(names, list) or default not in names or
+                not isinstance(control.get("pins", {}), dict)):
             raise ControlError("invalid control metadata")
     except (OSError, ValueError, KeyError, TypeError, ControlError) as error:
         print(f"vpn-egress: {error if isinstance(error, ControlError) else 'cannot read private control file'}", file=sys.stderr)
         return 4
+    if command == "resolve":
+        app = arguments[0]
+        if app not in ("vesktop", "ayugram"):
+            print("vpn-egress: unknown app key", file=sys.stderr)
+            return 3
+        pin = control.get("pins", {}).get(app)
+        if pin is not None and pin not in names:
+            print("vpn-egress: invalid installed-app pin", file=sys.stderr)
+            return 4
+        print("named:" + pin if pin is not None else "default")
+        return 0
     if command in ("use", "check", "inspect") and arguments[0] not in names:
         print("vpn-egress: unknown egress name", file=sys.stderr)
         return 3

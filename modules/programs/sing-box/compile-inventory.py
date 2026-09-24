@@ -140,7 +140,11 @@ def compile_config(inventory, policy, concurrent=False):
     owners = object_at(policy.get("wireguard_owners", {}), "WireGuard owners")
     if any(not isinstance(value, str) or value not in entries for value in defaults.values()):
         raise InvalidConfig("unknown declarative default")
-    if any(not isinstance(value, str) or value not in entries for value in pins.values()):
+    if any(host not in defaults or not isinstance(apps, dict) or
+           any(app not in ("vesktop", "ayugram") or
+               not isinstance(route, str) or route not in entries
+               for app, route in apps.items())
+           for host, apps in pins.items()):
         raise InvalidConfig("unknown installed-app pin")
     if set(ipv6) != set(entries) or any(type(value) is not bool for value in ipv6.values()):
         raise InvalidConfig("invalid IPv6 capability map")
@@ -150,6 +154,9 @@ def compile_config(inventory, policy, concurrent=False):
                    any(not isinstance(host, str) or host not in defaults
                        for host in owners.values())):
         raise InvalidConfig("invalid WireGuard ownership map")
+    if any(route in owners and owners[route] != host
+           for host, apps in pins.items() for route in apps.values()):
+        raise InvalidConfig("installed-app pin uses another host's WireGuard peer")
     hostname = socket.gethostname()
     selected = defaults.get(hostname)
     if selected is None:
@@ -189,7 +196,7 @@ def compile_config(inventory, policy, concurrent=False):
         active = {tag for tag in entries if tag not in owners or owners[tag] == hostname}
         if selected not in active:
             raise InvalidConfig("hostname default is unavailable")
-        if any(tag not in active for tag in pins.values()):
+        if any(tag not in active for tag in pins.get(hostname, {}).values()):
             raise InvalidConfig("installed-app pin is unavailable on this host")
         active_servers = [server for server in servers if server["detour"] in active]
         missing_dns = active - {server["detour"] for server in active_servers}
@@ -335,6 +342,7 @@ def main():
                            "secret": config["experimental"]["clash_api"]["secret"],
                            "declarative_default": policy["defaults"][socket.gethostname()],
                            "names": config["outbounds"][-1]["outbounds"],
+                           "pins": policy["pins"].get(socket.gethostname(), {}),
                            "notes": operator_notes(inventory_text)}, stream)
                 stream.write("\n")
             os.replace(control_temporary, control)

@@ -4,7 +4,17 @@
 set -euo pipefail
 
 proc=${VPN_PROC_ROOT:-/proc}
-pid_file=${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is required}/vpn-capture/namespace.pid
+route_args=(--app ayugram)
+if [[ ${1-} == --egress ]]; then
+  [[ $# -ge 3 && -n $2 && $3 == -- ]] || {
+    echo 'ayugram: usage: AyuGram --egress NAME -- [ARGUMENT...]' >&2
+    exit 2
+  }
+  route_args+=(--egress "$2")
+  shift 3
+fi
+capture_dir=$("$VPN_COMMAND" --capture-path "${route_args[@]}") || exit 1
+pid_file=$capture_dir/namespace.pid
 holder=
 if [[ -r $pid_file ]]; then
   read -r holder < "$pid_file" || true
@@ -28,4 +38,4 @@ for dir in "$proc"/[0-9]*; do
   fi
 done
 
-exec "$VPN_COMMAND" -- "$VPN_AYUGRAM" "$@"
+exec "$VPN_COMMAND" "${route_args[@]}" -- "$VPN_AYUGRAM" "$@"

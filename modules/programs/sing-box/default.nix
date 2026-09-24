@@ -86,6 +86,13 @@ in
     '';
   };
 
+  options.dotfiles.vpn.egressControlPackage = lib.mkOption {
+    type = lib.types.package;
+    readOnly = true;
+    default = egressControl;
+    description = "Runtime selector and app-pin resolver for VPN launchers.";
+  };
+
   config = lib.mkIf cfg.enable {
     assertions = [{
       assertion = !cfg.ipv6.enable;

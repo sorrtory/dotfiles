@@ -28,6 +28,7 @@ let
       VPN_OD = lib.getExe' pkgs.coreutils "od";
       VPN_TR = lib.getExe' pkgs.coreutils "tr";
       VPN_JQ = lib.getExe pkgs.jq;
+      VPN_EGRESS_COMMAND = lib.getExe config.dotfiles.vpn.egressControlPackage;
     };
     text = builtins.readFile ../../../scripts/bin/vpn.sh;
   };
@@ -57,8 +58,8 @@ in
   config = lib.mkIf proxy.enable {
       home.packages = [ vpn ];
 
-      # Until policy reconciliation can compare route definitions, stop every
-      # live named scope before sing-box can rebind a listener on HM switch.
+      # Validate incoming ciphertext before changing live scopes, then stop
+      # only scopes affected by a pin or named route change.
       home.activation.stopNamedVpnScopes = lib.hm.dag.entryBefore [ "onFilesChange" ] ''
         # Validate the incoming encrypted inventory before touching live
         # scopes. sops-nix rotates runtime secrets later in activation, so
@@ -77,22 +78,24 @@ in
           PATH=${lib.makeBinPath [ proxy.package ]}:$PATH \
             ${lib.getExe pkgs.python3} ${../sing-box/compile-inventory.py} \
               --concurrent --bindings "$validation/vpn-listeners.json" \
-              "$validation/egresses" "$validation/policy" "$validation/config.json" || exit 1
-        ) || { echo 'VPN inventory validation failed; live named scopes kept' >&2; exit 1; }
-        while read -r unit _; do
-          [ -n "$unit" ] || continue
-          requires=$(${lib.getExe' pkgs.systemd "systemctl"} --user show "$unit" -p Requires --value 2>/dev/null || true)
-          case "$requires" in
-            *vpn-capture@*)
-              echo "Stopping named VPN scope $unit before route update"
-              ${lib.getExe' pkgs.systemd "systemctl"} --user stop "$unit"
-              ;;
-          esac
-        done < <(${lib.getExe' pkgs.systemd "systemctl"} --user list-units --all --type=scope --plain --no-legend 'vpn-app-*.scope' 2>/dev/null || true)
-        while read -r unit _; do
-          [ -n "$unit" ] || continue
-          ${lib.getExe' pkgs.systemd "systemctl"} --user stop "$unit"
-        done < <(${lib.getExe' pkgs.systemd "systemctl"} --user list-units --all --type=service --plain --no-legend 'vpn-capture@*.service' 2>/dev/null || true)
+              "$validation/egresses" "$validation/policy" "$validation/config.json" || {
+                echo 'VPN inventory validation failed; live scopes kept' >&2
+                exit 1
+              }
+          ${lib.getExe pkgs.python3} ${./reconcile.py} \
+            "$XDG_RUNTIME_DIR/sing-box/config.json" "$validation/config.json" \
+            "$XDG_RUNTIME_DIR/vpn-control.json" "$validation/vpn-control.json" || {
+              echo 'VPN scope reconciliation failed; service update held' >&2
+              exit 1
+            }
+        ) || exit 1
+      '';
+
+      # A ciphertext-only policy edit need not change the sing-box unit file,
+      # so Home Manager's service reload alone can leave the old selection
+      # running. sops-nix has materialized the new files at this point.
+      home.activation.reloadVpnInventory = lib.hm.dag.entryAfter [ "sops-nix" ] ''
+        ${lib.getExe' pkgs.systemd "systemctl"} --user restart sing-box.service
       '';
 
       # Capture creates its rootless network namespace with this binary.

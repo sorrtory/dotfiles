@@ -7,6 +7,10 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 cat > "$root/vpn" <<'EOF'
 #!/usr/bin/env bash
+if [[ ${1-} == --capture-path ]]; then
+  printf '%s/vpn-capture\n' "$XDG_RUNTIME_DIR"
+  exit 0
+fi
 printf '%s\n' "$@" > "$TEST_ROOT/launched"
 EOF
 chmod +x "$root/vpn"
@@ -32,7 +36,7 @@ launch() {
 
 process 7 ns-capture sing-box run
 launch 'discord://-/channels/1' || fail 'cold start refused'
-[[ $(<"$root/launched") == $'--\n/raw/vesktop\ndiscord://-/channels/1' ]] ||
+[[ $(<"$root/launched") == $'--app\nvesktop\n--\n/raw/vesktop\ndiscord://-/channels/1' ]] ||
   fail 'launcher did not hand the raw package and arguments to vpn'
 
 process 20 ns-session /nix/store/other-app/bin/electron /nix/store/other/resources/app.asar

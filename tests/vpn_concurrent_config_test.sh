@@ -151,6 +151,22 @@ mv "$root/vless-default" "$root/policy"
 compile
 jq -e '.outbounds[-1].default == "shared-route" and [.endpoints[].tag] == ["host-wireguard"]' \
   "$root/config" >/dev/null || fail 'declarative default changed WireGuard ownership'
+jq --arg host "$(hostname)" '.pins = {($host): {"vesktop": "shared-route", "ayugram": "host-wireguard"}, "other-host": {"vesktop": "shared-route", "ayugram": "vm-wireguard"}}' \
+  "$root/policy" > "$root/pinned-policy"
+mv "$root/pinned-policy" "$root/policy"
+compile
+jq -e '.pins == {"vesktop": "shared-route", "ayugram": "host-wireguard"}' \
+  "$root/vpn-control.json" >/dev/null || fail 'host app pins missing from private runtime metadata'
+jq --arg host "$(hostname)" '.pins[$host].ayugram = "vm-wireguard"' \
+  "$root/policy" > "$root/foreign-pin"
+mv "$root/foreign-pin" "$root/policy"
+if compile >"$root/stdout" 2>"$root/stderr"; then
+  fail 'foreign WireGuard peer was accepted as an app pin'
+fi
+grep -q 'another host' "$root/stderr" || fail 'missing foreign pin rejection'
+jq --arg host "$(hostname)" '.pins[$host].ayugram = "host-wireguard"' \
+  "$root/policy" > "$root/owned-pin"
+mv "$root/owned-pin" "$root/policy"
 jq 'del(.wireguard_owners."vm-wireguard")' "$root/policy" > "$root/missing-owner"
 mv "$root/missing-owner" "$root/policy"
 if compile >"$root/stdout" 2>"$root/stderr"; then
