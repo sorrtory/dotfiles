@@ -125,7 +125,7 @@ inventory's exact tags and the machine's actual hostname:
 | Desired persistent change | Edit |
 | --- | --- |
 | Change a host's normal default | Set `defaults[hostname]` to an available inventory tag. |
-| Pin or unpin an installed app | Set or remove `pins[hostname].vesktop` or `.ayugram`. Removing a pin makes that app follow the active default. |
+| Keep an installed app on a specific outbound | Set `pins[hostname].vesktop` or `.ayugram` to that outbound's tag. Remove the pin to make the app follow the active default. |
 | Add a route | Add an entry with a stable `tag` to `outbounds`, plus a DNS server detoured through that tag. Add the tag to `ipv6`; if it is WireGuard, assign its hostname in `wireguard_owners`. |
 | Change IPv6 for a named route | Set `ipv6[tag]` to `true` or `false`. Default traffic remains IPv4-only either way. |
 
