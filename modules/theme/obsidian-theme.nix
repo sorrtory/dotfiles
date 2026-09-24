@@ -43,6 +43,15 @@ let
   warm = mix accent2 text 0.75;
   warmDim = mix accent2 text 0.6;
 
+  # Match the four Markdown heading shades in the generated Neovim, VS Code
+  # and Sublime themes. Deeper levels recede into the muted prose color.
+  heading = [
+    (mix error base 0.14)
+    (mix accent text 0.10)
+    (mix accent2 base 0.06)
+    (mix info text 0.06)
+  ];
+
   hue = hsl accent;
 
   variables = {
@@ -101,14 +110,12 @@ let
     link-external-color-hover = mix success "#ffffff" 0.25;
     link-unresolved-color = mix subtext text 0.2;
 
-    # Headings walk from the plain text through the accents to the secondary,
-    # then back to the muted text for the deepest level.
-    h1-color = mix text "#ffffff" 0.15;
-    h2-color = accentLight;
-    h3-color = accent2;
-    h4-color = accentStrong;
-    h5-color = success;
-    h6-color = subtext;
+    h1-color = builtins.elemAt heading 0;
+    h2-color = builtins.elemAt heading 1;
+    h3-color = builtins.elemAt heading 2;
+    h4-color = builtins.elemAt heading 3;
+    h5-color = muted;
+    h6-color = muted;
 
     blockquote-border-color = accentHover;
     blockquote-background-color = raised;

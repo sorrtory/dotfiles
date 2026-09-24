@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 # Telegram's side of the theme. It lives here rather than beside the AyuGram
 # package in modules/programs/vpnized-apps, because none of it is about the
@@ -23,13 +28,14 @@ let
   blur = 18;
   # How far the blurred picture is pulled toward the theme's background, so
   # message bubbles and their text stay legible over it.
-  dim = 50;
+  dim = 65;
 
-  colors = pkgs.writeText "colors.tdesktop-theme"
-    (import ./telegram-theme.nix { inherit lib; } (theme.forApp "telegram"));
-  plainBackground = pkgs.runCommand "telegram-background.png"
-    { nativeBuildInputs = [ pkgs.imagemagick ]; }
-    "magick -size 1920x1080 xc:${lib.escapeShellArg (theme.forApp "telegram").base} $out";
+  colors = pkgs.writeText "colors.tdesktop-theme" (
+    import ./telegram-theme.nix { inherit lib; } (theme.forApp "telegram")
+  );
+  plainBackground = pkgs.runCommand "telegram-background.png" {
+    nativeBuildInputs = [ pkgs.imagemagick ];
+  } "magick -size 1920x1080 xc:${lib.escapeShellArg (theme.forApp "telegram").base} $out";
 in
 {
   options.dotfiles.theme.telegram = {

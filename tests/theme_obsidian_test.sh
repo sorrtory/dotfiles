@@ -56,6 +56,19 @@ for theme in gruvbox autumn-leaves onedark; do
     [[ $value =~ ^(#[0-9a-f]{6}|rgba\([0-9]+,\ [0-9]+,\ [0-9]+,\ 0\.[0-9]+\)|transparent|[0-9]+|[0-9]+%)$ ]] ||
       fail "$theme: \"$value\" is not a color Obsidian can read"
   done < <(grep -oP '^\s*--[a-z0-9-]+:\s*\K[^;]+' "$css")
+
+  # The Markdown heading ramp uses the same four palette-derived shades as
+  # the other generated editors; the two rarely used levels share muted.
+  mapfile -t headings < <(sed -nE 's/^  --h[1-6]-color: (#[0-9a-f]{6});$/\1/p' "$css")
+  [[ ${#headings[@]} == 6 ]] || fail "$theme: missing heading colors"
+  [[ $(printf '%s\n' "${headings[@]:0:4}" | sort -u | wc -l) == 4 ]] ||
+    fail "$theme: the first four heading levels are not distinct"
+  [[ ${headings[4]} == "${headings[5]}" ]] ||
+    fail "$theme: the deepest heading levels should share the muted color"
+  if [[ $theme == autumn-leaves ]]; then
+    [[ ${headings[*]} == '#d84630 #e97937 #e79e26 #8ec853 #b68a68 #b68a68' ]] ||
+      fail 'autumn-leaves: headings differ from the shared Markdown ramp'
+  fi
 done
 
 # The hint names a vault that has no link yet, and goes quiet once it has one.
