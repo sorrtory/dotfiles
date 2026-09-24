@@ -3,38 +3,43 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: download <type|extension> [backend options] URL...
+Usage: download [--as TYPE|EXTENSION] [--using BACKEND] URL... [-- BACKEND_OPTIONS...]
 
-Fetch media. The single argument is either a type, which downloads in the
-source's own format, or an extension, which asks for that format:
+The URL picks a downloader. With no --as, use its normal result.
+Use --as to request a different result where that downloader supports it:
 
+  original                           backend's published media, unchanged
   audio                              best audio stream, untouched
   mp3 m4a opus flac wav aac          extracted and encoded
   alac vorbis ogg
   video                              best video, untouched
   mp4 mkv webm mov                   recoded
-  image                              exactly as published
   jpg png                            still images re-encoded
   file                               any plain file
 
-The type chooses the backend: yt-dlp for audio and video, gallery-dl for
-images, aria2c for files, spotdl for Spotify. Everything else you pass is
-handed to that backend untouched, so its own options keep working:
+Known sites include YouTube/Vimeo/TikTok/Twitch (video), SoundCloud (audio),
+Spotify (mp3), Pinterest/Instagram/Imgur/Pixiv and other galleries,
+Google Drive (gdown), and Yandex.Disk (aria2c after public-link resolution).
+Direct file URLs use aria2c.
+An unknown site opens a backend picker in a terminal. In a script, use --using.
 
-  download mp4 --playlist-items 1-3 URL
-  download jpg --range 1-5 --cookies-from-browser firefox URL
+  download 'https://youtu.be/...'
+  download --as mp3 'https://youtu.be/...'
+  download --as jpg 'https://www.pinterest.com/pin/...'
+  download --using gallery-dl 'https://example.org/post/...'
+  download --as mp4 URL -- --playlist-items 1-3
 
-Files land in the current directory. Use the backend's own option to put them
-elsewhere: -P for yt-dlp, -D for gallery-dl, -d for aria2c.
+Backend options go after -- and are passed untouched. --cookies FILE and
+--cookies-from-browser BROWSER are translated for the chosen backend.
+Files land in the current directory. Use backend options for destinations:
+-P for yt-dlp, -D for gallery-dl, -d for aria2c, -O for gdown.
 
-Spotify links and the query 'saved' always go to spotdl, because nothing else
-reads them. Spotify has no untouched source format, so use an explicit audio
-extension for it. --spotify-meta sends a YouTube link there too, to get
-Spotify's tags on a track that is only on YouTube.
+--spotify-meta sends a YouTube link to spotdl for Spotify tags. spotdl's
+default output is mp3; --as can select another supported audio extension.
 
 Downloads go through the local proxy in $PROXY. For a direct run:
 
-  PROXY= download mp4 URL
+  PROXY= download --as mp4 URL
 
 gif is not here: a one-pass GIF bands visibly, so use convert-to gif on a
 downloaded clip instead.
@@ -112,132 +117,192 @@ converter() {
 '
 }
 
-# --spotify-meta is ours and must not reach a backend. It is pulled out
-# wherever it appears, so it reads naturally before or after the type.
+as=''
+using=''
 spotify_meta=0
-declare -a argv=()
-for argument in "$@"; do
-  if [[ $argument == --spotify-meta ]]; then
-    spotify_meta=1
-  else
-    argv+=("$argument")
-  fi
-done
-set -- ${argv[@]+"${argv[@]}"}
-
-case ${1-} in
--h | --help)
-  usage
-  exit 0
-  ;;
-'')
-  usage >&2
-  exit 64
-  ;;
-esac
-
-what=$1
-shift
-
-case $what in
-audio) kind=audio format='' ;;
-mp3 | m4a | opus | flac | wav | aac | alac | vorbis | ogg) kind=audio format=$what ;;
-video) kind=video format='' ;;
-mp4 | mkv | webm | mov) kind=video format=$what ;;
-image) kind=image format='' ;;
-jpg | png) kind=image format=$what ;;
-file) kind=file format='' ;;
-gif)
-  die "gif is a convert-to target, not a download one: try 'download mp4 URL' then 'convert-to gif FILE'"
-  ;;
-*)
-  die "unknown type or extension '$what'; run 'download --help' for the list"
-  ;;
-esac
-
-(($#)) || die "no URL given; try 'download $what URL'"
-
-# Spotify is the one thing a URL has to be inspected for, because yt-dlp has no
-# extractor for it at all.
-spotify=$spotify_meta
-for argument in "$@"; do
-  case $argument in
-  https://open.spotify.com/* | http://open.spotify.com/* | spotify:*)
-    spotify=1
-    ;;
-  esac
-done
-
-# Backend options precede their source in this command's documented syntax.
-# Restrict spotDL's bare `saved` query to the final argument so an option value
-# such as `--output saved URL` cannot change the backend.
-[[ ${!#} == saved ]] && spotify=1
-
-if ((spotify)); then
-  [[ $kind == audio ]] ||
-    die "Spotify carries audio only; ask for an audio type or extension"
-  case $format in
-  '') die "Spotify has no untouched audio source; choose mp3, flac, ogg, opus, m4a or wav" ;;
-  mp3 | flac | ogg | opus | m4a | wav) ;;
-  *) die "Spotify cannot give you $format; it supports mp3, flac, ogg, opus, m4a and wav" ;;
-  esac
-  backend=spotdl
-else
-  case $kind in
-  audio | video) backend=yt-dlp ;;
-  image) backend=gallery-dl ;;
-  file) backend=aria2c ;;
-  esac
-fi
-
-# yt-dlp and gallery-dl already agree on --cookies and --cookies-from-browser,
-# so those pass straight through. Only the other two need translating.
-declare -a rest=()
+cookies=''
+browser=''
+declare -a urls=() backend_options=() rest=()
 while (($#)); do
   case $1 in
-  --cookies=*)
-    jar=${1#*=}
-    case $backend in
-    aria2c) rest+=(--load-cookies "$jar") ;;
-    spotdl) rest+=(--cookie-file "$jar") ;;
-    *) rest+=("$1") ;;
-    esac
-    shift
-    ;;
-  --cookies-from-browser=*)
-    case $backend in
-    aria2c | spotdl)
-      die "$backend cannot read a browser's cookie store; export them to a file and pass --cookies FILE"
-      ;;
-    esac
-    rest+=("$1")
-    shift
-    ;;
-  --cookies)
-    [[ $# -ge 2 ]] || die '--cookies needs a file'
-    case $backend in
-    aria2c) rest+=(--load-cookies "$2") ;;
-    spotdl) rest+=(--cookie-file "$2") ;;
-    *) rest+=(--cookies "$2") ;;
+  -h | --help) usage; exit 0 ;;
+  --as | --using | --cookies | --cookies-from-browser)
+    [[ $# -ge 2 && -n $2 ]] || die "$1 needs a value"
+    case $1 in
+    --as) as=$2 ;;
+    --using) using=$2 ;;
+    --cookies) cookies=$2 ;;
+    --cookies-from-browser) browser=$2 ;;
     esac
     shift 2
     ;;
-  --cookies-from-browser)
-    case $backend in
-    aria2c | spotdl)
-      die "$backend cannot read a browser's cookie store; export them to a file and pass --cookies FILE"
-      ;;
-    esac
-    [[ $# -ge 2 ]] || die '--cookies-from-browser needs a browser'
-    rest+=("$1" "$2")
-    shift 2
-    ;;
-  *)
-    rest+=("$1")
+  --as=*) as=${1#*=}; [[ -n $as ]] || die '--as needs a value'; shift ;;
+  --using=*) using=${1#*=}; [[ -n $using ]] || die '--using needs a value'; shift ;;
+  --cookies=*) cookies=${1#*=}; [[ -n $cookies ]] || die '--cookies needs a file'; shift ;;
+  --cookies-from-browser=*) browser=${1#*=}; [[ -n $browser ]] || die '--cookies-from-browser needs a browser'; shift ;;
+  --spotify-meta) spotify_meta=1; shift ;;
+  --)
     shift
+    backend_options=("$@")
+    break
     ;;
+  -*) die "unknown option '$1'; put backend options after --" ;;
+  *) urls+=("$1"); shift ;;
   esac
 done
+
+((${#urls[@]})) || die 'no URL given; try download URL'
+[[ -z $cookies || -z $browser ]] || die 'choose either --cookies or --cookies-from-browser'
+
+case $as in
+'' | original | audio | video | file | mp3 | m4a | opus | flac | wav | aac | alac | vorbis | ogg | mp4 | mkv | webm | mov | jpg | png) ;;
+gif) die "gif is a convert-to target: try 'download URL' then 'convert-to gif FILE'" ;;
+*) die "unknown --as value '$as'; run 'download --help' for the list" ;;
+esac
+case $using in
+'' | yt-dlp | gallery-dl | aria2c | spotdl | gdown) ;;
+*) die "unknown backend '$using'; choose yt-dlp, gallery-dl, aria2c, spotdl or gdown" ;;
+esac
+
+# Match a listed domain or one of its subdomains, never a lookalike suffix.
+host_matches_any() {
+  local host=$1 domain
+  shift
+  for domain in "$@"; do
+    [[ $host == "$domain" || $host == *".$domain" ]] && return 0
+  done
+  return 1
+}
+
+# This table expresses the operator's default result for a source, not a
+# duplicate of either backend's supported-sites list. Unknown pages are never
+# treated as plain files: that could silently save an HTML error page.
+guess_source() {
+  local url=$1 host path extension
+  guessed_backend='' guessed_as=''
+  case $url in
+  spotify:* | saved) guessed_backend=spotdl; guessed_as=mp3; return ;;
+  esac
+  [[ $url =~ ^https?://([^/:?#]+) ]] || return 0
+  host=${BASH_REMATCH[1],,}
+
+  if host_matches_any "$host" spotify.com spotify.link; then
+    guessed_backend=spotdl; guessed_as=mp3
+  elif host_matches_any "$host" youtube.com youtu.be youtube-nocookie.com \
+    vimeo.com tiktok.com twitch.tv; then
+    guessed_backend=yt-dlp; guessed_as=video
+  elif host_matches_any "$host" soundcloud.com on.soundcloud.com; then
+    guessed_backend=yt-dlp; guessed_as=audio
+  elif host_matches_any "$host" pinterest.com pin.it instagram.com imgur.com \
+    pixiv.net e621.net danbooru.donmai.us artstation.com deviantart.com \
+    flickr.com; then
+    guessed_backend=gallery-dl; guessed_as=original
+  elif host_matches_any "$host" drive.google.com docs.google.com; then
+    guessed_backend=gdown; guessed_as='file'
+  elif host_matches_any "$host" disk.yandex.ru disk.yandex.com yadi.sk; then
+    guessed_backend=aria2c; guessed_as='file'
+  else
+    path=${url%%[?#]*}
+    extension=${path##*.}
+    case ${extension,,} in
+    jpg | jpeg | png | gif | webp | avif | pdf | zip | 7z | tar | gz | \
+      mp3 | m4a | flac | mp4 | mkv | webm)
+      guessed_backend=aria2c; guessed_as='file' ;;
+    esac
+  fi
+}
+
+pick_backend() {
+  [[ -t 0 && -t 2 ]] ||
+    die "cannot guess '$1' without a terminal; use --using yt-dlp, gallery-dl or aria2c"
+  local choice
+  choice=$(printf '%s\n' 'yt-dlp  video/audio' 'gallery-dl  galleries/posts' 'aria2c  plain file' |
+    fzf --height=8 --layout=reverse --no-multi --prompt='Downloader > ') || exit 130
+  [[ -n $choice ]] || exit 130
+  case $choice in
+  yt-dlp*) guessed_backend=yt-dlp; guessed_as=video ;;
+  gallery-dl*) guessed_backend=gallery-dl; guessed_as=original ;;
+  aria2c*) guessed_backend=aria2c; guessed_as='file' ;;
+  esac
+}
+
+backend=''
+default_as=''
+for url in "${urls[@]}"; do
+  guess_source "$url"
+  source_backend=$guessed_backend
+  if [[ -n $using ]]; then
+    guessed_backend=$using
+    case $using in
+    yt-dlp) [[ $source_backend == yt-dlp ]] || guessed_as=video ;;
+    gallery-dl) guessed_as=original ;;
+    aria2c | gdown) guessed_as='file' ;;
+    spotdl) guessed_as=mp3 ;;
+    esac
+  elif ((spotify_meta)); then
+    guessed_backend=spotdl; guessed_as=mp3
+  elif [[ -z $guessed_backend ]]; then
+    pick_backend "$url"
+  fi
+  if [[ -n $backend && ( $backend != "$guessed_backend" || ( -z $as && $default_as != "$guessed_as" ) ) ]]; then
+    die 'URLs need different downloaders or defaults; run them separately or set --as and --using'
+  fi
+  backend=$guessed_backend
+  default_as=$guessed_as
+done
+[[ -n $as ]] || as=$default_as
+
+case $backend in
+yt-dlp)
+  case $as in
+  original | audio | video | mp3 | m4a | opus | flac | wav | aac | alac | vorbis | ogg | mp4 | mkv | webm | mov) ;;
+  *) die "yt-dlp cannot produce --as $as; choose an audio or video result" ;;
+  esac ;;
+gallery-dl)
+  case $as in
+  original | jpg | png) ;;
+  *) die "gallery-dl cannot produce --as $as; use original, jpg or png" ;;
+  esac ;;
+aria2c | gdown)
+  [[ $as == file || $as == original ]] || die "$backend keeps the source file; use --as file or omit --as" ;;
+spotdl)
+  case $as in
+  mp3 | flac | ogg | opus | m4a | wav) ;;
+  *) die "spotdl supports --as mp3, flac, ogg, opus, m4a or wav" ;;
+  esac ;;
+esac
+
+case $as in
+audio | mp3 | m4a | opus | flac | wav | aac | alac | vorbis | ogg) kind=audio ;;
+original | video | mp4 | mkv | webm | mov) kind=video ;;
+jpg | png) kind=image ;;
+file) kind='file' ;;
+esac
+case $as in
+mp3 | m4a | opus | flac | wav | aac | alac | vorbis | ogg | mp4 | mkv | webm | mov | jpg | png) format=$as ;;
+*) format='' ;;
+esac
+
+if [[ -n $browser ]]; then
+  case $backend in
+  aria2c | spotdl) die "$backend cannot read a browser's cookie store; export it and pass --cookies FILE" ;;
+  esac
+  rest+=(--cookies-from-browser "$browser")
+fi
+if [[ -n $cookies ]]; then
+  case $backend in
+  aria2c) rest+=(--load-cookies "$cookies") ;;
+  spotdl) rest+=(--cookie-file "$cookies") ;;
+  *) rest+=(--cookies "$cookies") ;;
+  esac
+fi
+rest+=("${backend_options[@]}" "${urls[@]}")
+
+if [[ $backend == gdown && ${#urls[@]} -ne 1 ]]; then
+  die 'gdown accepts one URL per invocation'
+fi
+
+printf 'download: %s via %s\n' "$as" "$backend" >&2
 
 # yt-dlp is the one backend Nix does not provide: it is the bootstrap-installed
 # release binary, so that it can keep updating itself. A login shell has
@@ -255,6 +320,42 @@ resolve_yt_dlp() {
 
 proxy=${PROXY:-}
 declare -a command=()
+
+# The public-link resolution follows wldhx/yadisk-direct's approach:
+# https://github.com/wldhx/yadisk-direct/blob/master/wldhx/yadisk_direct/main.py
+# A Yandex.Disk share page is not the file URL aria2c needs. Resolve only
+# recognized public share links, leaving ordinary file URLs and options alone.
+# curl encodes the whole link as public_key; interpolation into the API URL
+# would break links containing their own query string.
+resolve_yandex_link() {
+  local response href
+  if ! response=$(env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY \
+    -u http_proxy -u https_proxy -u all_proxy \
+    curl -q --fail --silent --show-error --max-time 20 --proxy "$proxy" \
+      --get --data-urlencode "public_key=$1" \
+      'https://cloud-api.yandex.net/v1/disk/public/resources/download'); then
+    die "could not resolve Yandex.Disk link: $1"
+  fi
+  if ! href=$(jq -er '.href | select(type == "string" and startswith("https://"))' <<<"$response"); then
+    die "Yandex.Disk did not return a download URL for: $1"
+  fi
+  printf '%s' "$href"
+}
+
+if [[ $backend == aria2c ]]; then
+  declare -a resolved=()
+  yandex_link=0
+  for argument in "${rest[@]}"; do
+    case $argument in
+    https://disk.yandex.ru/* | https://disk.yandex.com/* | https://yadi.sk/*)
+      resolved+=("$(resolve_yandex_link "$argument")")
+      yandex_link=1
+      ;;
+    *) resolved+=("$argument") ;;
+    esac
+  done
+  rest=("${resolved[@]}")
+fi
 
 case $backend in
 yt-dlp)
@@ -289,11 +390,19 @@ aria2c)
   # as mirrors of one file rather than independent downloads. An empty
   # --all-proxy overrides a proxy, as documented.
   command=(aria2c --all-proxy "$proxy" -x8 -s8 --continue --force-sequential=true)
+  # The resolved URL's path is opaque; use the server's suggested filename.
+  if ((yandex_link)); then
+    command+=(--content-disposition=true)
+  fi
   ;;
 spotdl)
   command=(spotdl)
   [[ -z $proxy ]] || command+=(--proxy "$proxy")
   [[ -z $format ]] || command+=(--format "$format")
+  ;;
+gdown)
+  command=(gdown)
+  [[ -z $proxy ]] || command+=(--proxy "$proxy")
   ;;
 esac
 

@@ -2,6 +2,18 @@
 
 Status: ready-for-agent
 
+## Interface revision (2026-09-24)
+
+The original type-first `download` interface below is historical. The operator
+replaced it with `download [--as TYPE|EXTENSION] [--using BACKEND] URL...
+[-- BACKEND_OPTIONS...]`. The URL chooses a backend and default result;
+`--as` requests a result that backend supports, and `--using` overrides the
+guess. Known video, audio, gallery, Google Drive, Yandex.Disk and direct-file
+URLs dispatch without interaction. Unknown sites open an fzf backend picker on
+a terminal and require `--using` in scripts. See `docs/DECISIONS.md` and
+`scripts/bin/download.sh` for the current behavior. The old examples and
+backend table below no longer specify the command-line interface.
+
 ## Problem
 
 Downloading and converting media is currently spread across three places, none

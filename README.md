@@ -168,13 +168,15 @@ still needs phase 10 on Ubuntu, or they abort at startup.
 Two commands. `download` fetches, `convert-to` works on files already on disk.
 
 ```bash
-download audio URL     # best audio stream, untouched
-download mp3   URL     # extracted and encoded
-download video URL     # best video, untouched
-download mp4   URL     # recoded
-download image URL     # exactly as published
-download jpg   URL     # still images re-encoded
-download file  URL     # any plain file
+download 'https://youtu.be/...'                  # video via yt-dlp
+download 'https://soundcloud.com/artist/track'  # audio via yt-dlp
+download 'https://www.pinterest.com/pin/...'    # original media via gallery-dl
+download 'https://drive.google.com/file/d/...'  # file via gdown
+download 'https://disk.yandex.ru/d/...'         # file via aria2c
+download --as mp3 'https://youtu.be/...'        # extracted and encoded
+download --as jpg 'https://www.pinterest.com/pin/...' # still images re-encoded
+download --using gallery-dl 'https://example.org/post/...' # override the guess
+download --as mp4 URL -- --playlist-items 1-3   # yt-dlp option after --
 
 convert-to mp3 *.m4a
 convert-to mp4 clip.mkv        # remux if the codecs fit, else transcode
@@ -185,20 +187,31 @@ convert-to gif clip.mp4        # two-pass palette, 15 fps, 480px wide
 convert-to jpg *.png *.webp    # still images through ImageMagick
 ```
 
-The single argument is either a type, which keeps the source's own format, or
-an extension, which asks for that one. It also chooses the backend: yt-dlp for
-audio and video, gallery-dl for images, aria2c for plain files, spotdl for
-Spotify links and the `saved` query. `--spotify-meta` sends a YouTube link to
-spotdl too, for a track that is only there.
+The URL chooses the backend and its normal result. `--as` asks that backend for
+another result; `--using` overrides the backend. YouTube, Vimeo, TikTok and Twitch default to video, SoundCloud to audio,
+Spotify to MP3, and Pinterest, Instagram, Imgur, Pixiv, ArtStation,
+DeviantArt, Flickr, e621 and Danbooru to gallery-dl's published media. Google Drive uses gdown;
+ordinary direct file URLs use aria2c. For an unknown site, `download` offers an
+interactive backend picker. Scripts must specify `--using` instead.
 
-Everything else you pass reaches the backend untouched, so `download mp4
---playlist-items 1-3 URL` and `download jpg --range 1-5 URL` work. Files land
-in the current directory; use the backend's own option to change that (`-P`,
-`-D`, `-d`). `PROXY= download mp4 URL` runs direct.
+Backend options go after `--`, untouched. `--cookies FILE` and
+`--cookies-from-browser BROWSER` work before the URL and are translated for the
+chosen backend. Files land in the current directory; use the backend's own
+destination option (`-P` for yt-dlp, `-D` for gallery-dl, `-d` for aria2c,
+`-O` for gdown). `PROXY= download URL` runs direct. `--spotify-meta` sends a
+YouTube link to spotdl for Spotify tags. Multiple URLs must use the same
+backend and default result; gdown takes one URL per invocation.
+With gdown, `--cookies-from-browser` copies the Google session into
+`~/.cache/gdown/cookies.txt`; treat that file as a login credential.
 
-`download jpg` and `download png` remove each original they converted, and only
+Public Yandex.Disk links are resolved through the Disk API before aria2c
+receives the temporary file URL. The API request follows `PROXY` as well.
+Yandex may refuse downloads when the owner disabled them or the public link
+reached its download limit.
+
+`download --as jpg` and `download --as png` remove each original they converted, and only
 after the new file exists and is not empty; videos and animations are left
-alone. `download png` skips JPEG sources, because re-encoding a lossy image
+alone. `download --as png` skips JPEG sources, because re-encoding a lossy image
 into a lossless container only makes it bigger. `convert-to` never removes
 anything unless asked with `-R`/`--replace`, and refuses the whole batch before
 encoding if an output already exists — `--force` overrides. With `-R` the

@@ -12,6 +12,9 @@ yt-dlp, gallery-dl, aria2c, spotdl and FFmpeg. See [spec.md](spec.md).
 
 The implementation landed before these field reports. They are follow-up bugs
 and scope decisions against the original settled design.
+The `download` command's type-first interface was replaced on 2026-09-24 by
+URL-based backend selection with `--as` and `--using`; the old interface in
+`spec.md` is preserved as history and marked there as superseded.
 
 ## Context
 

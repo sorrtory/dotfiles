@@ -53,8 +53,12 @@ let
     runtimeInputs = [
       pkgs.aria2
       pkgs.coreutils
+      pkgs.curl
+      pkgs.fzf
       pkgs.imagemagick
+      pkgs.jq
       unstablePkgs.gallery-dl
+      unstablePkgs.gdown
       spotdl
     ];
     text = builtins.readFile ../scripts/bin/download.sh;

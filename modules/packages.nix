@@ -32,12 +32,11 @@ in
   ];
 
   home.packages = [
-    # The one package here from the unstable pin. Its extractors track the
-    # sites they scrape, so the months the stable channel trails upstream by
-    # are sites that no longer download rather than a version number. It is a
-    # plain package, not a proxy-wrapped program: it takes `--proxy`, so the
-    # download aliases in the Zsh module pass one. See docs/DECISIONS.md.
+    # Both downloaders track changing sites. Keep them available as commands
+    # in the user profile as well as in `download`'s runtime closure. Neither
+    # needs a proxy wrapper: each takes its own --proxy option.
     unstablePkgs.gallery-dl
+    unstablePkgs.gdown
   ]
   ++ (with pkgs; [
     # 7-Zip upstream rather than the p7zip fork, which trails it by years. The
