@@ -26,13 +26,15 @@ approval, and normal use precedes legacy retirement.
 | [11: Everyday recovery](issues/11-everyday-recovery.md) | 09 | Real network-change and suspend evidence on the daily machine. |
 | [12: Legacy retirement](issues/12-retire-legacy-vpn.md) | 11 | Reviewed legacy VPN material is removed after normal use. |
 
-Tickets **01–09, 13 and 14** are resolved. Ticket 06 uses the shared
+Tickets **01–10, 13 and 14** are resolved. Ticket 06 uses the shared
 `orange-vless` route while each machine keeps its own WireGuard peer. The VM
 and separately approved daily host passed real concurrent-route checks.
 Tickets 07–09 passed staging and daily-host cutovers. Ticket 09's
 [answer](issues/09-installed-app-pins.md#answer) records simultaneous real
-app scopes, DNS, IPv6 and backend recovery. Ticket 10's server and credential
-are now available for full command and app checks.
+app scopes, DNS, IPv6 and backend recovery. Ticket 10's
+[answer](issues/10-real-protocol-egress.md#answer) records VLESS TCP/UDP/DNS,
+whole-host use, and a simulated endpoint-loss test across selected entry
+points. Everyday network-change and suspend evidence remains ticket 11.
 
 ## Independent defects
 

@@ -340,6 +340,24 @@ HTTPS. Backend stop reported `backend-outage` and blocked traffic; restart
 restored `attached` and HTTPS 204 on both routes. The default was restored to
 WireGuard. Ticket 09 records the exact generation and review result.
 
+## Deployed VLESS route, 2026-09-24
+
+The operator's real VLESS credential is encrypted in the native inventory and
+the server endpoint is an IP literal. On the disposable VM, a temporary
+encrypted copy pointed that route at reserved unreachable address
+`192.0.2.1`. VLESS local proxy, one-off capture, pinned AyuGram path, default
+capture and whole-host TUN all blocked without falling back, while WireGuard
+still returned HTTPS 204. The original ciphertext and generation were
+restored; both encrypted files matched the source hashes, the declarative
+WireGuard default returned, and the VM TUN was down. This tests unreachable
+endpoint handling, not a real provider outage.
+
+On the daily host, the real VLESS pinned capture carried UDP STUN. With VLESS
+selected under `vpn-up`, public HTTPS 204 and UDP STUN passed over
+`vpn-host0`; the LAN route stayed on Wi-Fi. `vpn-down` removed the TUN and
+restored the Wi-Fi route, resolver and direct HTTPS 204. The default selector
+was returned to the laptop WireGuard peer.
+
 ## What a VM cannot verify
 
 The guest has no usable GPU, so anything reaching a real driver — the `nix-gpu`
