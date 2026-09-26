@@ -402,6 +402,9 @@ body {
     ) !important;
     backdrop-filter: blur(32px) saturate(160%) !important;
     border: 1px solid color-mix(in srgb, currentColor 12%, transparent) !important;
+    /* The rounding is ChatGPT's inline style on the layout root, the body's
+     * parent; the glass drawn here would otherwise be square. */
+    border-radius: inherit !important;
   }
 
   :is(

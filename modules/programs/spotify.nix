@@ -35,9 +35,16 @@ in
     customColorScheme =
       import ../theme/spotify-scheme.nix { inherit lib; } (theme.forApp "spotify");
 
-    # The Default theme is stock Spotify's layout, recoloured by the scheme
-    # above. Transparency comes from Blur my Shell in desktops/gnome.nix.
-    theme = spicePkgs.themes.default;
+    # Spotify fills the square behind circular artist images with tab-active,
+    # leaving accent-coloured corners around them. Keep the image wrapper clear.
+    # Window transparency comes from Blur my Shell in desktops/gnome.nix.
+    theme = spicePkgs.themes.default // {
+      additionalCss = ''
+        .main-cardImage-imageWrapper {
+          background-color: transparent;
+        }
+      '';
+    };
   };
 
   dotfiles.theme.apps.spotify = {
