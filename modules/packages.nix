@@ -51,6 +51,8 @@ in
     # reuses what recovery downloaded; an override here would fetch them twice.
     age
 
+    ansible
+
     # Also a runtime input of `download`, which reaches it only through
     # `download file`. Here as well so `aria2c` works on its own, for a
     # torrent, a metalink or a resumed partial file. Same pin, same store path.
