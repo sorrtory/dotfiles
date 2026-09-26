@@ -190,7 +190,9 @@ on Flatpak remapping `XDG_DATA_HOME`, so outside the sandbox it writes generic
 keeps those beneath `~/.local/share/rewaita/` instead. Firefox profile and login
 state remain machine-local. Only its two required `user.js` switches are
 declarative; Rewaita writes the generated `chrome/rewaitaChrome.css` beside the
-profile at login.
+profile at login. Page styling in `chrome/userContent.css` is the repository's:
+the palette's roles are prepended to it as `--dotfiles-<role>` properties, so a
+site rule takes a theme color by name.
 
 The Zsh module owns the shell package, generated startup files, Oh My Zsh,
 shell plugins, history policy, and zoxide integration. It preserves the small

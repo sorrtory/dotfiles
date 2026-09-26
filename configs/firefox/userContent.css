@@ -293,9 +293,33 @@ body {
   }
 }
 
-/* ChatGPT's classes are atomic and generated (x1abc...). Only ids, test ids
- * and its design-token variables are stable enough to target. */
+/* ChatGPT's utility classes (Tailwind) and module classes (LeftPanel-e8ghK3)
+ * change between builds. Ids, data attributes, test ids and its design-token
+ * variables are stable enough to target; the few utility-class selectors
+ * below are the only way to reach those elements and go stale first. */
 @-moz-document domain(chatgpt.com) {
+  html,
+  body,
+  #root,
+  [data-app-shell-frame="true"],
+  [data-app-shell-workspace-row="true"],
+  main[data-app-shell-main-surface],
+  [data-app-shell-main-content-layout],
+  [class*="MainContentViewport"] {
+    background: transparent !important;
+  }
+
+  /* Sidebar: the docked left panel (aside.app-shell-left-panel), its
+   * collapsed navigation rail, and the slide-over used on narrow windows.
+   * The docked panel's fill is an empty full-size bg-surface layer behind
+   * its contents, which fades in and out with the panel; only its fill is
+   * cleared so the fade still runs. The slide-over paints from
+   * --sidebar-surface-primary instead. */
+  .app-shell-left-panel,
+  :is(.app-shell-left-panel, #app-shell-sidebar) .absolute.inset-0.bg-surface,
+  #app-shell-sidebar,
+  .sidebar-navigation,
+  [data-app-navigation-rail],
   #stage-slideover-sidebar {
     --sidebar-surface-primary: transparent !important;
     background: transparent !important;
@@ -332,13 +356,94 @@ body {
     mask-image: none !important;
   }
 
-  [data-composer-surface] {
+  /* Two more layers of the same bottom shadow, reachable only by their
+   * utility classes: an absolute overlay behind the composer, cleared, and a
+   * sticky strip at the foot of the thread, hidden outright. */
+  .pointer-events-none.absolute.inset-x-0.z-10.bottom-0,
+  .pointer-events-none.absolute.inset-x-0.z-10.bottom-0::before,
+  .pointer-events-none.absolute.inset-x-0.z-10.bottom-0::after {
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  .pointer-events-none.sticky.bottom-0.z-10.mt-auto.w-full.shrink-0 {
+    display: none !important;
+  }
+
+  /* Code blocks, matched by the readable part of their module classes. The
+   * header with the language and Copy button is sticky, so the code scrolls
+   * under it and it blurs instead. */
+  [class*="CodeBlock-"] {
+    background: transparent !important;
+  }
+
+  [class*="StickyActionBar-"] {
+    background: transparent !important;
+    backdrop-filter: blur(24px) !important;
+  }
+
+  /* The composer is frosted glass: the thread scrolls under it, so it keeps
+   * a tint of the palette's surface role and blurs what is behind. The tint
+   * percentage sets readability: below about 80% the thread's text shows
+   * through the typed text. saturate keeps the blurred colors from going
+   * grey. A hairline in the text color marks the edge.
+   *
+   * The glass sits on ComposerLayoutBody, the box around the input, matched
+   * without its build hash. The layers around and inside it — the layout
+   * root, the mode surface and the data-composer-surface hook — draw
+   * nothing: a backdrop-filter nested in another sees only the outer layer,
+   * not the page, so a second pane of glass would lose its blur and double
+   * the tint. */
+  [class*="ComposerLayoutBody-"] {
     background: color-mix(
       in srgb,
-      var(--composer-surface-primary) 55%,
+      var(--dotfiles-surface) 80%,
       transparent
     ) !important;
-    backdrop-filter: blur(24px) !important;
+    backdrop-filter: blur(32px) saturate(160%) !important;
+    border: 1px solid color-mix(in srgb, currentColor 12%, transparent) !important;
+  }
+
+  :is(
+      [class*="ComposerLayoutRoot-"],
+      [class*="ComposerModeSurface-"],
+      [data-composer-surface]
+    ):not([class*="ComposerLayoutBody-"]) {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    border: none !important;
+  }
+
+  /* The Chat/Work mode switch by the composer. Its track is the first,
+   * decorative span; the selected option's pill is the second, colored below.
+   * The aria-label follows the interface language, so the track's own
+   * token class backs it up. */
+  [role="group"][aria-label="Composer mode"],
+  [role="group"][aria-label="Composer mode"] > span[aria-hidden="true"]:first-child,
+  .bg-background-mode-toggle-track {
+    background: transparent !important;
+  }
+
+  /* Both Chat/Work switches, the composer's and the top bar's, take the
+   * palette: the selected option in text on an overlay pill, the other one
+   * muted until hovered or focused. */
+  [role="group"][aria-label="Composer mode"] > span[aria-hidden="true"]:nth-child(2) {
+    background: var(--dotfiles-overlay) !important;
+  }
+
+  [role="group"][aria-label="Composer mode"] > button[aria-pressed="true"],
+  #page-header [role="radiogroup"] [role="radio"][aria-checked="true"] {
+    color: var(--dotfiles-text) !important;
+  }
+
+  [role="group"][aria-label="Composer mode"] > button[aria-pressed="false"],
+  #page-header [role="radiogroup"] [role="radio"][aria-checked="false"] {
+    color: var(--dotfiles-muted) !important;
+  }
+
+  [role="group"][aria-label="Composer mode"] > button[aria-pressed="false"]:is(:hover, :focus-visible),
+  #page-header [role="radiogroup"] [role="radio"][aria-checked="false"]:is(:hover, :focus-visible) {
+    color: var(--dotfiles-subtext) !important;
   }
 
   /* "ChatGPT can make mistakes" and its Cookie preferences link. Cookie

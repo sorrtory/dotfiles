@@ -11,7 +11,12 @@ let
     // (configs/firefox/userContent.css) then clears the page backgrounds.
     user_pref("browser.tabs.allow_transparent_browser", ${lib.boolToString config.dotfiles.theme.transparency});
   '');
-  userContentCss = ../../configs/firefox/userContent.css;
+  # The palette's roles go in front of the hand-written rules, which name them
+  # as var(--dotfiles-<role>).
+  userContentCss = pkgs.writeText "userContent.css" (
+    import ../theme/firefox-content.nix { inherit lib; } (config.dotfiles.theme.forApp "firefox")
+    + builtins.readFile ../../configs/firefox/userContent.css
+  );
 in
 {
   # proxy.pac carries no credentials, but it is a personal blocklist and this
@@ -19,6 +24,12 @@ in
   # rather than a plaintext file. Declared here, next to the one thing that
   # reads it, rather than in modules/secrets.nix, matching how sing-box
   # declares its own WireGuard identity locally.
+  # Firefox reads userContent.css once, at startup.
+  dotfiles.theme.apps.firefox = {
+    label = "Firefox page styles";
+    apply = "restart";
+  };
+
   sops.secrets."proxy.pac" = {
     sopsFile = ../../secrets/proxy.pac;
     format = "binary";
