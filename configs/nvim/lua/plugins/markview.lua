@@ -22,7 +22,14 @@ return {
   end,
 
   keys = {
-    { "<leader>mt", "<cmd>Markview toggle<cr>", desc = "Toggle Markview preview" },
+    {
+      "<leader>mt",
+      function()
+        vim.cmd("Markview toggle")
+        if package.loaded.image then require("markdown_images").sync() end
+      end,
+      desc = "Toggle Markview preview and inline images",
+    },
     { "<leader>ms", "<cmd>Markview splitToggle<cr>", desc = "Toggle Markview split view" },
     { "<leader>mh", "<cmd>Markview hybridToggle<cr>", desc = "Toggle Markview hybrid mode" },
   },
