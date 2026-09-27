@@ -15,17 +15,17 @@ its open questions are judgments for the operator rather than work to divide.
 
 ## Context
 
-- Follows the closed `native-configs` effort (`docs/MIGRATION.md` §11; its
-  tickets are in Git history), which kept everything outside the plugin
+- Follows the closed `native-configs` effort (its tickets are in Git history),
+  which kept everything outside the plugin
   section verbatim on purpose. This effort is where the file itself gets
   reviewed.
 - Every "default" claim in the spec was read from a tmux 3.6 server started
   with `-f /dev/null` on a private socket, and every claim about tmux-sensible
   from its store copy (`tmuxplugin-sensible-unstable-2022-08-14`), not from
   memory.
-- Retiring continuum changes the `docs/SOFTWARE.md` tmux plugins row, which
-  names saving and restoring sessions, and `docs/MIGRATION.md` §11, which
-  leaves continuum's save hook to this effort.
-- The copy-chain defect also makes a sentence in `docs/DECISIONS.md` and
-  `docs/MIGRATION.md` §12 wrong: they say the tmux chain chooses its tool by
-  session type, and it chooses by which command exists.
+- Retiring continuum changes the `docs/SOFTWARE.md` tmux plugins entry, which
+  names saving and restoring sessions. The old migration plan also left
+  continuum's save hook for this effort; that plan remains in Git history.
+- The copy-chain defect also makes a sentence in `docs/DECISIONS.md` wrong:
+  it says the tmux chain chooses its tool by session type, but it chooses by
+  which command exists.

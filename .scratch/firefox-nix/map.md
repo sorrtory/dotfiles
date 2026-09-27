@@ -20,6 +20,5 @@ extensions can be declared, and sops-rendered secrets are readable by it. See
 - The old Snap-profile activation script was never installed; this effort
   still owns the decision to package Firefox and manage its native profile.
 - Ticket 01 also carries the APT preferences pin, and ticket 04 the Snap
-  sourcing policy. Both were settled in the grilling session that promoted
-  this effort into `docs/MIGRATION.md` as slice 14: `snapd` stays as host
-  infrastructure, and nothing this repository declares comes from Snap.
+  sourcing policy. Both were settled in the grilling session: `snapd` stays
+  as host infrastructure, and nothing this repository declares comes from Snap.

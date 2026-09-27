@@ -15,8 +15,8 @@ still say the recovery vault is the operator's main database.
 2. `docs/DECISIONS.md`, "Secrets and authentication": record the split, that the
    recovery vault never takes a key file, and why the key file is delivered by
    sops-nix.
-3. `docs/MIGRATION.md`: fix the "main KeePassXC vault" wording in slice 2 and in
-   the fresh-machine flow.
+3. `README.md`: name the recovery vault accurately in the fresh-machine
+   `secret-recovery` step and related operator instructions.
 
 ## Constraints
 

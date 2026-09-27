@@ -406,6 +406,23 @@ Never run the same peer in two places at once.
 These results were measured on Ubuntu VMs that no longer exist. They remain
 valid records of what was checked on Ubuntu, and are not evidence about Fedora.
 
+**Other migration checks on the historical Ubuntu VM:**
+
+- The VPN command carried tunneled Vesktop launches from the command, desktop
+  entry and `discord://` handler, including a voice call. Private DNS, IPv6,
+  backend restart, capture failure, relaunch and a dropped link were exercised;
+  an untunneled Vesktop launch was refused.
+- A fresh Neovim setup installed its plugins, all 36 parsers and all 25 mason
+  packages without a prompt from a copy of `configs/nvim/`. A start from the
+  mirrored repository itself was not observed before that VM was reset.
+- The operator found tmux working. Cross-pane `Ctrl+h/j/k/l` was checked on
+  the host but not pressed across a real Neovim split and tmux pane on the VM.
+  Continuum's save hook was not observed while another tmux server ran.
+- Yazi copied file contents with `Ctrl+y`. That VM had no snapd, so it could
+  not establish whether a legacy Yazi Snap remained on another host.
+- The local sing-box proxy service passed restart, cleanup and startup before
+  login checks after reboot.
+
 **Virtualization, 2026-09-16, Ubuntu 24.04.3:**
 
 - Distro package installation completed. Ubuntu's `qemu-kvm` virtual package
@@ -428,6 +445,3 @@ not resolve overlapping subnets automatically, adjust the default network before
 retrying; the phase does not replace an existing network definition. A missing
 `/dev/kvm` produces a warning even when installation and service checks succeed,
 so a successful phase alone does not prove acceleration.
-
-The slice records in [MIGRATION.md](MIGRATION.md) name the other Ubuntu staging
-results: the VPN command, Neovim, tmux, Yazi and the local proxy.

@@ -72,7 +72,7 @@ vault registry, so the URI form is right.
 
 What cannot be shown there is the window opening: Obsidian does not start on
 the VM at all, because the guest has no usable GPU. See
-[02](issues/02-lifecycle-prototype.md) for the evidence. That is a property of
+[02](02-lifecycle-prototype.md) for the evidence. That is a property of
 the staging VM, not of this change, and the same limit applies to `<Super>n`.
 
 Confirming that the key opens a window belongs on a machine with a GPU.

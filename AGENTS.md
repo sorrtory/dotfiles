@@ -10,7 +10,6 @@ Read these before making architectural changes:
 
 - `CONTEXT.md` — canonical project vocabulary.
 - `docs/DECISIONS.md` — stable decisions, ownership boundaries, and security model.
-- `docs/MIGRATION.md` — ordered migration plan from the legacy repos.
 - `docs/WORKAROUNDS.md` — every deviation from a Nixpkgs package and when it can go.
 
 ## Agent skills
@@ -31,9 +30,10 @@ This is a single-context repository. See `docs/agents/domain.md`.
 
 `z@192.168.122.21` is a disposable Fedora 44 Workstation VM (libvirt domain
 `fedora`, password `z`) running GNOME on Wayland, so it suits both bootstrap and
-GNOME checks. `host-deps` and `nix` are verified there; `secret-recovery` is the
-operator's and nothing past it has run. See [docs/STAGING.md](docs/STAGING.md)
-for the mirroring command, the sudo helper, and what a VM cannot judge.
+GNOME checks. The full bootstrap chain passed there from a bare snapshot;
+`secret-recovery` required the operator and `virtualization` required a nested
+network adjustment. See [docs/STAGING.md](docs/STAGING.md) for the verification
+record, mirroring command, sudo helper, and what a VM cannot judge.
 
 ## Local validation
 
@@ -65,7 +65,6 @@ that loads but draws nothing.
 ├── home.nix                # the profile, per-machine options included
 ├── docs/
 │   ├── DECISIONS.md
-│   ├── MIGRATION.md
 │   ├── SOFTWARE.md
 │   ├── STAGING.md
 │   ├── WORKAROUNDS.md

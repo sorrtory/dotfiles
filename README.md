@@ -7,9 +7,10 @@ user account.
 
 The main machine runs Fedora with this environment installed and in daily use.
 The repository stays cross-distribution: the bootstrap supports Debian/Ubuntu,
-Fedora and Arch. Migration of the remaining legacy configuration is still in
-progress — see [docs/MIGRATION.md](docs/MIGRATION.md) for what has moved and
-what has not. The current profile targets user `z` on `x86_64-linux`.
+Fedora and Arch. Feature migration from legacy configuration is still in
+progress; active work is tracked in [`.scratch/`](.scratch/), and
+[staging evidence](docs/STAGING.md) records what ran on fresh machines. The
+current profile targets user `z` on `x86_64-linux`.
 
 The installed selectable VPN is described in
 [the operator guide](docs/VPN.md) and
@@ -861,7 +862,7 @@ expressions — it does not prove content is safe to publish.
 
 - [CONTEXT.md](CONTEXT.md) defines canonical vocabulary.
 - [docs/DECISIONS.md](docs/DECISIONS.md) records ownership and policy.
-- [docs/MIGRATION.md](docs/MIGRATION.md) defines migration order and verification.
+- [`.scratch/`](.scratch/) tracks unfinished specs and issues.
 - [docs/SOFTWARE.md](docs/SOFTWARE.md) maps software to its installation mechanism.
 - [docs/WORKAROUNDS.md](docs/WORKAROUNDS.md) records each Nixpkgs workaround and what must happen before it goes.
 - [AGENTS.md](AGENTS.md) contains agent operating rules.

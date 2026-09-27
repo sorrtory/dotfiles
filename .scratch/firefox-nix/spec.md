@@ -39,9 +39,9 @@ Out of scope:
 
 - The proxy itself, which the installed sing-box user service owns; this
   effort changes who reads the PAC and from where.
-- Browser userscripts, which `docs/MIGRATION.md` assigns to the separate
-  `monkeys` repository.
-- Making login and session state declarative. `AGENTS.md` rule 9 keeps that
+- Browser userscripts, which the [decision log](../../docs/DECISIONS.md#scripts-and-privileged-networking)
+  assigns to the separate `monkeys` repository.
+- Making login and session state declarative. `AGENTS.md` rule 10 keeps that
   machine-local; profile data moves once, by hand, as migration.
 
 ## Risks

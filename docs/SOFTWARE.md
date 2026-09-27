@@ -308,8 +308,11 @@ Home Manager global user tool, replacing Ubuntu's `fdfind` command name.
 - **Purpose:** Web browser.
 - **State:** Deferred.
 
-Deferred to desktop application review; login and profile state remain
-machine-local.
+Installing Firefox through Nix remains deferred to desktop application review.
+The [Firefox module](../modules/programs/firefox.nix) already manages selected
+profile files for an existing browser; login and profile state remain
+machine-local. The [Firefox effort](../.scratch/firefox-nix/map.md) tracks the
+package and profile migration.
 
 ### Flatpak
 
@@ -565,7 +568,7 @@ Deferred to desktop application review.
 - **State:** Retired.
 
 Retired with the legacy proxy rather than migrated; see
-[migration §13](MIGRATION.md#13-sing-box).
+[the VPN and proxy decision](DECISIONS.md#scripts-and-privileged-networking).
 
 ### Make
 
@@ -733,8 +736,11 @@ highlighting, all colored from the palette, with a generated oh-my-zsh theme nam
 - **Purpose:** SSH access used by Git and remote workflows.
 - **State:** External.
 
-Host-owned prerequisite; private keys become reproducible SOPS secrets and
-`~/.ssh` configuration becomes repository material in the SSH milestone.
+The client is a host-owned prerequisite. Home Manager links the native
+[`~/.ssh` configuration](../modules/programs/ssh.nix), and
+[sops-nix](../modules/secrets.nix) delivers two selected private keys and the
+host-identifying config fragment on tmpfs. Rotation and legacy retirement
+remain in the [SSH effort](../.scratch/ssh-keys/map.md).
 
 ### pipx
 
@@ -818,7 +824,7 @@ Legacy candidate expected to be removed in favor of tmux.
 - **State:** Retired.
 
 Retired with the legacy LXD proxy rather than migrated; see
-[migration §13](MIGRATION.md#13-sing-box).
+[the VPN and proxy decision](DECISIONS.md#scripts-and-privileged-networking).
 
 ### ShellCheck (`shellcheck`)
 

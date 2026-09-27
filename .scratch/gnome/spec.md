@@ -4,7 +4,7 @@ Status: needs-triage
 
 ## Why
 
-Migration plan §9: move intentional GNOME preferences into the user
+Move intentional GNOME preferences into the user
 environment through `modules/desktops/gnome.nix`, capturing current dconf state
 as evidence, keeping deliberate preferences and dropping incidental runtime
 keys. The legacy `setup_gnome` in `~/Documents/scripts/install.sh` replays
@@ -212,9 +212,9 @@ Settled in ticket 01 (see its Answer). Kept for the record:
 ## Scope
 
 In scope: `modules/desktops/gnome.nix`, its import in `home.nix`, the dconf
-keys above as settled, and the documentation rows they change.
-`docs/SOFTWARE.md` has the three GNOME tools, and `docs/DECISIONS.md` and
-`docs/MIGRATION.md` §9 are affected too.
+keys above as settled, and the documentation entries they change.
+`docs/SOFTWARE.md` has the GNOME tools, and `docs/DECISIONS.md` records the
+configuration policy.
 
 Out of scope: GDM, the console keymap and `/etc/default/keyboard`, which
 are host-owned, as well as Hyprland and installing GNOME itself.

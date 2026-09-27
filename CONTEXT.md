@@ -120,14 +120,6 @@ _Avoid_: Development source, production host
 An intentionally public login used only by the disposable staging VM and never reused by a trusted machine or service.
 _Avoid_: Secret, production credential
 
-**Core milestone**:
-The first prioritized migration set defined in `docs/MIGRATION.md`. It is the feature migration, distinct from the completed host cutover to Fedora.
-_Avoid_: Complete migration
-
-**Additional candidate**:
-A component outside the core milestone that is deferred until its value and priority are explicitly reassessed.
-_Avoid_: Required follow-up
-
 **Operator review**:
 The user's approval of the resulting configuration and intentional behavior changes before a migration slice is committed.
 _Avoid_: Automated review

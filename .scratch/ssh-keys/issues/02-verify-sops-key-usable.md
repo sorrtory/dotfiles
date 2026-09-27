@@ -22,7 +22,7 @@ Use a throwaway key generated for this ticket. No real material.
 The foundation puts decrypted secrets on tmpfs at mode `0400`, reached through a
 symlink under `~/.config/sops-nix/secrets`. The plan is to point `IdentityFile`
 at that path rather than write plaintext into `~/.ssh/`. That is stated in
-`docs/MIGRATION.md` as something to verify, not as a known fact, and OpenSSH is
+this effort as something to verify, not as a known fact, and OpenSSH is
 notoriously strict about key files.
 
 If it does not work, the alternatives — writing plaintext to `~/.ssh/`, or

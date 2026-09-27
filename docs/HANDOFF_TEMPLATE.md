@@ -1,17 +1,17 @@
 # Session Handoff Template
 
-Use this only when stopping mid-migration. Do not duplicate stable project documentation here; point to it.
+Use this only when stopping mid-task. Do not duplicate stable project documentation here; point to it.
 
 ## Current objective
 
-Describe the one migration task currently in progress.
+Describe the one task currently in progress.
 
 ## Read first
 
 - `AGENTS.md`
 - `CONTEXT.md`
 - `docs/DECISIONS.md`
-- relevant section of `docs/MIGRATION.md`
+- relevant `.scratch/<effort>/map.md` and `spec.md`, when an effort exists
 
 ## What changed this session
 
@@ -19,7 +19,7 @@ List only concrete changes already made.
 
 ## Current state
 
-State what works, what is partially migrated, and what legacy path is still active.
+State what works, what remains incomplete, and any legacy path still active.
 
 ## Next action
 

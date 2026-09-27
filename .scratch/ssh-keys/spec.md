@@ -11,21 +11,20 @@ retirement and removal of this completed scratch effort.
 
 ## Why
 
-`docs/MIGRATION.md` §6. SSH material was originally classified as machine-local
-and left out of the migration entirely. That is reversed: private keys are
-reproducible secrets, because a fresh machine should reach the same hosts and
-produce the same signatures without re-registering a public key everywhere
-first, and because a signing key cannot be regenerated — replacing it
-invalidates every signature already made under it.
+SSH material was originally classified as machine-local and left out of the
+migration entirely. [The decision log](../../docs/DECISIONS.md#secrets-and-authentication)
+records the reversal: private keys are reproducible secrets. A fresh machine
+should reach the same hosts and produce the same signatures without
+re-registering a public key everywhere first. A signing key cannot be
+regenerated without invalidating every signature already made under it.
 
 `docs/DECISIONS.md` records the risk that reversal accepts.
 
 ## Sequencing
 
-WireGuard is §5 and comes first. It establishes the whole-file ciphertext
-conventions and the privileged-deployment boundary; this slice reuses them
-rather than inventing its own. Ticket 02 is the exception and can run at any
-time, because it uses a throwaway key and answers a question that decides
+WireGuard already established the whole-file ciphertext conventions and the
+privileged-deployment boundary; this slice reuses them. Ticket 02 could run
+early because it used a throwaway key and answered a question that decided
 whether the rest of the design is viable at all.
 
 ## Scope

@@ -34,7 +34,7 @@ context.
 - Never `cat`, `head`, `grep`, or open a private key. No `set -x` in a script
   handling one. Redirect `sops` output to a file, never to a terminal.
 - The legacy secrets tree is evidence, not a source to copy wholesale
-  (`docs/MIGRATION.md`, "Legacy sources are evidence, not specifications").
+  ([migration and review policy](../../../docs/DECISIONS.md#migration-and-review)).
 - Do not delete the operator's working keys. This ticket adds a reproducible
   copy; retirement is ticket 06 and only after normal use proves the
   replacement.

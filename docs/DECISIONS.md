@@ -595,7 +595,7 @@ one-off scopes on that route. Unaffected scopes retain
 their capture namespace; the backend restarts against the new inventory.
 Automatic route selection and health-based failover remain deferred.
 
-Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and the proxy configuration generator are selected for the core milestone. Other utilities are additional candidates, and browser userscripts belong in the separate `monkeys` repository.
+Source scripts may keep `.sh`; Home Manager may expose commands without the suffix. The VPN command and proxy configuration generator are selected. Review other utilities individually; browser userscripts belong in the separate `monkeys` repository.
 
 A command the operator runs keeps its Bash source under `scripts/bin/`; the VPN
 command is `scripts/bin/vpn.sh`. Helpers only a module calls live beside that
