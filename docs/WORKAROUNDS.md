@@ -211,6 +211,43 @@ rather than on spotdl so that SpotipyFree, its other consumer, gets it too.
 **Removed when** upstream honours the environment. `--replace-fail` breaks the
 build then.
 
+## Neovim plugins
+
+lazy.nvim pins these in
+[configs/nvim/lazy-lock.json](../configs/nvim/lazy-lock.json), outside
+Nixpkgs, so the version check does not read this section: the recorded commit
+is compared against the lock by hand when a plugin update is taken.
+
+### image.nvim
+
+- **Defect in:** `3rd/image.nvim` at 365e2ac (2026-09-05), the locked commit.
+- **Checked:** 2026-09-26.
+- **Upstream:** [3rd/image.nvim](https://github.com/3rd/image.nvim); nothing
+  filed.
+- **Defined in:** [configs/nvim/lua/markdown_images.lua](../configs/nvim/lua/markdown_images.lua).
+
+Markdown images switch between inline and cursor-only modes by calling
+`image.setup()` again. The document integration attaches its text-change
+watcher to a buffer only once, and that watcher keeps the options of the setup
+that attached it. After a switch to cursor-only mode, any edit (`dd`, `gcc`,
+undo) draws every image inline again.
+
+We attach a second watcher after image.nvim's. It replaces the render that
+image.nvim just queued, through image.nvim's internal render scheduler, with
+one that re-enters the current setup's `BufEnter` autocmd. It goes through the
+scheduler because undo and redo block autocmds.
+[`tests/nvim_markdown_images_test.lua`](../tests/nvim_markdown_images_test.lua)
+reproduces the defect against the real integration.
+
+**Current status:** The workaround restores correct rendering, but image
+previews are very laggy in normal use. `image.nvim` is temporarily disabled in
+its plugin spec until that performance problem is addressed.
+
+**Removed when** image.nvim's watcher reads the current options, or a mode
+switch no longer needs a second `setup()`. The workaround relies on an internal
+module and scheduler key names, so a plugin update that renames them makes the
+test fail rather than the editor.
+
 ## Removed
 
 Nothing yet. An entry moves here, cut down to a line naming the version that
