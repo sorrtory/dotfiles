@@ -394,7 +394,8 @@ body {
    * nothing: a backdrop-filter nested in another sees only the outer layer,
    * not the page, so a second pane of glass would lose its blur and double
    * the tint. */
-  [class*="ComposerLayoutBody-"] {
+  [class*="ComposerLayoutBody-"],
+  [class*="ComposerModeSurface-"] {
     background: color-mix(
       in srgb,
       var(--dotfiles-surface) 80%,
@@ -408,10 +409,10 @@ body {
   }
 
   :is(
-      [class*="ComposerLayoutRoot-"],
-      [class*="ComposerModeSurface-"],
-      [data-composer-surface]
-    ):not([class*="ComposerLayoutBody-"]) {
+    [class*="ComposerLayoutRoot-"],
+    [class*="ComposerModeSurface-"],
+    [data-composer-surface]
+  ):not([class*="ComposerLayoutBody-"]) {
     background: transparent !important;
     backdrop-filter: none !important;
     border: none !important;
@@ -422,7 +423,8 @@ body {
    * The aria-label follows the interface language, so the track's own
    * token class backs it up. */
   [role="group"][aria-label="Composer mode"],
-  [role="group"][aria-label="Composer mode"] > span[aria-hidden="true"]:first-child,
+  [role="group"][aria-label="Composer mode"]
+    > span[aria-hidden="true"]:first-child,
   .bg-background-mode-toggle-track {
     background: transparent !important;
   }
@@ -430,7 +432,8 @@ body {
   /* Both Chat/Work switches, the composer's and the top bar's, take the
    * palette: the selected option in text on an overlay pill, the other one
    * muted until hovered or focused. */
-  [role="group"][aria-label="Composer mode"] > span[aria-hidden="true"]:nth-child(2) {
+  [role="group"][aria-label="Composer mode"]
+    > span[aria-hidden="true"]:nth-child(2) {
     background: var(--dotfiles-overlay) !important;
   }
 
@@ -444,8 +447,11 @@ body {
     color: var(--dotfiles-muted) !important;
   }
 
-  [role="group"][aria-label="Composer mode"] > button[aria-pressed="false"]:is(:hover, :focus-visible),
-  #page-header [role="radiogroup"] [role="radio"][aria-checked="false"]:is(:hover, :focus-visible) {
+  [role="group"][aria-label="Composer mode"]
+    > button[aria-pressed="false"]:is(:hover, :focus-visible),
+  #page-header
+    [role="radiogroup"]
+    [role="radio"][aria-checked="false"]:is(:hover, :focus-visible) {
     color: var(--dotfiles-subtext) !important;
   }
 
