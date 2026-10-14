@@ -127,6 +127,9 @@ in
       ll = "eza -la --icons=auto --group-directories-first --git --header";
       lt = "eza --tree --level=2 --icons=auto --group-directories-first";
       lg = "lazygit";
+      gacdate = ''git add -A && git commit -m "$(date '+%-d %b %Y, %H:%M:%S')"'';
+      gcdate = ''git commit -m "$(date '+%-d %b %Y, %H:%M:%S')"'';
+      gpdate = ''git add -A && git commit -m "$(date '+%-d %b %Y, %H:%M:%S')" && git push'';
       lzd = "lazydocker";
       dps = ''docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Ports}}"'';
       dpss = ''docker ps --format "table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.RunningFor}}\t{{.Status}}\t{{.Size}}\t{{.Ports}}"'';
