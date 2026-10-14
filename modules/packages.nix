@@ -60,6 +60,7 @@ in
 
     bat
     cargo
+    chromium
 
     # clangd for Neovim, plus clang-format and clang-tidy. The package carries
     # no compiler of its own and overlaps with nothing, which is what lets it

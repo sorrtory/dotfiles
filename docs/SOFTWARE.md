@@ -137,6 +137,12 @@ sits at a path Nix probes; Nix needs one to export `NIX_SSL_CERT_FILE`.
 
 Legacy vendor-repository installer; deferred to desktop application review.
 
+### Chromium
+
+- **Purpose:** Web browser.
+- **State:** Active.
+- **Owner:** [Home Manager global packages](../modules/packages.nix).
+
 ### Clang (`clang++`)
 
 - **Purpose:** C and C++ compiler for builds that link host libraries.
