@@ -4,8 +4,9 @@
   // while the colors behind it follow the switch.
   "color_scheme": "Dotfiles.sublime-color-scheme",
   "font_size": 14,
-  "ignored_packages": ["Vintage"],
-  "index_files": true,
+  "ignored_packages": ["Vintage",
+  ],
+  "index_files": false,
 
   // Editing, as in configs/vscode/settings.json.
   "tab_size": 4,
