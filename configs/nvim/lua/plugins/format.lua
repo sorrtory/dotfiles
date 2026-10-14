@@ -27,6 +27,14 @@ return {
 				lsp_format = "fallback",
 			},
 
+			formatters = {
+				-- Use the CLI so this option also overrides project defaults.
+				prettier_json = {
+					inherit = "prettier",
+					append_args = { "--trailing-comma", "none" },
+				},
+			},
+
 			formatters_by_ft = {
 				-- Lua
 				lua = { "stylua" },
@@ -40,8 +48,8 @@ return {
 				html = { "prettierd", "prettier", stop_after_first = true },
 				css = { "prettierd", "prettier", stop_after_first = true },
 				scss = { "prettierd", "prettier", stop_after_first = true },
-				json = { "prettierd", "prettier", stop_after_first = true },
-				jsonc = { "prettierd", "prettier", stop_after_first = true },
+				json = { "prettier_json" },
+				jsonc = { "prettier_json" },
 				yaml = { "prettierd", "prettier", stop_after_first = true },
 				markdown = { "prettierd", "prettier", stop_after_first = true },
 				markdown_inline = { "prettierd", "prettier", stop_after_first = true },
