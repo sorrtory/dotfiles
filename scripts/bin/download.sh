@@ -24,6 +24,7 @@ Direct file URLs use aria2c.
 An unknown site opens a backend picker in a terminal. In a script, use --using.
 
   download 'https://youtu.be/...'
+  download -f 'https://youtu.be/...'  # retry with Firefox cookies
   download --as mp3 'https://youtu.be/...'
   download --as jpg 'https://www.pinterest.com/pin/...'
   download --using gallery-dl 'https://example.org/post/...'
@@ -31,6 +32,7 @@ An unknown site opens a backend picker in a terminal. In a script, use --using.
 
 Backend options go after -- and are passed untouched. --cookies FILE and
 --cookies-from-browser BROWSER are translated for the chosen backend.
+Cookies are off by default. -f / --firefox uses cookies from Firefox.
 Files land in the current directory. Use backend options for destinations:
 -P for yt-dlp, -D for gallery-dl, -d for aria2c, -O for gdown.
 
@@ -126,6 +128,7 @@ declare -a urls=() backend_options=() rest=()
 while (($#)); do
   case $1 in
   -h | --help) usage; exit 0 ;;
+  -f | --firefox) browser=firefox; shift ;;
   --as | --using | --cookies | --cookies-from-browser)
     [[ $# -ge 2 && -n $2 ]] || die "$1 needs a value"
     case $1 in

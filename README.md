@@ -269,7 +269,8 @@ interactive backend picker. Scripts must specify `--using` instead.
 
 Backend options go after `--`, untouched. `--cookies FILE` and
 `--cookies-from-browser BROWSER` work before the URL and are translated for the
-chosen backend. Files land in the current directory; use the backend's own
+chosen backend. Cookies are off by default; retry with `download -f URL`
+(`--firefox`) to use Firefox cookies. Files land in the current directory; use the backend's own
 destination option (`-P` for yt-dlp, `-D` for gallery-dl, `-d` for aria2c,
 `-O` for gdown). `PROXY= download URL` runs direct. `--spotify-meta` sends a
 YouTube link to spotdl for Spotify tags. Multiple URLs must use the same
