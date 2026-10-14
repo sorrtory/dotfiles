@@ -72,9 +72,16 @@ let
     runtimeInputs = [ pkgs.coreutils pkgs.ffmpeg pkgs.imagemagick ];
     text = builtins.readFile ../scripts/bin/convert-to.sh;
   };
+
+  mirrorWebsite = pkgs.writeShellApplication {
+    name = "mirror-website";
+    runtimeInputs = [ pkgs.wget ];
+    text = builtins.readFile ../scripts/bin/mirror-website.sh;
+  };
 in
 {
   home.file.".local/bin/archive".source = "${archive}/bin/archive";
   home.file.".local/bin/download".source = "${download}/bin/download";
   home.file.".local/bin/convert-to".source = "${convertTo}/bin/convert-to";
+  home.file.".local/bin/mirror-website".source = "${mirrorWebsite}/bin/mirror-website";
 }

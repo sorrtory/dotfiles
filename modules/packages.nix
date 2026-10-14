@@ -97,6 +97,7 @@ in
     lazydocker
     lazygit
 
+    monolith
     ncdu
 
     # Patches Meslo with the glyphs Neovim's completion menu, lualine, neo-tree
