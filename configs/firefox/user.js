@@ -21,11 +21,12 @@ user_pref("sidebar.verticalTabs", true);
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 user_pref("widget.gtk.rounded-bottom-corners.enabled", true);
 
-// PROXY.PAC decides routing (a self-discipline blocklist with a weekday
-// exception). It is sops ciphertext at secrets/proxy.pac, decrypted by
-// sops-nix to its stable symlink path (docs/DECISIONS.md, "Secrets and
-// authentication"). PAC mode reads the file fresh on every request, so a
-// rotated secret needs no Firefox restart, only re-activation.
+// PROXY.PAC decides routing and the local-time peek schedule. It is sops
+// ciphertext at secrets/proxy.pac, decrypted by sops-nix to its stable symlink
+// path (docs/DECISIONS.md, "Secrets and authentication"). Firefox keeps the PAC
+// JavaScript context between routing decisions. After activation updates the
+// file, use Reload in Firefox's Network Settings, or restart Firefox, to load
+// it. Reloading or restarting also resets the in-memory peek allowance.
 user_pref("network.proxy.type", 2);
 user_pref("network.proxy.autoconfig_url", "file:///home/z/.config/sops-nix/secrets/proxy.pac");
 user_pref("network.proxy.socks_remote_dns", true);
