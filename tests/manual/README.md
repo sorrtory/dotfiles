@@ -2,6 +2,25 @@
 
 These need a real environment that the automated tests deliberately stub out.
 
+## VM creation and reboot
+
+Run on a disposable libvirt host after `vm-create NAME` succeeds:
+
+```bash
+bash tests/manual/vm-create.sh NAME
+```
+
+This reboots only the named guest. It checks its live reboot policy, verifies
+that the boot ID changes and the guest returns, and tests user/root key access,
+passwordless sudo, services, the guest agent and refusal of password-only SSH.
+For a SPICE desktop guest it also waits for the user's GNOME session to return
+unlocked after reboot, with automatic screen locking disabled.
+Supply a second argument containing another IPv4 address assigned to the host
+to also check that UFW rejects SSH originating outside the permitted NAT gateway.
+For the Fedora staging host that argument is `192.168.122.21`.
+`VM_CREATE_TEST_USER` and `VM_CREATE_TEST_IDENTITY` override the default host
+username and server SOPS identity when the guest was created with another pair.
+
 ## Application VPN integration test
 
 Run only on a machine where the production `vpn-capture.service` has not been

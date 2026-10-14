@@ -999,6 +999,20 @@ The package stays undeclared in favor of Neovim. The [Neovim module](../modules/
 
 The bootstrap phase installs distro packages on x86_64 Debian/Ubuntu, Fedora and Arch. The [VM setup instructions](../README.md#virtual-machines) cover service, network and authorization setup.
 
+### vm-create
+
+- **Purpose:** Create a verified Ubuntu 24.04 server or GNOME desktop VM.
+- **State:** Active.
+- **Owner:** [scripts module](../modules/scripts.nix).
+- **Used by:** Explicit `vm-create NAME` invocations.
+
+The [command source](../scripts/bin/vm-create.sh) uses the distro virtualization
+stack and libvirt storage management. It installs the operator's public SSH
+key for the guest user and root, locks passwords, and verifies first boot.
+`--desktop` adds GNOME with automatic login and an unlocked desktop;
+`--view` opens its local SPICE console using the host's viewer.
+See [VM setup and creation](../README.md#virtual-machines) for defaults and overrides.
+
 ### Visual Studio Code
 
 - **Purpose:** Code editor.

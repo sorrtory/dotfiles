@@ -252,6 +252,78 @@ Backend stop blocked all three paths while the captures stayed active;
 restart restored both app captures. `vpn-down` removed the TUN, restored the
 Wi-Fi route and DNS, and direct HTTPS returned 204.
 
+## VM creation command, 2026-10-14
+
+`vm-create` was exercised inside the Fedora 44 staging host, creating a nested
+Ubuntu 24.04 cloud guest with the ordinary `z` user's libvirt authorization.
+The staging host needed its missing distro `virt-install` package and a
+directory pool named `default` at `/var/lib/libvirt/images`; its existing
+IPv4 NAT network used `192.168.123.0/24` to avoid the outer host's subnet.
+The helper itself ran without sudo or Home Manager activation.
+
+- Default creation allocated 2 vCPUs, 2048 MiB RAM and an independent 20 GiB
+  disk. The guest root filesystem grew to 19 GiB.
+- The immutable Ubuntu release image passed its official SHA-256 checksum;
+  a second creation reused the cache and verified the libvirt base volume
+  without downloading the image again.
+- Cloud-init completed without errors. User and root key login, passwordless
+  sudo, locked passwords, OpenSSH, UFW and QEMU guest-agent communication passed.
+- UFW had exactly one incoming SSH rule, allowing `192.168.123.1`. An SSH
+  connection bound to the staging host's outer `192.168.122.21` address timed
+  out, while a normal gateway-sourced connection succeeded. Password-only SSH
+  was refused with the server offering public-key authentication only.
+- The first reboot check caught virt-install's temporary first-boot domain:
+  it runs with `on_reboot=destroy` while the persistent definition uses
+  `on_reboot=restart`. The helper now gracefully shuts down and starts the
+  guest after cloud-init, then verifies the final boot before reporting ready.
+  The [live regression test](../tests/manual/vm-create.sh) checks this policy
+  and confirms reboot preserves both SSH accounts, sudo, services and the
+  guest agent. Address discovery uses the guest agent when available so stale
+  DHCP leases do not select the previous boot's address.
+
+`tests/vm_create_test.sh`, ShellCheck, `nix flake check` and the host Home
+Manager activation-package build passed. That generation was not activated
+on the daily host. These are Fedora staging results; Debian and Arch VM
+creation have not been exercised on real hosts.
+
+## Ubuntu GNOME creation, 2026-10-14
+
+A temporary Ubuntu 24.04 GNOME guest was created on the current Fedora 44 host
+with `vm-create NAME --desktop`, using the ordinary user's libvirt access.
+The default 4 vCPUs, 4096 MiB RAM and independent 40 GiB disk were exercised;
+the root filesystem expanded to 38 GiB as reported by `df -h`.
+
+- Fresh creation completed cloud-init, the final cold boot and all readiness
+  checks without guest repair. User/root SSH keys, passwordless sudo, locked
+  passwords, the host-only UFW rule and QEMU guest-agent communication passed.
+- GDM automatically logged the guest user into GNOME on Wayland. The session
+  bus confirmed GNOME Shell was running and the screen was unlocked. Screen
+  locking, idle blanking and automatic suspension settings matched the profile.
+  The user's configuration and autostart directories were writable and owned
+  by that user. A framebuffer screenshot showed the desktop without welcome
+  or automatic upgrade dialogs.
+- Desktop packages change Netplan's default renderer. The helper retains
+  networkd during installation and hands control to NetworkManager on the
+  final cold boot. That boot changed the DHCP address; SSH retries rediscovered
+  it through the guest agent instead of retaining the old lease.
+- Disabling the obsolete networkd wait service removed a two-minute startup
+  delay. On the final guest, `graphical.target` was reached at 5.4 seconds and
+  `systemctl --failed` reported no failed units.
+- The live reboot regression passed: the boot ID changed, both SSH accounts,
+  sudo, services and the guest agent returned, and GNOME automatically logged
+  in with an unlocked desktop. Password-only root SSH was refused.
+- A separate native virt-manager console connected to the local SPICE display
+  through libvirt. A SPICE monitor request resized the Wayland desktop from
+  1280×800 to 1152×864. A clipboard test pasted a harmless command into the
+  GNOME terminal and verified its result over SSH; host-to-guest paste was
+  exercised, while guest-to-host copy was not.
+
+Public-interface tests cover desktop defaults and overrides, viewer selection,
+refusal of a locked desktop, and changing addresses after the final boot.
+Those tests, ShellCheck, `nix flake check` and the host Home Manager generation
+build passed. The generation was not activated. The temporary guest, its disk
+and test cache were removed; the existing domains and base volume were retained.
+
 ## Mirroring the working tree
 
 The guest copy is a plain directory, not a clone, so every edit, commit and Git

@@ -122,6 +122,66 @@ Debian, Fedora, Arch and the modular daemon layout have automated command-flow
 tests; they still need real-machine verification. See the
 [staging verification record](docs/STAGING.md#historical-ubuntu-verification).
 
+`vm-create NAME` provisions a fresh Ubuntu 24.04 cloud server with 2 CPUs,
+2048 MiB RAM and an independent 20 GiB disk:
+
+```bash
+vm-create dev-server
+vm-create larger-server --cpus 4 --ram 4096 --disk 40G --upgrade --autostart
+vm-create interactive-server --ssh
+vm-create desktop-test --desktop --view
+```
+
+Run it as your ordinary user. It needs the host virtualization stack, the active
+`default` IPv4 NAT network, and an active directory storage pool named `default`
+(normally `/var/lib/libvirt/images`). Create a missing pool in virt-manager, or
+select an existing one with `--pool`. The command delegates volume creation,
+upload, cloning and resizing to libvirt rather than invoking sudo.
+
+The guest user defaults to your host username and has passwordless sudo. Your
+`~/.ssh/id_ed25519_servers.pub` keys are installed for that user and root;
+passwords are locked and incoming SSH is allowed only from the NAT gateway,
+which is the host. The private SOPS identity stays on the host and is used to
+verify SSH access. An encrypted identity must already be unlocked in ssh-agent.
+`--ssh-key FILE` and `--identity FILE` select another matching pair.
+
+`--desktop` installs Ubuntu GNOME with automatic login for the guest user and
+defaults to 4 CPUs, 4096 MiB RAM and a 40 GiB disk. Explicit resource settings
+override those defaults. Passwords stay locked; idle screen locking and
+suspension are disabled, and welcome and automatic GUI upgrade prompts are
+skipped. The
+SPICE console uses the local libvirt connection without a listening network
+port. `--view` implies desktop mode and opens the console after verification,
+using the host's `virt-viewer` or falling back to `virt-manager`. It needs a
+graphical host session; `--desktop` alone also works from SSH and prints the
+viewer command for later.
+
+First boot installs OpenSSH, the QEMU guest agent, curl, wget, git, vim, htop and
+UFW. Full package upgrades, VM autostart and an interactive SSH session are
+opt-in. Creation completes cloud-init, shuts down and starts the guest once to
+finish virt-install's temporary first-boot lifecycle, then verifies SSH, sudo,
+services, locked passwords, firewall rules and guest-agent communication. Desktop
+mode also waits for an active, unlocked GNOME session and checks its idle settings.
+`--timeout SECONDS` changes the readiness deadline: 30 minutes for servers and
+60 minutes for desktops. `vm-create --help` lists all settings and usage examples. Image
+downloads show a progress bar, and successful creation prints copyable user
+and root SSH commands.
+
+The verified Ubuntu release is cached under `${XDG_CACHE_HOME:-~/.cache}/vm-create`
+and as a checksum-named base volume in the selected pool. Downloads use an
+immutable release URL and resume safely; `--refresh-image` selects the latest
+released Ubuntu 24.04 build. Each guest gets an independent disk, so retiring a
+cached base does not break its VMs. Existing names and disks are refused. A
+failure before domain creation removes the newly created guest disk; a defined
+VM whose first boot fails is kept for inspection. The command never repairs or
+deletes an existing VM.
+
+The source can also run before Home Manager activation:
+`./scripts/bin/vm-create.sh NAME`. [Public-interface tests](tests/vm_create_test.sh)
+exercise settings, keys, cache reuse, interrupted downloads and failure cleanup
+without creating a real VM. The [live reboot test](tests/manual/vm-create.sh)
+checks a disposable guest through libvirt and SSH.
+
 ### Local proxy
 
 The sing-box user service exposes SOCKS5/HTTP at `127.0.0.1:1080` and HTTP at

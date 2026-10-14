@@ -78,10 +78,30 @@ let
     runtimeInputs = [ pkgs.wget ];
     text = builtins.readFile ../scripts/bin/mirror-website.sh;
   };
+
+  # The host supplies virsh, virt-install and qemu-img. In particular, do not
+  # pull a second libvirt/QEMU stack into this user command's closure. Its
+  # storage operations use the existing daemon's authorization and labeling.
+  vmCreate = pkgs.writeShellApplication {
+    name = "vm-create";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.curl
+      pkgs.gawk
+      pkgs.gnugrep
+      pkgs.jq
+      pkgs.libxml2
+      pkgs.openssh
+      pkgs.util-linux
+      pkgs.xorriso
+    ];
+    text = builtins.readFile ../scripts/bin/vm-create.sh;
+  };
 in
 {
   home.file.".local/bin/archive".source = "${archive}/bin/archive";
   home.file.".local/bin/download".source = "${download}/bin/download";
   home.file.".local/bin/convert-to".source = "${convertTo}/bin/convert-to";
   home.file.".local/bin/mirror-website".source = "${mirrorWebsite}/bin/mirror-website";
+  home.file.".local/bin/vm-create".source = "${vmCreate}/bin/vm-create";
 }

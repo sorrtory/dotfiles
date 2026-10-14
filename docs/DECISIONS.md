@@ -156,6 +156,33 @@ policy; membership grants privileged VM management. There is no destructive
 uninstall action. Verification coverage is recorded in
 [STAGING.md](STAGING.md#historical-ubuntu-verification).
 
+`vm-create` is an explicit global user tool, delivered by `modules/scripts.nix`,
+for creating fresh Ubuntu 24.04 cloud guests. Server defaults are 2 vCPUs,
+2048 MiB RAM and an independent 20 GiB disk. `--desktop` adds Ubuntu GNOME with
+4 vCPUs, 4096 MiB RAM and a 40 GiB disk unless explicitly overridden.
+It uses the ordinary user's existing
+`qemu:///system` authorization and an active directory storage pool; libvirt
+owns volume permissions and security labeling. It does not configure the host
+stack, networks or pools, and Home Manager activation never creates a VM.
+The server public key is installed for the guest user and root; the private
+SOPS identity remains host-local. Both passwords are locked, the guest user has
+passwordless sudo, and UFW permits incoming SSH only from the host NAT gateway.
+Package upgrades, VM autostart and an interactive SSH session are opt-in.
+Desktop mode uses GDM automatic login for the guest user while keeping both
+passwords locked. Idle locking and suspension are disabled, and GNOME's
+first-run wizard and automatic GUI upgrade prompts are skipped. SPICE uses
+the libvirt connection without a
+listening network port. Desktop readiness requires an active, unlocked GNOME
+session after the final boot. `--view` implies desktop mode and uses a
+host-owned virt-viewer when present, otherwise virt-manager; it does not add
+another virtualization stack through Nix or install host packages implicitly.
+First-boot package installation retains networkd until the desktop is installed;
+the final cold boot hands networking to NetworkManager. The obsolete networkd
+wait service is disabled, and SSH retries refresh the guest address when leases change.
+Verified immutable release images are cached, while every VM disk stands alone.
+Creation refuses existing names and volumes, verifies first-boot results, and
+preserves a defined VM on failure instead of repairing or deleting it.
+
 ## Configuration policy
 
 Keep a readable native config when translating it to Nix would reduce clarity. Use `mkOutOfStoreSymlink` intentionally when immediate editability is valuable.
