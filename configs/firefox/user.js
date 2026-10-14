@@ -8,6 +8,13 @@ user_pref("ui.key.menuAccessKeyFocuses", false);
 // no key triggers menu access keys; the menu bar itself is unaffected.
 user_pref("ui.key.menuAccessKey", 0);
 
+// Ctrl+T and the new-tab button insert immediately after the active tab.
+user_pref("browser.tabs.insertAfterCurrent", true);
+
+// Show tabs vertically in Firefox's revamped sidebar.
+user_pref("sidebar.revamp", true);
+user_pref("sidebar.verticalTabs", true);
+
 // Rewaita generates chrome/rewaitaChrome.css beside the machine-local
 // profile. Firefox ignores userChrome.css unless the legacy customization
 // switch is on; rounded GTK corners keep the generated GNOME frame coherent.

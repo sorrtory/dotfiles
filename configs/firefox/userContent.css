@@ -359,6 +359,7 @@ body {
   /* Two more layers of the same bottom shadow, reachable only by their
    * utility classes: an absolute overlay behind the composer, cleared, and a
    * sticky strip at the foot of the thread, hidden outright. */
+  .pointer-events-none,
   .pointer-events-none.absolute.inset-x-0.z-10.bottom-0,
   .pointer-events-none.absolute.inset-x-0.z-10.bottom-0::before,
   .pointer-events-none.absolute.inset-x-0.z-10.bottom-0::after {
@@ -370,13 +371,26 @@ body {
     display: none !important;
   }
 
-  /* Code blocks, matched by the readable part of their module classes. The
-   * header with the language and Copy button is sticky, so the code scrolls
-   * under it and it blurs instead. */
-  [class*="CodeBlock-"] {
+  .pointer-events-auto,
+  .pointer-events-auto * {
     background: transparent !important;
   }
 
+  /* Code blocks share the composer's glass below. Clear the outer wrapper
+   * and inner fills so the header, code and syntax tokens show one surface
+   * without stacked tints.
+   * Keep token colors; the block supplies the palette's default text color. */
+  [class*="CodeBlock-"],
+  [class*="CodeBlock-"] * {
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  [class*="CodeBlock-"] > [data-markdown-copy="code-block"] {
+    color: var(--dotfiles-text) !important;
+  }
+
+  /* The language and Copy bar stays readable as code scrolls beneath it. */
   [class*="StickyActionBar-"] {
     background: transparent !important;
     backdrop-filter: blur(24px) !important;
@@ -394,6 +408,7 @@ body {
    * nothing: a backdrop-filter nested in another sees only the outer layer,
    * not the page, so a second pane of glass would lose its blur and double
    * the tint. */
+  [class*="CodeBlock-"] > [data-markdown-copy="code-block"],
   [class*="ComposerLayoutBody-"],
   [class*="ComposerModeSurface-"] {
     background: color-mix(
@@ -403,6 +418,12 @@ body {
     ) !important;
     backdrop-filter: blur(32px) saturate(160%) !important;
     border: 1px solid color-mix(in srgb, currentColor 12%, transparent) !important;
+  }
+
+  /* CodeSurface owns its rounding and overflow clipping; leave both intact.
+   * Only the composer needs to inherit its parent's radius. */
+  [class*="ComposerLayoutBody-"],
+  [class*="ComposerModeSurface-"] {
     /* The rounding is ChatGPT's inline style on the layout root, the body's
      * parent; the glass drawn here would otherwise be square. */
     border-radius: inherit !important;
