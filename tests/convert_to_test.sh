@@ -29,6 +29,13 @@ EOF
 cat >"$root/bin/ffmpeg" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"$RECORDING"
+# Model FFmpeg's progress display: error-only logging needs explicit -stats.
+for argument in "$@"; do
+  if [[ $argument == -stats ]]; then
+    printf 'frame=   10 fps=25 time=00:00:01.00 speed=1x\n' >&2
+    break
+  fi
+done
 output=${*: -1}
 if [[ ${FFMPEG_FAILS:-} == "${output##*/}" ]]; then
   printf 'partial output\n' >"$output"
@@ -90,6 +97,16 @@ run() {
 calls() { cat "$root/recording"; }
 
 # --- the four mp4 recipes -------------------------------------------------
+
+reset_inputs
+run mp4 vp9.webm >"$root/out" 2>"$root/progress"
+[[ $(<"$root/progress") == *'frame='* && $(<"$root/progress") == *'time='* ]] ||
+  fail 'an MP4 transcode must show encoding progress on stderr'
+[[ $(<"$root/progress") == *'converting vp9.webm -> vp9.mp4'* ]] ||
+  fail 'a conversion should name its input and output before encoding'
+[[ $(<"$root/progress") == *'finished vp9.mp4'* ]] ||
+  fail 'a successful conversion should report completion'
+[[ ! -s $root/out ]] || fail 'progress should leave stdout free'
 
 reset_inputs
 run mp4 compatible.mkv >/dev/null

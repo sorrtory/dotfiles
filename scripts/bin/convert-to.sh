@@ -29,6 +29,8 @@ source streams and metadata.
 
 Options go to ffmpeg, or to ImageMagick for jpg and png. An animated or
 multi-page image is refused rather than split into one file per frame.
+Conversion start and completion messages go to stderr, along with FFmpeg's
+live progress (frames, media time and speed).
 
 mp3 keeps the source's cover art. --cover replaces it, and when the input is
 already an mp3 the audio is copied rather than re-encoded, so adding a picture
@@ -256,6 +258,7 @@ publish_temporary_output() {
 for input in "${inputs[@]}"; do
   output=$(output_for "$input")
   source=$(tool_path "$input")
+  printf 'convert-to: converting %s -> %s\n' "$input" "$output" >&2
   streams=''
   [[ $target == jpg || $target == png ]] || streams=$(probe "$input" || true)
 
@@ -267,7 +270,9 @@ for input in "${inputs[@]}"; do
   cover_ordinal=$(printf '%s\n' "$streams" |
     awk -F, '$2 == "video" { if ($3 == 1) { print n + 0; exit } n++ }')
 
-  declare -a ffmpeg_common=(ffmpeg -hide_banner -loglevel error -y)
+  # Error-only logging suppresses the default stats display; request it
+  # explicitly so long encodes still show frames, media time and speed.
+  declare -a ffmpeg_common=(ffmpeg -hide_banner -loglevel error -stats -y)
   status=0
 
   case $target in
@@ -447,10 +452,13 @@ for input in "${inputs[@]}"; do
     warn "could not install the converted file at $output; the destination was not replaced"
     cleanup_temporary_output
     failures=$((failures + 1))
-  elif ((replace)) && [[ $output != "$input" ]]; then
-    if ! rm -f -- "$input"; then
-      warn "converted $output but could not remove $input"
-      failures=$((failures + 1))
+  else
+    printf 'convert-to: finished %s\n' "$output" >&2
+    if ((replace)) && [[ $output != "$input" ]]; then
+      if ! rm -f -- "$input"; then
+        warn "converted $output but could not remove $input"
+        failures=$((failures + 1))
+      fi
     fi
   fi
 done
