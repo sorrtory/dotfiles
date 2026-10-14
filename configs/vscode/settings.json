@@ -89,7 +89,7 @@
     "redhat.telemetry.enabled": false,
     "workbench.editorAssociations": {
         "*.copilotmd": "vscode.markdown.preview.editor",
-        "*.pdf": "latex-workshop-pdf-hook",
+        "*.pdf": "pdf.preview",
     },
     "excalidraw.theme": "auto",
     "github.copilot.enable": {
