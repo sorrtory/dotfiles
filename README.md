@@ -381,7 +381,7 @@ This covers `Ctrl+Alt+T` (WezTerm), `Super+F` (Firefox), `Super+E` (Files),
 `Super+C` (Code), `Super+T` (Sublime), `Super+S` (Spotify), and `Super+M`
 (AyuGram). `Super+K` selects the Knowledge-Database Obsidian vault and
 `Super+N` selects private Notes and always runs `vault notes` to check that the
-vault is unlocked, even if a window survived a forced lock. `Shift+F11` always
+vault is unlocked and open its private Obsidian profile. `Shift+F11` always
 starts an interactive screenshot.
 
 After activating this change, log out and back in so GNOME discovers the
@@ -405,6 +405,20 @@ too. To get the real Ptyxis back, remove
 Obsidian matching uses its standard vault-name suffix in the window title.
 Renaming a vault or changing that title with a plugin requires updating its
 match. Additional vaults also named `Notes` are indistinguishable by title.
+
+`vault notes [PATH]` creates `Notes/` and `.obsidian-profile/` inside the
+unlocked private vault on first use. The second directory holds Obsidian's
+vault registration and application state, so the ordinary Obsidian vault list
+does not need to know about private Notes. Both directories are encrypted when
+locked. The app profile is machine-local; do not sync it between active
+machines. Existing note files and their `.obsidian` settings stay in `Notes/`.
+
+Close the private Notes window before `vault lock`. A running private instance
+blocks a normal lock; confirming Force also stops that instance before
+unmounting. The knowledge database stays open. If Notes was previously added
+to the ordinary Obsidian profile, close its old window and use **Manage Vaults
+→ Remove from list** there once. The command does not rewrite the ordinary
+profile or erase its historical caches.
 
 ### Themes
 

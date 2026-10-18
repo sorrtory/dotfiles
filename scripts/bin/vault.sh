@@ -28,7 +28,8 @@ is stored in .Vault.encrypted and Documents/Work in Documents/.Work.encrypted.
   unlock  Mount the vault, and nothing else.
   open    Unlock it and show it in the file manager.
   notes   Unlock it and open its Notes/ in Obsidian, creating Notes/ the first
-          time. Offers to create the vault itself if there is none.
+          time. Its separate app profile stays in .obsidian-profile/ inside
+          the encrypted filesystem. Offers to create the vault if needed.
   lock    End access. It closes cleanly on its own when nothing is holding the
           vault; when something is, it names what, says what forcing costs,
           and waits for an answer.
@@ -380,9 +381,9 @@ do_unlock() {
   fi
 
   choose_prompt "$mount_dir"
-  # fd 9 is toggle's lock. The daemon outlives this command and must not
-  # inherit it, or no later click would ever get the lock.
-  gocryptfs "${EXTPASS[@]}" -- "$storage" "$mount_dir" 9>&- || status=$?
+  # fd 8 serializes Notes with locking; fd 9 is toggle's lock. The daemon
+  # outlives this command and must inherit neither of them.
+  gocryptfs "${EXTPASS[@]}" -- "$storage" "$mount_dir" 8>&- 9>&- || status=$?
   case $status in
     0) ;;
     12) die "that password does not open $mount_dir" ;;
@@ -549,13 +550,126 @@ launch() {
     say "$what $state. $1 is not installed, so nothing was opened."
     return 0
   fi
-  setsid "$@" >/dev/null 2>&1 9>&- &
+  setsid "$@" >/dev/null 2>&1 8>&- 9>&- &
   say "$what $state."
 }
 
-url_encode_path() {
-  printf '%s' "$1" | sed -e 's|%|%25|g' -e 's|/|%2F|g' -e 's| |%20|g'
+# Electron rewrites /proc's argv into a single process-title string. Use its
+# own SingletonLock to locate the main PID, then validate the executable and
+# profile switch before treating it as this vault's process.
+find_notes_processes() {
+  local mount_dir=$1 lock pid exe cmdline
+  lock=$(readlink -- "$mount_dir/.obsidian-profile/SingletonLock") || return 0
+  pid=${lock##*-}
+  [[ $pid =~ ^[0-9]+$ ]] || return 0
+  exe=$(readlink "/proc/$pid/exe" 2>/dev/null) || return 0
+  case ${exe##*/} in
+    electron | electron-* | obsidian | Obsidian) ;;
+    *) return 0 ;;
+  esac
+  cmdline=$(tr '\0' ' ' 2>/dev/null <"/proc/$pid/cmdline") || return 0
+  case " $cmdline " in
+    *" --user-data-dir=$mount_dir/.obsidian-profile "*) printf '%s\n' "$pid" ;;
+  esac
 }
+
+notes_runtime() {
+  local profile="$1/.obsidian-profile"
+  printf '%s/vault-obsidian-%s\n' "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" \
+    "$(printf '%s' "$profile" | sha256sum | cut -c1-16)"
+}
+
+# Normal locking asks the operator to close Notes. Only an explicitly forced
+# lock stops it. Stop before unmounting: otherwise a surviving app could write
+# its profile into the now-empty mount directory in plaintext.
+stop_notes() {
+  local mount_dir=$1 pid stat group pending waited=0
+  local -a fields=() pids=() groups=()
+  mapfile -t pids < <(find_notes_processes "$mount_dir")
+  for pid in "${pids[@]}"; do
+    # launch uses setsid. Signal its group as well to stop Chromium helpers
+    # together with their main process.
+    stat=$(cat "/proc/$pid/stat" 2>/dev/null) || continue
+    read -r -a fields <<<"${stat##*) }"
+    if [[ ${fields[2]:-} == "$pid" ]]; then
+      groups+=("$pid")
+      kill -TERM -- "-$pid" 2>/dev/null || true
+    else
+      kill -TERM "$pid" 2>/dev/null || true
+    fi
+  done
+  while :; do
+    pending=$(find_notes_processes "$mount_dir")
+    for group in "${groups[@]}"; do
+      if kill -0 -- "-$group" 2>/dev/null; then pending=1; fi
+    done
+    [[ -n $pending ]] || return 0
+    if ((waited >= 10)); then
+      report_error "Obsidian has not stopped; $mount_dir is still unlocked. Close Notes and retry."
+      return 1
+    fi
+    sleep 0.5
+    waited=$((waited + 1))
+  done
+}
+
+open_notes() (
+  local mount_dir=$1 storage=$2 notes="$1/Notes" profile="$1/.obsidian-profile"
+  local registry="$profile/obsidian.json" tmp waited=0 runtime
+  # Each profile has its own registry, so its sole managed vault can keep a
+  # stable ID even when the encrypted filesystem is moved to another path.
+  local id=0000000000000001
+  local session_runtime=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
+  local wayland=${WAYLAND_DISPLAY:-}
+  local session_bus=${DBUS_SESSION_BUS_ADDRESS:-unix:path=$session_runtime/bus}
+
+  umask 077
+  runtime=$(notes_runtime "$mount_dir")
+  mkdir -p -- "$runtime"
+  chmod 700 -- "$runtime"
+  # Shared with locking, outside the mount: a lock must not detach the vault
+  # while a concurrent notes command is still preparing to launch the app.
+  exec 8>"$runtime/.launch.lock"
+  flock 8
+  do_unlock "$mount_dir" "$storage"
+  record_daemon "$mount_dir" "$storage"
+  update_entry
+  mkdir -p -- "$notes" "$profile"
+  chmod 700 -- "$profile"
+
+  # Never rewrite state behind a running app. On a cold start merge only our
+  # registration, preserving preferences, vault ID and cached window state.
+  if [[ -z $(find_notes_processes "$mount_dir") ]]; then
+    rm -f -- "$runtime/.obsidian-cli.sock"
+    [[ -e $registry ]] || printf '{}\n' >"$registry"
+    tmp=$(mktemp -- "$profile/.obsidian.json.XXXXXX")
+    if ! jq --arg id "$id" --arg path "$notes" \
+      '.vaults[$id] = ((.vaults[$id] // {}) + {path: $path, ts: (now * 1000 | floor), open: true})' \
+      "$registry" >"$tmp" || [[ ! -s $tmp ]]; then
+      rm -f -- "$tmp"
+      die "could not read $registry; the vault remains unlocked"
+    fi
+    mv -f -- "$tmp" "$registry"
+  fi
+
+  # Obsidian 1.13 also routes repeat launches through a socket directly under
+  # XDG_RUNTIME_DIR. A distinct user-data-dir alone does not isolate that socket.
+  # Keep its short, per-profile name in the session runtime directory, and
+  # resolve Wayland's relative display name before changing the runtime root.
+  if [[ -n $wayland && $wayland != /* ]]; then
+    wayland="$session_runtime/$wayland"
+  fi
+  XDG_RUNTIME_DIR=$runtime WAYLAND_DISPLAY=$wayland DBUS_SESSION_BUS_ADDRESS=$session_bus \
+    launch "$notes" obsidian "--user-data-dir=$profile" "obsidian://open?vault=$id"
+  [[ -n ${DISPLAY:-}$wayland ]] && command -v obsidian >/dev/null || return 0
+  # Wait for its routing socket too: a second keypress must not forward to a
+  # main process that is still starting. The app never inherits fd 8.
+  while [[ ! -S $runtime/.obsidian-cli.sock || -z $(find_notes_processes "$mount_dir") ]]; do
+    ((waited < 50)) || die "Obsidian did not start; $mount_dir remains unlocked"
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+)
 
 # --- commands ----------------------------------------------------------------
 
@@ -622,7 +736,7 @@ cmd_open() {
 }
 
 cmd_notes() {
-  local mount_dir storage notes
+  local mount_dir storage
   resolve_target notes "$@"
   mount_dir=$TARGET_MOUNT
   storage=$TARGET_STORAGE
@@ -637,19 +751,9 @@ cmd_notes() {
     say ''
   fi
 
-  do_unlock "$mount_dir" "$storage"
-  record_daemon "$mount_dir" "$storage"
-  update_entry
-
-  # Created on first use rather than by init, which makes a general-purpose
-  # encrypted filesystem and not a notes layout.
-  notes="$mount_dir/Notes"
-  [[ -d $notes ]] || mkdir -p -- "$notes"
-
-  # Obsidian takes a vault as a URI and reads the query value whole, so the
-  # separators are encoded. This is a second vault beside the knowledge
-  # database, never a replacement for it.
-  launch "$notes" obsidian "obsidian://open?path=$(url_encode_path "$notes")"
+  # Serialize unlocking and app setup with locking, so a competing lock cannot
+  # detach the mount before Notes has finished launching.
+  open_notes "$mount_dir" "$storage"
 }
 
 report_blockers() {
@@ -716,9 +820,15 @@ ask_blocked() {
   fi
 }
 
-lock_one() {
-  local mount_dir=$1 storage=$2 daemon answer
+lock_one() (
+  local mount_dir=$1 storage=$2 daemon answer runtime force=$FORCE
   local -a blockers=()
+
+  runtime=$(notes_runtime "$mount_dir")
+  mkdir -p -- "$runtime"
+  chmod 700 -- "$runtime"
+  exec 8>"$runtime/.launch.lock"
+  flock 8
 
   if ! is_mounted "$mount_dir"; then
     say "$mount_dir is not unlocked."
@@ -730,9 +840,11 @@ lock_one() {
   daemon=$(find_daemon "$storage" "$mount_dir") || daemon=''
 
   while :; do
-    unmount_cleanly "$mount_dir" && break
+    if [[ -z $(find_notes_processes "$mount_dir") ]] && unmount_cleanly "$mount_dir"; then
+      break
+    fi
 
-    mapfile -t blockers < <(find_blockers "$mount_dir")
+    mapfile -t blockers < <({ find_blockers "$mount_dir"; find_notes_processes "$mount_dir"; } | sort -un)
     if ((${#blockers[@]} == 0)); then
       printf '%s cannot be unmounted, and nothing holding it could be identified.\n' \
         "$mount_dir" >&2
@@ -740,7 +852,7 @@ lock_one() {
       report_blockers "$mount_dir" "${blockers[@]}"
     fi
 
-    ((!FORCE)) || break
+    ((!force)) || break
 
     # No timer and no automatic escalation: this waits for an answer for as
     # long as it takes, and the answer covers this attempt only.
@@ -748,7 +860,7 @@ lock_one() {
     case $answer in
       r | retry) continue ;;
       f | force)
-        FORCE=1
+        force=1
         break
         ;;
       *)
@@ -758,7 +870,8 @@ lock_one() {
     esac
   done
 
-  if ((FORCE)) && is_mounted "$mount_dir"; then
+  if ((force)) && is_mounted "$mount_dir"; then
+    stop_notes "$mount_dir" || return 1
     force_unlock_teardown "$mount_dir" "$daemon"
   fi
   verify_locked "$mount_dir" "$daemon" || die "$mount_dir was not locked"
@@ -771,7 +884,7 @@ lock_one() {
   # server may already be gone.
   ((ALL)) || notify "$(basename -- "$mount_dir") is locked" \
     'Access through the vault has ended.'
-}
+)
 
 # Every vault this session unlocked, for a session ending with nobody there to
 # answer. The records are a cache and are checked against the kernel before

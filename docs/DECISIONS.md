@@ -413,6 +413,27 @@ nowhere to type a path, so it has to carry one, and naming it once beats the
 same literal in two modules. It says nothing about the vault's contents, since
 `Notes/` is created by `vault notes` inside whichever vault it is given.
 
+`vault notes` runs Obsidian with `--user-data-dir` pointing to
+`.obsidian-profile/` inside that unlocked filesystem, beside `Notes/`. The
+profile's registration, logs, caches and application state are encrypted at
+rest with the notes. The ordinary Obsidian profile remains independent for
+the knowledge database. A cold launch merges the Notes registration into the
+private profile, preserving preferences and using a stable vault ID; a running
+instance's registry is never rewritten. This makes first use independent of
+Obsidian's ordinary vault list. The profile is machine-local application state,
+not declarative configuration or something to sync between running machines.
+
+Obsidian 1.13 also uses a CLI socket directly under `XDG_RUNTIME_DIR`, so a
+separate data directory alone does not isolate repeated launches. Each private
+profile gets a short, hashed directory under the session's runtime directory.
+Its launches use that directory for the socket while retaining the real
+session bus and resolving a relative Wayland display name against the original
+runtime directory. The socket and launch-lock directory is ephemeral state
+outside encryption; startup and locking share that lock so a concurrent launch
+cannot write into a mount that has just been detached.
+Existing registrations or caches in the ordinary profile are never edited or
+erased automatically; removing an old Notes registration is an operator step.
+
 Unlocking is always explicit. Nothing mounts a vault at login or during
 activation, and the vault's contents are the operator's data: activation never
 creates one. Initialization is separate from opening and requires a terminal,
@@ -434,6 +455,12 @@ after `fusermount3 -uz` the daemon keeps serving a descriptor opened before it,
 and only SIGTERM ends that. So forcing does both. Blockers are found in `/proc`
 and named; forcing is confirmed per attempt, never on a timer, and the question
 is asked on the terminal or in a dialog depending on where the operator is.
+The private Obsidian instance itself is a blocker even between file accesses:
+close its window before a normal lock. An explicitly forced lock sends SIGTERM
+to that profile's processes and their launch group, and waits for them to exit
+before detaching the mount. If they do not exit, the vault stays unlocked.
+This prevents an app from recreating profile files in the bare mount directory
+after unmounting. Other Obsidian profiles are left running.
 
 Shutdown needs nothing from this repository: systemd sends SIGTERM and gocryptfs
 unmounts and exits. Logout does, because `KillUserProcesses` defaults to `no`,

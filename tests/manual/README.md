@@ -53,5 +53,21 @@ It checks real initialization on a pty and the refusal without one, a real
 mount, that plaintext is readable through the mount and absent from the
 storage, that a second open reuses the mount instead of stacking one, that the
 runtime record names the process actually holding the mount, and that a wrong
-password is refused. `tests/vault_test.sh` covers the path rule and every
+password is refused. It also checks that Notes registers inside the encrypted
+profile and preserves native preferences on another cold launch.
+`tests/vault_test.sh` covers the path rule and every
 refusal that needs no real filesystem.
+
+For the real Obsidian checks, also put `node` (with built-in WebSocket support),
+`Xvfb`, and `obsidian` on PATH, then run:
+
+```bash
+VAULT_TEST_COMMAND=/path/to/built/vault node tests/manual/vault-notes.mjs
+```
+
+This uses a separate headless X display, temporary home and runtime directories,
+and synthetic notes on a real gocryptfs mount. It drives Obsidian through its
+DevTools control interface to verify first-use opening, independent profiles,
+repeat launches, persistence across a close/lock/reopen, and normal versus
+forced locking. The ordinary-profile fixture must remain open after the private
+profile is stopped, and the mount directory must remain empty after locking.

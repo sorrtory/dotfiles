@@ -111,6 +111,15 @@ fi
 # notes creates Notes/ inside the mount on first use.
 "$VAULT_TEST_COMMAND" notes "$mount_dir" </dev/null >/dev/null || fail 'notes failed'
 [[ -d $mount_dir/Notes ]] || fail 'notes did not create Notes/'
+[[ -f $mount_dir/.obsidian-profile/obsidian.json ]] || fail 'notes did not register its private profile'
+[[ $(stat -c %a "$mount_dir/.obsidian-profile") == 700 ]] || fail 'the app profile is not private'
+jq -e --arg path "$mount_dir/Notes" '.vaults | any(.path == $path)' \
+  "$mount_dir/.obsidian-profile/obsidian.json" >/dev/null || fail 'Notes is not registered in the encrypted profile'
+# Native preferences survive another cold launch; registration is only merged.
+jq '. + {language: "en"}' "$mount_dir/.obsidian-profile/obsidian.json" >"$root/preferences.json"
+mv "$root/preferences.json" "$mount_dir/.obsidian-profile/obsidian.json"
+"$VAULT_TEST_COMMAND" notes "$mount_dir" </dev/null >/dev/null || fail 'second notes failed'
+[[ $(jq -r .language "$mount_dir/.obsidian-profile/obsidian.json") == en ]] || fail 'notes replaced app preferences'
 if grep -rq Notes "$storage" 2>/dev/null; then fail 'the notes directory name is readable in the storage'; fi
 
 # A wrong password is refused, and the vault stays as it was.

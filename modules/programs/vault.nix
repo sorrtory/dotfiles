@@ -14,7 +14,7 @@ let
   # from the store. util-linux is for toggle's flock.
   vault = pkgs.writeShellApplication {
     name = "vault";
-    runtimeInputs = [ pkgs.coreutils pkgs.gnused pkgs.gocryptfs pkgs.libnotify pkgs.util-linux ];
+    runtimeInputs = [ pkgs.coreutils pkgs.gnused pkgs.gocryptfs pkgs.jq pkgs.libnotify pkgs.util-linux ];
     # Baked in rather than read from the session, so a lock or unlock from a
     # terminal moves the desktop entry as well. An explicit value still wins.
     text = ''

@@ -207,7 +207,7 @@ let
       wmClass = "/^(obsidian|Obsidian|md\\.Obsidian|md\\.obsidian\\.Obsidian)$/";
       title = "/(^| - )Knowledge-Database - Obsidian( v?[0-9.]+)?$/";
     };
-    # Always check the mount: a forced lock can leave a Notes window behind.
+    # Always check the mount and launch through its private Obsidian profile.
     # Focus it immediately, but still unlock through the usual dialog when
     # needed. An already-unlocked vault opens without a password prompt.
     notes = {
