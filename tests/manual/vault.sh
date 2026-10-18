@@ -12,6 +12,9 @@ command -v script >/dev/null || { echo 'needs script(1) for a pty'; exit 1; }
 unset DISPLAY WAYLAND_DISPLAY
 
 root=$(mktemp -d)
+# In particular, lock --all must never see the operator's session records.
+export XDG_RUNTIME_DIR="$root/runtime"
+mkdir -m 700 -- "$XDG_RUNTIME_DIR"
 mount_dir="$root/Vault"
 storage="$root/.Vault.encrypted"
 password='manual-test-password'

@@ -5,7 +5,8 @@ REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TEST_ROOT=$(mktemp -d)
 trap 'rm -rf -- "$TEST_ROOT"' EXIT
 export HOME="$TEST_ROOT/home"
-mkdir -p "$HOME" "$TEST_ROOT/bin"
+export XDG_RUNTIME_DIR="$TEST_ROOT/runtime"
+mkdir -p "$HOME" "$TEST_ROOT/bin" "$XDG_RUNTIME_DIR"
 vault="$REPO_ROOT/scripts/bin/vault.sh"
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 
