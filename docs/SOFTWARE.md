@@ -594,6 +594,18 @@ to off outside NixOS and the package would otherwise sit unseen by non-Nix
 applications; VS Code names it (as `MesloLGS Nerd Font Mono`) for its terminal, but selecting
 it in Ptyxis is a manual preference, not declared here.
 
+### Microsoft core fonts (`corefonts`)
+
+- **Purpose:** Times New Roman and other Microsoft fonts required by document
+  templates.
+- **State:** Active.
+- **Owner:** [Home Manager global packages](../modules/packages.nix).
+
+Includes regular, bold, italic and bold italic Times New Roman. The package is
+explicitly allowed in the flake's unfree predicate; Home Manager's fontconfig
+integration makes the fonts discoverable to XeLaTeX and desktop applications.
+TeX Live alone does not provide these fonts.
+
 ### MPV
 
 - **Purpose:** Media player.
@@ -914,6 +926,15 @@ license, Sublime Text is available only for evaluation.
 
 Home Manager module owning the package, replacing the pipx-installed Python
 client; native `config.toml` in `configs/tealdeer` is a live-editable symlink.
+
+### TeX Live (`texliveFull`)
+
+- **Purpose:** Compile LaTeX documents and automate builds with `latexmk`.
+- **State:** Active.
+- **Owner:** [Home Manager global packages](../modules/packages.nix).
+
+The full TeX Live distribution avoids selecting missing packages separately
+when compiling varied documents and templates; `latexmk` is included.
 
 ### tmux
 

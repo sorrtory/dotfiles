@@ -1,7 +1,24 @@
 { lib, pkgs, ... }:
 
+let
+  # Qt's default Wayland SHM presentation stutters on the current host's
+  # high-resolution display. RHI keeps widget painting on the CPU but uses
+  # OpenGL/EGL for composition and presentation, which is smooth here.
+  # Drop this wrapper once default native Wayland presentation is smooth.
+  nomacs = pkgs.symlinkJoin {
+    name = "nomacs-${pkgs.nomacs.version}";
+    paths = [ pkgs.nomacs pkgs.nomacs.man ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram "$out/bin/nomacs" \
+        --set-default QT_WIDGETS_RHI 1 \
+        --set-default QT_WIDGETS_RHI_BACKEND opengl
+    '';
+    meta = pkgs.nomacs.meta // { outputsToInstall = [ "out" ]; };
+  };
+in
 {
-  home.packages = [ pkgs.nomacs ];
+  home.packages = [ nomacs ];
 
   # Settings live in a QSettings ini that nomacs itself keeps rewriting
   # (window geometry, recent files, ...), so this can only seed a fresh

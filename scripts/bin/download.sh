@@ -17,15 +17,19 @@ Use --as to request a different result where that downloader supports it:
   jpg png                            still images re-encoded
   file                               any plain file
 
-Known sites include YouTube/Vimeo/TikTok/Twitch (video), SoundCloud (audio),
+Known sites include YouTube/Vimeo/TikTok/Twitch (video), SoundCloud/Bandcamp (audio),
 Spotify (mp3), Pinterest/Instagram/Imgur/Pixiv and other galleries,
 Google Drive (gdown), and Yandex.Disk (aria2c after public-link resolution).
 Direct file URLs use aria2c.
 An unknown site opens a backend picker in a terminal. In a script, use --using.
+To embed artwork with yt-dlp, add -- --embed-thumbnail and choose a supported
+output such as mp3, m4a, opus or flac; WAV and raw AAC do not support embedding.
 
   download 'https://youtu.be/...'
   download -f 'https://youtu.be/...'  # retry with Firefox cookies
   download --as mp3 'https://youtu.be/...'
+  download 'https://artist.bandcamp.com/album/...'
+  download --as mp3 'https://youtu.be/...' -- --embed-thumbnail
   download --as jpg 'https://www.pinterest.com/pin/...'
   download --using gallery-dl 'https://example.org/post/...'
   download --as mp4 URL -- --playlist-items 1-3
@@ -194,7 +198,7 @@ guess_source() {
   elif host_matches_any "$host" youtube.com youtu.be youtube-nocookie.com \
     vimeo.com tiktok.com twitch.tv; then
     guessed_backend=yt-dlp; guessed_as=video
-  elif host_matches_any "$host" soundcloud.com on.soundcloud.com; then
+  elif host_matches_any "$host" soundcloud.com on.soundcloud.com bandcamp.com; then
     guessed_backend=yt-dlp; guessed_as=audio
   elif host_matches_any "$host" pinterest.com pin.it instagram.com imgur.com \
     pixiv.net e621.net danbooru.donmai.us artstation.com deviantart.com \

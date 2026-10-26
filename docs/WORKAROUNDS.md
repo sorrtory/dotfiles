@@ -153,6 +153,41 @@ OpenSSL 3: delete the vendored derivation and the `SSL_CERT_FILE` wrapper
 together. Half-announcing — if Nixpkgs drops the `openssl_1_1` argument,
 `.override` throws; if it only bumps the build, nothing does.
 
+### nomacs
+
+- **Defect in:** `pkgs.nomacs` at 3.22.1, using Qt 6.11.2 on the stable pin.
+- **Checked:** 2026-10-21 (current-host drag checks and operator review).
+- **Upstream:** no matching issue identified or filed. The exact defect in
+  the Qt/Mutter presentation path has not been isolated; Qt's
+  [RHI implementation](https://github.com/qt/qtbase/blob/v6.11.2/src/gui/painting/qbackingstorerhisupport.cpp#L257)
+  provides the alternative used here.
+- **Defined in:** [modules/programs/nomacs.nix](../modules/programs/nomacs.nix).
+
+Native Wayland stutters when switching images, zooming and panning in
+frameless/fullscreen mode on the current host's 3200x2000, 200%-scaled display.
+XWayland is smooth. A 720x720 JPEG also shows the problem, with image painting
+taking about 2 ms; large-image decoding is not needed to reproduce it.
+
+The launcher defaults `QT_WIDGETS_RHI=1` and `QT_WIDGETS_RHI_BACKEND=opengl`
+for nomacs. Widget painting stays on the CPU, while composition/presentation
+uses OpenGL/EGL instead of Wayland shared-memory buffers. The test window
+reported `OpenGLSurface`, the Wayland trace showed GPU DMA-BUF buffers, and
+the renderer was AMD Radeon 760M through radeonsi. The operator confirmed
+smooth dragging and image switching. Real wheel input produced distinct zoom
+levels, but zoom smoothness still needs normal-use confirmation. The desktop
+entry and terminal command share this wrapper; Qt selects the session's native
+backend.
+
+The initial synthetic stress test was not a reliable backend comparison:
+saturating the event loop also made XWayland slow. The real-pointer checks
+used the operator's JPEG, the same fullscreen geometry and scale, and GNOME's
+temporary input session. Neither the graphics session nor host configuration
+was changed.
+
+**Removed when** default native Wayland presentation, with both RHI variables
+unset, is smooth during normal use on the current host after a Qt or nomacs
+update. Remove the launcher wrapper and this entry together.
+
 ## Self-announcing
 
 These patch a named line of someone else's source through `--replace-fail`, so

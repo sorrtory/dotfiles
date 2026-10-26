@@ -243,10 +243,12 @@ Two commands. `download` fetches, `convert-to` works on files already on disk.
 ```bash
 download 'https://youtu.be/...'                  # video via yt-dlp
 download 'https://soundcloud.com/artist/track'  # audio via yt-dlp
+download 'https://artist.bandcamp.com/album/...' # audio via yt-dlp
 download 'https://www.pinterest.com/pin/...'    # original media via gallery-dl
 download 'https://drive.google.com/file/d/...'  # file via gdown
 download 'https://disk.yandex.ru/d/...'         # file via aria2c
 download --as mp3 'https://youtu.be/...'        # extracted and encoded
+download --as mp3 'https://youtu.be/...' -- --embed-thumbnail # opt in to artwork
 download --as jpg 'https://www.pinterest.com/pin/...' # still images re-encoded
 download --using gallery-dl 'https://example.org/post/...' # override the guess
 download --as mp4 URL -- --playlist-items 1-3   # yt-dlp option after --
@@ -261,11 +263,16 @@ convert-to jpg *.png *.webp    # still images through ImageMagick
 ```
 
 The URL chooses the backend and its normal result. `--as` asks that backend for
-another result; `--using` overrides the backend. YouTube, Vimeo, TikTok and Twitch default to video, SoundCloud to audio,
+another result; `--using` overrides the backend. YouTube, Vimeo, TikTok and Twitch default to video, SoundCloud and Bandcamp to audio,
 Spotify to MP3, and Pinterest, Instagram, Imgur, Pixiv, ArtStation,
 DeviantArt, Flickr, e621 and Danbooru to gallery-dl's published media. Google Drive uses gdown;
 ordinary direct file URLs use aria2c. For an unknown site, `download` offers an
 interactive backend picker. Scripts must specify `--using` instead.
+
+Thumbnail embedding is opt-in for yt-dlp downloads: add `-- --embed-thumbnail`.
+This works for SoundCloud, Bandcamp, YouTube and other yt-dlp sources when the
+output supports artwork, such as MP3, M4A, Opus or FLAC. WAV and raw AAC cannot
+carry artwork through yt-dlp; choose a supported `--as` result when embedding.
 
 Backend options go after `--`, untouched. `--cookies FILE` and
 `--cookies-from-browser BROWSER` work before the URL and are translated for the

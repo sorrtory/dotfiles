@@ -439,6 +439,12 @@ body {
     border: none !important;
   }
 
+  /* The model/voice controls paint another layout-surface fill inside their
+   * rounded wrapper. Clear that fill so the composer's glass shows through. */
+  [class~="bg-(--composer-layout-surface-background)"] {
+    background-color: transparent !important;
+  }
+
   /* The Chat/Work mode switch by the composer. Its track is the first,
    * decorative span; the selected option's pill is the second, colored below.
    * The aria-label follows the interface language, so the track's own

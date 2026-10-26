@@ -91,9 +91,28 @@ for site in 'https://vimeo.com/123' 'https://www.tiktok.com/@u/video/123' \
   [[ $(recorded) == yt-dlp\ * ]] || fail "$site should use yt-dlp"
 done
 
-run 'https://soundcloud.com/artist/track' >/dev/null
-[[ $(recorded) == 'yt-dlp --proxy http://p:3128 -x https://soundcloud.com/artist/track '* ]] ||
-  fail "SoundCloud should extract audio via yt-dlp: $(recorded)"
+for site in 'https://soundcloud.com/artist/track' 'https://on.soundcloud.com/abc' \
+  'https://artist.bandcamp.com/track/song' 'https://artist.bandcamp.com/album/record'; do
+  run "$site" >/dev/null
+  [[ $(recorded) == "yt-dlp --proxy http://p:3128 -x $site "* ]] ||
+    fail "SoundCloud/Bandcamp should default to audio via yt-dlp: $(recorded)"
+  [[ $(recorded) != *'--embed-thumbnail'* ]] ||
+    fail 'thumbnail embedding should require opting in'
+done
+
+for site in 'https://youtu.be/abc' 'https://soundcloud.com/artist/track'; do
+  run --as mp3 "$site" -- --embed-thumbnail >/dev/null
+  [[ $(recorded) == "yt-dlp --proxy http://p:3128 -x --audio-format mp3 --embed-thumbnail $site "* ]] ||
+    fail 'yt-dlp artwork should be available through explicit backend options'
+done
+
+run 'https://artist.bandcamp.com/album/record' -- --embed-thumbnail >/dev/null
+[[ $(recorded) == *'-x --embed-thumbnail https://artist.bandcamp.com/album/record '* ]] ||
+  fail 'Bandcamp should support opting in to artwork without a backend override'
+
+run 'https://soundcloud.com/artist/track' 'https://artist.bandcamp.com/track/song' >/dev/null
+[[ $(recorded) == *'-x https://soundcloud.com/artist/track https://artist.bandcamp.com/track/song '* ]] ||
+  fail 'SoundCloud and Bandcamp should share the same default audio backend'
 
 run 'https://open.spotify.com/track/abc' >/dev/null
 [[ $(recorded) == *'spotdl '*'--format mp3'* ]] ||

@@ -71,6 +71,10 @@ in
     clang-tools
 
     cmake
+    # Times New Roman (regular, bold, italic and bold italic), plus the other
+    # Microsoft core fonts used by document templates. TeX Live does not ship
+    # these; fontconfig below exposes them to XeLaTeX and desktop applications.
+    corefonts
     curl
     eza
     exiftool
@@ -148,6 +152,7 @@ in
     shellcheck
 
     sops
+    texliveFull
     tree
     uv
 
