@@ -235,9 +235,21 @@ on Flatpak remapping `XDG_DATA_HOME`, so outside the sandbox it writes generic
 keeps those beneath `~/.local/share/rewaita/` instead. Firefox profile and login
 state remain machine-local. Only its two required `user.js` switches are
 declarative; Rewaita writes the generated `chrome/rewaitaChrome.css` beside the
-profile at login. Page styling in `chrome/userContent.css` is the repository's:
-the palette's roles are prepended to it as `--dotfiles-<role>` properties, so a
-site rule takes a theme color by name.
+profile at login. `chrome/userContent.css` supplies the palette's
+`--dotfiles-<role>` properties and the native Home/New Tab rules from
+`configs/firefox/userContent.css`, scoped to `about:home` and `about:newtab`.
+Rewaita retains ownership of the browser frame and layout. Website rules stay
+native in
+`configs/firefox/page-styles.user.css`; `scripts/repo/export-firefox-style.py`
+generates `configs/firefox/page-styles.json` for initial import into Stylus.
+Stylus compiles the UserCSS source when importing it. Its tab toggle and
+persistent site exclusions can then remove all our page changes on an
+unreadable website. The installed extension,
+style settings and exclusions remain machine-local; the repository owns the
+CSS source and its generated import file. Keep the style's name and namespace
+stable when updating it, and update an installed style through its editor to
+retain site exclusions; importing the JSON again replaces those settings.
+Style updates are applied explicitly in Stylus because they are infrequent.
 
 The Zsh module owns the shell package, generated startup files, Oh My Zsh,
 shell plugins, history policy, and zoxide integration. It preserves the small

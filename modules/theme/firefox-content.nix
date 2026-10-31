@@ -1,10 +1,10 @@
 { lib }:
 
-# The palette's roles as custom properties, prepended to userContent.css so a
-# site's rules there can name a theme color instead of a fixed one. Each role
-# becomes `--dotfiles-<role>` on every page's root. The prefix keeps them clear
-# of any site's own variables; a page can read them, as it can already tell
-# its background was cleared.
+# The palette's roles as custom properties in userContent.css. The page rules
+# installed in Stylus use these colors without carrying a second palette.
+# Each role becomes `--dotfiles-<role>` on every page's root. The prefix keeps
+# them clear of a site's own variables; a page can read them, as it can
+# already tell its background was cleared.
 
 colors:
 let

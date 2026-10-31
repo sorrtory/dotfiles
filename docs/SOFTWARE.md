@@ -317,7 +317,13 @@ Home Manager global user tool, replacing Ubuntu's `fdfind` command name.
 Installing Firefox through Nix remains deferred to desktop application review.
 The [Firefox module](../modules/programs/firefox.nix) already manages selected
 profile files for an existing browser; login and profile state remain
-machine-local. The [Firefox effort](../.scratch/firefox-nix/map.md) tracks the
+machine-local. Page rules are installed in the
+[Stylus extension](https://addons.mozilla.org/en-US/firefox/addon/styl-us/)
+by importing `configs/firefox/page-styles.json`, generated from the native
+`configs/firefox/page-styles.user.css`, allowing per-site exclusions;
+Home Manager supplies palette variables and native Home/New Tab styles in
+`userContent.css`; Rewaita supplies the browser frame and layout. The extension
+and its exclusions stay machine-local. The [Firefox effort](../.scratch/firefox-nix/map.md) tracks the
 package and profile migration.
 
 ### Flatpak

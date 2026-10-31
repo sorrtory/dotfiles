@@ -1,6 +1,52 @@
 # Firefox transparency
 
-Rules live in `configs/firefox/userContent.css`; window chrome in `packages/rewaita.nix`.
+Rules live in `configs/firefox/page-styles.user.css`, installed in Stylus;
+window chrome stays in `packages/rewaita.nix`. `userContent.css` supplies
+palette variables and the native Home/New Tab rules after the prepared Home
+Manager generation is activated. `configs/firefox/userContent.css` keeps the
+original clearing selectors scoped to `about:home` and `about:newtab`, so they
+cannot defeat Stylus exclusions on websites.
+
+The operator chose explicit style updates because they are infrequent. No
+automatic update service or activation-time JSON generation is being added.
+Firefox's frame and layout continue to come from Rewaita's `userChrome.css`.
+
+Native preservation checked in isolated Firefox 158 on 2026-10-27: Home/New
+Tab root and body stay transparent, with dimensions, display, margins and
+padding matching the previous global rules. Settings retain their native
+opaque background, and an ordinary website fixture keeps its author root,
+body, navigation and main backgrounds. Palette variables remain available.
+
+## Stylus handoff
+
+Prepared in the repository; host activation and normal-use verification remain
+pending. Install Stylus and the local style before activating the generation,
+then fully restart Firefox. Verify the usual websites, a temporary tab toggle,
+and a saved domain exclusion before retiring the previous generation. The
+selectors are preserved; browser checks must account for Stylus's author-origin
+CSS replacing user-origin `!important` declarations.
+
+Validated on 2026-10-27: `nix flake check`, the host activation-package build,
+and the generated Firefox activation step against a scratch home passed.
+An isolated Firefox 158 profile with signed Stylus 2.4.17 installed the style,
+resolved the palette variables, and retained a domain exclusion across page
+reload, style update and browser restart. Local HTTPS fixtures exercised the
+selectors; current live-site DOM and wallpaper compositing remain unverified.
+Saving an exclusion also temporarily cleared styling in other already-open
+tabs; reloading those tabs restored it without changing the saved exclusion.
+
+The actual UserCSS install handoff was checked separately after the operator
+reported the manager requesting JSON. That importer accepts backups, not a
+`.user.css` file. Direct local-file navigation showed raw CSS but did not open
+the installer in the test profile, and an explicit installer URL could not
+fetch it. The real manager's Import file control accepted a clean one-style
+JSON with the current source, metadata and placeholder sections, compiling all
+20 sections and applying transparency to the fixture. The durable export is
+`configs/firefox/page-styles.json`, regenerated from the native source by
+`python3 scripts/repo/export-firefox-style.py`. It contains no fixture
+exclusions or browser settings. JSON reimport replaced saved exclusions in
+the actual importer test, so updates to an installed style use its UserCSS
+editor; the JSON serves initial installation.
 
 ## Altered websites
 

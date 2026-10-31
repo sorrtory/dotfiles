@@ -1,0 +1,625 @@
+/* ==UserStyle==
+@name         Dotfiles page styling
+@namespace    dotfiles/firefox
+@version      1.0.0
+@description  Transparent page surfaces using the dotfiles theme palette.
+==/UserStyle== */
+
+/* Installed in Stylus so its tab toggle and site exclusions control every
+ * rule below. Home Manager supplies --dotfiles-* colors through userContent.css;
+ * browser.tabs.allow_transparent_browser in user.js lets cleared backgrounds
+ * show Firefox's translucent window. Background images stay intact. */
+html,
+nav,
+.nav,
+header,
+footer,
+main,
+body {
+  background-color: transparent !important;
+}
+
+/*
+*
+* ANKI
+*/
+@-moz-document regexp("https://ankiweb.*")
+{
+  /* first collection header*/
+  .current.svelte-p9sq8d.light-bottom-border.row {
+    background-color: transparent !important;
+  }
+
+  /*footer*/
+  .justify-content-center.nav {
+    background-color: transparent !important;
+  }
+
+  .container-fluid.bg-gray {
+    background: transparent !important;
+  }
+}
+
+/* Google's class names are build-generated and change when Google redeploys.
+ * Each rule leads with a stable hook (an id or data attribute) and keeps the
+ * class seen in DevTools as a second selector; when a look comes back, find
+ * the element in DevTools again and replace the class. */
+@-moz-document regexp("https://www\\.google\\.[a-z.]+/search.*")
+{
+  /* Header bar. It is sticky, so it blurs what scrolls beneath instead. */
+  #searchform,
+  .CvDJxb {
+    background: transparent !important;
+    backdrop-filter: blur(24px) !important;
+  }
+
+  /* Fade that trails a collapsed AI Overview into the page color. */
+  [data-lhoverlay],
+  .RDmXvc,
+  .Zze5V,
+  .lACQkd {
+    background: none !important;
+  }
+
+  /* AI Mode's full-page result panels. */
+  .DZ13He,
+  .zNsLfb,
+  .qEn1od,
+  .SbLVJc {
+    background: transparent !important;
+  }
+
+  /* AI Mode's composer, the "Ask anything" box. Its fill is painted by a
+   * ::before on a layer inside the input plate rather than on the plate or
+   * the textarea, so every rule that clears a background missed it and it
+   * stayed an opaque #363840 slab over the cleared page — the one light
+   * rectangle left on the page, in every theme. Google's own dark palette
+   * draws it, so no theme changes it; clearing it is what makes it follow
+   * the window behind, the way the other panels do.
+   *
+   * data-xid is Google's own stable hook. The layer under it is matched by
+   * where it sits and by aria-hidden, with the class DevTools showed as the
+   * second selector; its siblings at that depth paint nothing of their own.
+   * This replaces a rule for .Jzkafd > .in7vHe, which matched no element on
+   * the page any more.
+   *
+   * A scrim rather than nothing, and black rather than a palette color, for
+   * the reason ChatGPT's composer keeps one below: the answer scrolls under
+   * this box, so clearing it outright leaves the text running through the
+   * placeholder. Darkening what is behind reads the same under every theme,
+   * which naming a color would not. */
+
+  /*
+  [data-xid="aim-mars-input-plate"] > * > [aria-hidden="true"]::before,
+  [data-xid="aim-mars-input-plate"] .d4HWzd::before {
+    background-color: rgba(0, 0, 0, 0.35) !important;
+    backdrop-filter: blur(24px) !important;
+  }
+*/
+
+  /* ==========================================
+   Google AI Mode — matching glass composer
+   ========================================== */
+
+  /* 1. Outer wrapper: fully transparent */
+
+  [data-xid="aim-mars-input-plate"] {
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  [data-xid="aim-mars-input-plate"]::before,
+  [data-xid="aim-mars-input-plate"]::after {
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* 2. Main input: the actual glass surface */
+
+  [data-xid="aim-mars-input-plate"] > .AgWCw {
+    background: rgba(24, 26, 30, 0.25) !important;
+    background-image: none !important;
+
+    -webkit-backdrop-filter: blur(36px) brightness(0.55) saturate(120%) !important;
+
+    backdrop-filter: blur(36px) brightness(0.55) saturate(120%) !important;
+
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 32px !important;
+
+    box-shadow: none !important;
+  }
+
+  /* 3. Clear the original opaque background layers */
+
+  [data-xid="aim-mars-input-plate"] > .AgWCw::before,
+  [data-xid="aim-mars-input-plate"] > .AgWCw::after,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .Zze5V,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .Zze5V::before,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .Zze5V::after,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .esoFne,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .esoFne::before,
+  [data-xid="aim-mars-input-plate"] > .AgWCw > .esoFne::after {
+    background: transparent !important;
+    background-image: none !important;
+
+    border: none !important;
+    box-shadow: none !important;
+
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* 4. Clear the decorative background layer */
+
+  [data-xid="aim-mars-input-plate"] > .d4HWzd,
+  [data-xid="aim-mars-input-plate"] > .d4HWzd::before,
+  [data-xid="aim-mars-input-plate"] > .d4HWzd::after {
+    background: transparent !important;
+    background-image: none !important;
+
+    border: none !important;
+    box-shadow: none !important;
+
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* 5. Keep the actual text input transparent */
+
+  [data-xid="aim-mars-input-plate"] textarea {
+    background: transparent !important;
+    background-image: none !important;
+
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  /*
+* -- I think this is about plain search
+* Black shadows that read as dirt on a cleared page. */
+  .esoFne,
+  .hh3ttd.t0ITR {
+    box-shadow: none !important;
+    filter: none !important;
+  }
+
+  /* The pill inside the composer keeps Google's own fill, from the page's
+   * palette variable, as the removed .Jzkafd > .in7vHe rule did. */
+  .sjVJQd.FR7ZSc.NQYJvc.btku5b.oQOpie.in7vHe > .SlP8xc.VDgVie.niO4u,
+  .Jzkafd > .in7vHe {
+    background-color: var(--xhUGwc) !important;
+  }
+
+  /* Body revealed by the AI Overview's "Show more" toggle, and the AI Mode
+   * history drawer opened from the header. */
+  #m-x-content,
+  .ho072b,
+  .ho072b .lfsUlf {
+    background: transparent !important;
+  }
+
+  /* Classic AI Overview panel (the collapsible summary above regular results,
+   * as opposed to full AI Mode) and its lazy-loaded content container. */
+  [data-async-type="folsrch"],
+  [data-lhcontainer],
+  .bzXtMb,
+  .M8OgIe,
+  .dRpWwb {
+    background: transparent !important;
+  }
+}
+
+/* Google's home page: the bare domain or /webhp, with any query. */
+@-moz-document regexp("https://www\\.google\\.[a-z.]+/(webhp)?([?#].*)?")
+{
+  /* Footer with the country and the About/Privacy/Settings links. */
+  [role="contentinfo"],
+  .Ij8KCd {
+    background: transparent !important;
+  }
+}
+
+/* GitHub styles the logged-in .GlobalNav together with the older .AppHeader. */
+@-moz-document domain(github.com) {
+  .GlobalNav,
+  .AppHeader {
+    background: transparent !important;
+    backdrop-filter: blur(24px) !important;
+  }
+
+  /* CSS-module classes end in a build hash (__gl6dE), and React ids like
+   * #_r_e_ change per render, so only the readable prefix is matched. The
+   * repo page's file table and README panel (every module box inside them,
+   * since their numbered Box_N names shift between builds), the issue filter
+   * input (its suggestion dropdown overlaps the list and stays solid), the
+   * Open/Closed bar above issue and PR lists, the collapsible sidebar with
+   * its footer, and on an issue page the content column, the body and
+   * comment cards with their headers, and the comment composer. */
+  [class*="DirectoryContent-module__"],
+  [class*="DirectoryContent-module__"] [class*="Table-module__"],
+  [class*="OverviewRepoFiles-module__"],
+  [class*="OverviewRepoFiles-module__"] .markdown-body,
+  [class*="IssueViewer-module__contentArea"],
+  [class*="IssueBodyHeader-module__IssueBodyHeaderContainer__"],
+  [class*="TimelineRowBorder-module__shared__"],
+  [class*="ActivityHeader-module__ActivityHeaderContainer__"],
+  [class*="Shared-module__CommentBox__"],
+  [class*="MarkdownEditor-module__header__"],
+  [class*="FilteredListPageLayout-module__FilterBar"]
+    [class*="-module__"]:not([class*="SuggestionsList-module__"]),
+  [class*="ListView-module__container__"]
+    [class*="Metadata-module__container__"],
+  [class*="CollapsibleSidebar-module__sidebar__"],
+  [class*="CollapsibleSidebar-module__footer__"] {
+    background: transparent !important;
+  }
+
+  /* Pull request conversation: server-rendered Primer classes, which are
+   * stable. The comment cards and their headers, the new-comment box, and
+   * the React merge box. A header caret is drawn in the header's fill, so it
+   * goes with it. */
+  .timeline-comment,
+  .timeline-comment-header,
+  .CommentBox,
+  .CommentBox-header,
+  [class*="MergeBox-module__"],
+  [class*="MergeBoxSectionHeader-module__"],
+  [class*="MergeBoxExpandable-module__"] {
+    background: transparent !important;
+  }
+
+  .timeline-comment--caret::before,
+  .timeline-comment--caret::after {
+    display: none !important;
+  }
+
+  /* Dashboard (github.com/): the page layers, both sidebars, the Copilot
+   * chat input, feed cards with their previews and tables, the "More"
+   * button, and the right column's notice and changelog cards. The Copilot
+   * banner keeps its artwork, so only its fill color is cleared. */
+  .application-main > .color-bg-default,
+  .feed-background,
+  .feed-left-sidebar,
+  .feed-left-sidebar .form-control,
+  [class*="ChatInput-module__chatForm__"],
+  .feed-item-content,
+  .feed-item-content .markdown-body,
+  .feed-item-content .markdown-body tr,
+  .ajax-pagination-btn,
+  .feed-right-sidebar .Box,
+  .dashboard-changelog {
+    background: transparent !important;
+  }
+
+  [data-testid="copilot-app-banner-inner"] {
+    background-color: transparent !important;
+  }
+}
+
+/* ChatGPT's utility classes (Tailwind) and module classes (LeftPanel-e8ghK3)
+ * change between builds. Ids, data attributes, test ids and its design-token
+ * variables are stable enough to target; the few utility-class selectors
+ * below are the only way to reach those elements and go stale first. */
+@-moz-document domain(chatgpt.com) {
+  html,
+  body,
+  #root,
+  [data-app-shell-frame="true"],
+  [data-app-shell-workspace-row="true"],
+  main[data-app-shell-main-surface],
+  [data-app-shell-main-content-layout],
+  [class*="MainContentViewport"] {
+    background: transparent !important;
+  }
+
+  /* Sidebar: the docked left panel (aside.app-shell-left-panel), its
+   * collapsed navigation rail, and the slide-over used on narrow windows.
+   * The docked panel's fill is an empty full-size bg-surface layer behind
+   * its contents, which fades in and out with the panel; only its fill is
+   * cleared so the fade still runs. The slide-over paints from
+   * --sidebar-surface-primary instead. */
+  .app-shell-left-panel,
+  :is(.app-shell-left-panel, #app-shell-sidebar) .absolute.inset-0.bg-surface,
+  #app-shell-sidebar,
+  .sidebar-navigation,
+  [data-app-navigation-rail],
+  #stage-slideover-sidebar {
+    --sidebar-surface-primary: transparent !important;
+    background: transparent !important;
+  }
+
+  /* Top bar. The Chat/Work switch paints two stacked fills; its selected
+   * option's pill is a separate element and stays. Share and More sit on a
+   * translucent-surface pill. */
+  #page-header,
+  #page-header [role="radiogroup"],
+  #page-header [role="radiogroup"] > div:first-child,
+  #page-header .translucent-surface,
+  #conversation-header-actions {
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  /* bg-surface-primary is a shared utility class, so only the wrapper holding
+   * the suggestion list under the composer is cleared. */
+  .bg-surface-primary:has(li[data-suggestion-index]),
+  #thread-bottom .bg-surface-primary {
+    background: transparent !important;
+  }
+
+  /* The composer strip and the dark fade above it. The fade's class carries
+   * a generated prefix (Ejxyja_threadFooterContentFade), so match its name.
+   * The input keeps a tint and blur because the thread scrolls under it. */
+  #thread-bottom-container,
+  #thread-bottom-container > *,
+  [class*="threadFooterContentFade"],
+  [class*="threadFooterContentFade"]::before,
+  [class*="threadFooterContentFade"]::after {
+    background: transparent !important;
+    mask-image: none !important;
+  }
+
+  /* Two more layers of the same bottom shadow, reachable only by their
+   * utility classes: an absolute overlay behind the composer, cleared, and a
+   * sticky strip at the foot of the thread, hidden outright. */
+  .pointer-events-none,
+  .pointer-events-none.absolute.inset-x-0.z-10.bottom-0,
+  .pointer-events-none.absolute.inset-x-0.z-10.bottom-0::before,
+  .pointer-events-none.absolute.inset-x-0.z-10.bottom-0::after {
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  .pointer-events-none.sticky.bottom-0.z-10.mt-auto.w-full.shrink-0 {
+    display: none !important;
+  }
+
+  .pointer-events-auto,
+  .pointer-events-auto * {
+    background: transparent !important;
+  }
+
+  /* Code blocks share the composer's glass below. Clear the outer wrapper
+   * and inner fills so the header, code and syntax tokens show one surface
+   * without stacked tints.
+   * Keep token colors; the block supplies the palette's default text color. */
+  [class*="CodeBlock-"],
+  [class*="CodeBlock-"] * {
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  [class*="CodeBlock-"] > [data-markdown-copy="code-block"] {
+    color: var(--dotfiles-text) !important;
+  }
+
+  /* The language and Copy bar stays readable as code scrolls beneath it. */
+  [class*="StickyActionBar-"] {
+    background: transparent !important;
+    backdrop-filter: blur(24px) !important;
+  }
+
+  /* The composer is frosted glass: the thread scrolls under it, so it keeps
+   * a tint of the palette's surface role and blurs what is behind. The tint
+   * percentage sets readability: below about 80% the thread's text shows
+   * through the typed text. saturate keeps the blurred colors from going
+   * grey. A hairline in the text color marks the edge.
+   *
+   * The glass sits on ComposerLayoutBody, the box around the input, matched
+   * without its build hash. The layers around and inside it — the layout
+   * root, the mode surface and the data-composer-surface hook — draw
+   * nothing: a backdrop-filter nested in another sees only the outer layer,
+   * not the page, so a second pane of glass would lose its blur and double
+   * the tint. */
+  [class*="CodeBlock-"] > [data-markdown-copy="code-block"],
+  [class*="ComposerLayoutBody-"],
+  [class*="ComposerModeSurface-"] {
+    background: color-mix(
+      in srgb,
+      var(--dotfiles-surface) 80%,
+      transparent
+    ) !important;
+    backdrop-filter: blur(32px) saturate(160%) !important;
+    border: 1px solid color-mix(in srgb, currentColor 12%, transparent) !important;
+  }
+
+  /* CodeSurface owns its rounding and overflow clipping; leave both intact.
+   * Only the composer needs to inherit its parent's radius. */
+  [class*="ComposerLayoutBody-"],
+  [class*="ComposerModeSurface-"] {
+    /* The rounding is ChatGPT's inline style on the layout root, the body's
+     * parent; the glass drawn here would otherwise be square. */
+    border-radius: inherit !important;
+  }
+
+  :is(
+    [class*="ComposerLayoutRoot-"],
+    [class*="ComposerModeSurface-"],
+    [data-composer-surface]
+  ):not([class*="ComposerLayoutBody-"]) {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    border: none !important;
+  }
+
+  /* The model/voice controls paint another layout-surface fill inside their
+   * rounded wrapper. Clear that fill so the composer's glass shows through. */
+  [class~="bg-(--composer-layout-surface-background)"] {
+    background-color: transparent !important;
+  }
+
+  /* The Chat/Work mode switch by the composer. Its track is the first,
+   * decorative span; the selected option's pill is the second, colored below.
+   * The aria-label follows the interface language, so the track's own
+   * token class backs it up. */
+  [role="group"][aria-label="Composer mode"],
+  [role="group"][aria-label="Composer mode"]
+    > span[aria-hidden="true"]:first-child,
+  .bg-background-mode-toggle-track {
+    background: transparent !important;
+  }
+
+  /* Both Chat/Work switches, the composer's and the top bar's, take the
+   * palette: the selected option in text on an overlay pill, the other one
+   * muted until hovered or focused. */
+  [role="group"][aria-label="Composer mode"]
+    > span[aria-hidden="true"]:nth-child(2) {
+    background: var(--dotfiles-overlay) !important;
+  }
+
+  [role="group"][aria-label="Composer mode"] > button[aria-pressed="true"],
+  #page-header [role="radiogroup"] [role="radio"][aria-checked="true"] {
+    color: var(--dotfiles-text) !important;
+  }
+
+  [role="group"][aria-label="Composer mode"] > button[aria-pressed="false"],
+  #page-header [role="radiogroup"] [role="radio"][aria-checked="false"] {
+    color: var(--dotfiles-muted) !important;
+  }
+
+  [role="group"][aria-label="Composer mode"]
+    > button[aria-pressed="false"]:is(:hover, :focus-visible),
+  #page-header
+    [role="radiogroup"]
+    [role="radio"][aria-checked="false"]:is(:hover, :focus-visible) {
+    color: var(--dotfiles-subtext) !important;
+  }
+
+  /* "ChatGPT can make mistakes" and its Cookie preferences link. Cookie
+   * settings stay reachable from Settings. */
+  [data-testid="thread-disclaimer"] {
+    display: none !important;
+  }
+}
+
+/* Spotify's panels all paint --background-base. Setting it on every element
+ * outruns the theme scopes that redeclare it further down the tree. */
+@-moz-document domain(open.spotify.com) {
+  * {
+    --background-base: transparent !important;
+  }
+
+  /* The app grid and its direct panels (top bar, sidebars, player bar) paint
+   * black outside the variable. Their classes are generated, so the grid is
+   * reached from the stable .Root wrapper. */
+  .Root > div,
+  .Root > div > *,
+  footer nav {
+    background: transparent !important;
+  }
+}
+
+/* VK: ids and the messenger's BEM classes (MEApp__*, ConvoList__*) are
+ * stable; classes with a hash suffix (--tjNb8, vkit-*) are not used. Hover
+ * and selected highlights are translucent white and stay. */
+@-moz-document domain(vk.ru), domain(vk.com) {
+  /* Fixed top header: the page scrolls under it. */
+  #page_header_cont,
+  #page_header {
+    background: transparent !important;
+    backdrop-filter: blur(24px) !important;
+  }
+
+  /* Its separator line comes from a hashed class, as a border, shadow or
+   * pseudo-element. */
+  :is(#page_header_cont, #page_header_wrap, #page_header),
+  :is(#page_header_cont, #page_header_wrap, #page_header)::before,
+  :is(#page_header_cont, #page_header_wrap, #page_header)::after {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* The line under the header is the messenger card's 0.5px outline, drawn
+   * as a box-shadow on its root. */
+  #reforged-root {
+    box-shadow: none !important;
+  }
+
+  #page_body,
+  #spa_layout_content,
+  .MEApp,
+  .MEApp__mainPanel,
+  .MEApp__content,
+  .RightPanelContainer,
+  .RightPanel,
+  .ConvoMain,
+  .ConvoMain__themeWrapper,
+  .ConvoHeader,
+  .ConvoHistory,
+  .ConvoMain__composerWrapper,
+  .ConvoMain__composer,
+  .ConvoComposer,
+  .VKCOMMessenger__reforgedRightColumn,
+  .ConvoList,
+  .ConvoList__headerContent,
+  .ConvoList__top,
+  .ConvoList__item,
+  .ConvoList__footer,
+  [data-testid="rightmenu"],
+  [data-testid="rightmenuitem"] {
+    background: transparent !important;
+  }
+}
+
+/* Telegram Web K. The chat wallpaper layer has a hashed CSS-module class
+ * (_Slot_1kj7f_9 _IsPattern_1kj7f_14); only the readable part is matched.
+ * It paints a fill and the pattern above it, so the whole layer fades. */
+@-moz-document domain(web.telegram.org) {
+  [class*="_IsPattern"] {
+    opacity: 0 !important;
+  }
+
+  #column-left .sidebar-slider-item,
+  #column-right .sidebar-slider-item,
+  #chatlist-container,
+  #chatlist-container .transition-item,
+  .connection-status-bottom,
+  .chatlist {
+    background: transparent !important;
+  }
+
+  /* Fade from the sidebar color under the folder tabs. */
+  .folders-tabs-gradient {
+    background: none !important;
+  }
+}
+
+/* Claude paints the page and sidebar from the surface-0/1 tokens. The
+ * composer and menus use surface-3 and stay solid. */
+@-moz-document domain(claude.ai) {
+  * {
+    --cds-page-bg: transparent !important;
+    --cds-surface-0: transparent !important;
+    --cds-surface-1: transparent !important;
+  }
+}
+
+/* YouTube's element names (ytd-*, tp-yt-*) have stayed stable for years;
+ * its classes and color variables are obfuscated, so neither is used. */
+@-moz-document domain(youtube.com) {
+  ytd-app,
+  #guide-content.ytd-app,
+  #guide-skeleton,
+  #contentContainer.tp-yt-app-drawer,
+  #chips-wrapper.ytd-feed-filter-chip-bar-renderer,
+  ytd-feed-filter-chip-bar-renderer ytd-button-renderer {
+    background: transparent !important;
+  }
+
+  /* The fixed top bar blurs what scrolls under it. YouTube does that itself
+   * on the home page but not on the watch page. */
+  ytd-masthead #background,
+  #frosted-glass.ytd-app {
+    background: transparent !important;
+    backdrop-filter: blur(48px) !important;
+  }
+
+  ytd-feed-filter-chip-bar-renderer #left-arrow::after,
+  ytd-feed-filter-chip-bar-renderer #right-arrow::before {
+    background: none !important;
+  }
+}

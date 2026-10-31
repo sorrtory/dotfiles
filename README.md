@@ -447,6 +447,7 @@ Bare `home-manager switch` looks for a channel configuration under
 |---|---|
 | WezTerm, Zsh, Sublime Text, Terminus, Vesktop | live: they watch their file |
 | GNOME Shell, GTK, Firefox | live, through Rewaita; a GTK program reads its colors at startup, so open windows keep theirs |
+| Firefox internal pages and palette | full Firefox restart |
 | Wallpaper, accent, icons | live, through dconf |
 | Neovim, Spotify, Obsidian, Telegram | next start |
 | VS Code | next Reload Window |
@@ -461,6 +462,48 @@ in git, so a picture can be swapped or edited without a rebuild, and it is the
 chat background in Telegram too. Activation says so under "Needs attention"
 when a theme has none; the desktop then shows a plain color. A palette can
 name a `wallpaper` asset to override the convention.
+
+**Firefox page styling uses Stylus.** Install the
+[Stylus extension](https://addons.mozilla.org/en-US/firefox/addon/styl-us/),
+then use **Manage → Import styles** to select
+`~/Documents/dotfiles/configs/firefox/page-styles.json`. It contains one enabled
+**Dotfiles page styling** style. The editable source is
+`configs/firefox/page-styles.user.css`; regenerate the JSON after source edits:
+
+```bash
+python3 scripts/repo/export-firefox-style.py
+```
+
+Home Manager supplies the palette colors and the native Home/New Tab rules
+through `userContent.css`, using `configs/firefox/userContent.css` for the
+internal-page styling that Stylus cannot reach. Rewaita supplies the browser
+frame and layout through `userChrome.css`. Stylus keeps the installed copy, its
+settings and site exclusions in the machine-local profile. The JSON contains
+only the repository's style, without personal exclusions or browser settings.
+
+For the first migration, install the style before activating the generation
+that replaces the old page rules, then fully quit and restart Firefox. The
+previously loaded website rules in `userContent.css` remain active until that
+restart.
+Check the usual websites and a site exclusion before retiring the previous
+generation.
+
+On an unreadable website, open the Stylus toolbar popup and the menu beside
+**Dotfiles page styling**, then select **Exclude** for the domain. Clear that
+exclusion to restore the style. For a temporary check, hold `Alt` while
+clicking the style's checkbox to toggle it only in the current tab; a normal
+checkbox click toggles the style globally. Exceptions are saved in Stylus,
+without a rebuild or browser restart.
+
+In the isolated Firefox 158 / Stylus 2.4.17 check, saving an exclusion also
+temporarily cleared styling in other open tabs. Reloading those tabs restored
+their styling; the saved exception still applied only to its intended site.
+
+Use the JSON for the initial installation. To update an installed style while
+retaining its site exclusions, open **Dotfiles page styling** in Stylus's
+editor, replace its source with the full contents of `page-styles.user.css`,
+and save. Reimporting the JSON replaces its saved exclusions. Keep the style's
+name and namespace unchanged.
 
 **Telegram needs one manual step.** AyuGram keeps the applied theme in its
 encrypted `tdata`, which Home Manager does not write, but it reads a theme

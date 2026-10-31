@@ -7,12 +7,12 @@ let
   userJs = pkgs.writeText "user.js" (builtins.readFile ../../configs/firefox/user.js + ''
 
     // Managed by modules/theme: lets page content show the translucent window
-    // behind it instead of an opaque canvas. chrome/userContent.css
-    // (configs/firefox/userContent.css) then clears the page backgrounds.
+    // behind it instead of an opaque canvas. The Stylus style
+    // (configs/firefox/page-styles.user.css) then clears page backgrounds.
     user_pref("browser.tabs.allow_transparent_browser", ${lib.boolToString config.dotfiles.theme.transparency});
   '');
-  # The palette's roles go in front of the hand-written rules, which name them
-  # as var(--dotfiles-<role>).
+  # Native internal-page rules follow the palette. Website rules stay in
+  # Stylus so its exclusions can restore the site's own CSS completely.
   userContentCss = pkgs.writeText "userContent.css" (
     import ../theme/firefox-content.nix { inherit lib; } (config.dotfiles.theme.forApp "firefox")
     + builtins.readFile ../../configs/firefox/userContent.css
@@ -26,7 +26,7 @@ in
   # declares its own WireGuard identity locally.
   # Firefox reads userContent.css once, at startup.
   dotfiles.theme.apps.firefox = {
-    label = "Firefox page styles";
+    label = "Firefox internal pages and palette";
     apply = "restart";
   };
 
@@ -53,7 +53,8 @@ in
       fi
       run ln -sf $VERBOSE_ARG ${userJs} "$target"
 
-      # Rewaita owns userChrome.css; page styling is ours alone.
+      # Rewaita owns userChrome.css. This styles internal pages and supplies
+      # palette variables to the website rules installed in Stylus.
       run mkdir -p $VERBOSE_ARG "''${profile}chrome"
       run ln -sf $VERBOSE_ARG ${userContentCss} "''${profile}chrome/userContent.css"
     done
