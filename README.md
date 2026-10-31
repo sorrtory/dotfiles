@@ -248,7 +248,7 @@ download 'https://www.pinterest.com/pin/...'    # original media via gallery-dl
 download 'https://drive.google.com/file/d/...'  # file via gdown
 download 'https://disk.yandex.ru/d/...'         # file via aria2c
 download --as mp3 'https://youtu.be/...'        # extracted and encoded
-download --as mp3 'https://youtu.be/...' -- --embed-thumbnail # opt in to artwork
+download --as mp3 'https://youtu.be/...' -- --no-embed-thumbnail # skip artwork
 download --as jpg 'https://www.pinterest.com/pin/...' # still images re-encoded
 download --using gallery-dl 'https://example.org/post/...' # override the guess
 download --as mp4 URL -- --playlist-items 1-3   # yt-dlp option after --
@@ -269,10 +269,10 @@ DeviantArt, Flickr, e621 and Danbooru to gallery-dl's published media. Google Dr
 ordinary direct file URLs use aria2c. For an unknown site, `download` offers an
 interactive backend picker. Scripts must specify `--using` instead.
 
-Thumbnail embedding is opt-in for yt-dlp downloads: add `-- --embed-thumbnail`.
-This works for SoundCloud, Bandcamp, YouTube and other yt-dlp sources when the
-output supports artwork, such as MP3, M4A, Opus or FLAC. WAV and raw AAC cannot
-carry artwork through yt-dlp; choose a supported `--as` result when embedding.
+yt-dlp audio results embed the source's artwork by default, for SoundCloud,
+Bandcamp, YouTube and other yt-dlp sources. WAV and raw AAC cannot carry
+artwork through yt-dlp, so `--as wav` and `--as aac` skip it. Add
+`-- --no-embed-thumbnail` to leave artwork out of any other audio result.
 
 Backend options go after `--`, untouched. `--cookies FILE` and
 `--cookies-from-browser BROWSER` work before the URL and are translated for the

@@ -44,11 +44,11 @@ recorded() { tr '\n' ' ' <"$root/recording"; }
 # --- output request and explicit downloader ------------------------------
 
 run --as audio --using yt-dlp URL >/dev/null
-[[ $(recorded) == 'yt-dlp --proxy http://p:3128 -x URL '* ]] ||
+[[ $(recorded) == 'yt-dlp --proxy http://p:3128 -x --embed-thumbnail URL '* ]] ||
   fail "bare audio should extract without a format: $(recorded)"
 
 run --as mp3 --using yt-dlp URL >/dev/null
-[[ $(recorded) == 'yt-dlp --proxy http://p:3128 -x --audio-format mp3 URL '* ]] ||
+[[ $(recorded) == 'yt-dlp --proxy http://p:3128 -x --audio-format mp3 --embed-thumbnail URL '* ]] ||
   fail "mp3 should name the audio format: $(recorded)"
 
 run --as video --using yt-dlp URL >/dev/null
@@ -94,24 +94,32 @@ done
 for site in 'https://soundcloud.com/artist/track' 'https://on.soundcloud.com/abc' \
   'https://artist.bandcamp.com/track/song' 'https://artist.bandcamp.com/album/record'; do
   run "$site" >/dev/null
-  [[ $(recorded) == "yt-dlp --proxy http://p:3128 -x $site "* ]] ||
-    fail "SoundCloud/Bandcamp should default to audio via yt-dlp: $(recorded)"
-  [[ $(recorded) != *'--embed-thumbnail'* ]] ||
-    fail 'thumbnail embedding should require opting in'
+  [[ $(recorded) == "yt-dlp --proxy http://p:3128 -x --embed-thumbnail $site "* ]] ||
+    fail "SoundCloud/Bandcamp should default to audio with artwork via yt-dlp: $(recorded)"
 done
 
 for site in 'https://youtu.be/abc' 'https://soundcloud.com/artist/track'; do
-  run --as mp3 "$site" -- --embed-thumbnail >/dev/null
+  run --as mp3 "$site" >/dev/null
   [[ $(recorded) == "yt-dlp --proxy http://p:3128 -x --audio-format mp3 --embed-thumbnail $site "* ]] ||
-    fail 'yt-dlp artwork should be available through explicit backend options'
+    fail "yt-dlp audio should embed artwork by default: $(recorded)"
 done
 
-run 'https://artist.bandcamp.com/album/record' -- --embed-thumbnail >/dev/null
-[[ $(recorded) == *'-x --embed-thumbnail https://artist.bandcamp.com/album/record '* ]] ||
-  fail 'Bandcamp should support opting in to artwork without a backend override'
+for as in wav aac; do
+  run --as "$as" 'https://soundcloud.com/artist/track' >/dev/null
+  [[ $(recorded) != *'--embed-thumbnail'* ]] ||
+    fail "--as $as cannot carry artwork and should not ask for it"
+done
+
+run 'https://youtu.be/abc' >/dev/null
+[[ $(recorded) != *'--embed-thumbnail'* ]] ||
+  fail 'video results should not change their thumbnail handling'
+
+run 'https://artist.bandcamp.com/album/record' -- --no-embed-thumbnail >/dev/null
+[[ $(recorded) == *'-x --embed-thumbnail --no-embed-thumbnail https://artist.bandcamp.com/album/record '* ]] ||
+  fail 'a backend --no-embed-thumbnail should follow and override the default'
 
 run 'https://soundcloud.com/artist/track' 'https://artist.bandcamp.com/track/song' >/dev/null
-[[ $(recorded) == *'-x https://soundcloud.com/artist/track https://artist.bandcamp.com/track/song '* ]] ||
+[[ $(recorded) == *'-x --embed-thumbnail https://soundcloud.com/artist/track https://artist.bandcamp.com/track/song '* ]] ||
   fail 'SoundCloud and Bandcamp should share the same default audio backend'
 
 run 'https://open.spotify.com/track/abc' >/dev/null

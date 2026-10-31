@@ -22,14 +22,14 @@ Spotify (mp3), Pinterest/Instagram/Imgur/Pixiv and other galleries,
 Google Drive (gdown), and Yandex.Disk (aria2c after public-link resolution).
 Direct file URLs use aria2c.
 An unknown site opens a backend picker in a terminal. In a script, use --using.
-To embed artwork with yt-dlp, add -- --embed-thumbnail and choose a supported
-output such as mp3, m4a, opus or flac; WAV and raw AAC do not support embedding.
+yt-dlp audio results carry the source's artwork, except WAV and raw AAC, which
+cannot hold it. Add -- --no-embed-thumbnail to leave it out.
 
   download 'https://youtu.be/...'
   download -f 'https://youtu.be/...'  # retry with Firefox cookies
   download --as mp3 'https://youtu.be/...'
   download 'https://artist.bandcamp.com/album/...'
-  download --as mp3 'https://youtu.be/...' -- --embed-thumbnail
+  download --as mp3 'https://youtu.be/...' -- --no-embed-thumbnail
   download --as jpg 'https://www.pinterest.com/pin/...'
   download --using gallery-dl 'https://example.org/post/...'
   download --as mp4 URL -- --playlist-items 1-3
@@ -374,6 +374,13 @@ yt-dlp)
     command+=(-x)
     # yt-dlp has no 'ogg'; the Vorbis-in-Ogg it produces is spelled vorbis.
     [[ -n $format ]] && command+=(--audio-format "${format/#ogg/vorbis}")
+    # Artwork goes in by default. WAV and raw AAC have nowhere to put it, and
+    # yt-dlp reports a failed post-processor there rather than skipping it.
+    # A later --no-embed-thumbnail among the backend options still wins.
+    case $format in
+    wav | aac) ;;
+    *) command+=(--embed-thumbnail) ;;
+    esac
   elif [[ -n $format ]]; then
     command+=(--recode-video "$format")
   fi
