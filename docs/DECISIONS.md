@@ -56,6 +56,24 @@ Use the legacy `install.sh` and `install.conf` as the package baseline, not as a
 
 A program module owns the package it configures. Standalone tools belong in `modules/packages.nix`; avoid declaring the same package in both places.
 
+The Ventoy program module installs plain Nixpkgs `ventoy`. Its web interface is
+the selected graphical interface, keeping the browser unprivileged and
+avoiding GTK/display-session integration for a root process. The server runs
+only when explicitly launched, with the default loopback binding. Writing or
+updating a USB drive is an explicit privileged operation, outside Home Manager
+activation. The flake allows its unfree license and the specific insecure
+package `ventoy-1.1.12`. The installed `ventoy` and `ventoy-web` commands request
+root through the host's sudo and pass the exact underlying store executable,
+so sudo's restricted PATH needs no profile configuration. Help and CLI version
+queries run unprivileged; an existing root process executes the package
+directly. Authentication, sudo policy and Ventoy's disk confirmations remain
+in force. This launch policy is our integration choice, not an upstream defect
+for the workarounds log. Activation only installs these launchers.
+Nixpkgs flags bundled binaries whose provenance and licensing cannot be fully
+verified; Nix installation preserves that upstream trust concern. The version
+exception must be reconsidered when the package changes. The software catalog
+records usage and the upstream issue.
+
 Where a Nixpkgs package is overridden because of a defect that is someone else's to fix — a patch, a version pinned forward or back, a missing build input — the override gets an entry in [WORKAROUNDS.md](WORKAROUNDS.md) alongside its comment, recording the packaged version the defect was observed in and the date it was last confirmed, and the entry is deleted in the same commit as the override. This log records what the repository has settled on; a workaround is the opposite of that, a thing carried until it can go, and the two do not belong on the same page. Overrides that encode our own integration rather than a defect, such as a proxy flag, are decisions and stay here. The distinction that matters is whether anything outside the repository has to change before the override can be dropped.
 
 The initial global development baseline is Go through `pkgs.go`, Rust and Cargo, JDK 21, GCC/G++, Make, and `pkg-config`. JDK 21 includes the Java runtime, so a separate JRE is unnecessary. `pkg-config` has since left it for the host, for the reason given below. The exact versions are pinned by `flake.lock`; project development shells override them only when a project needs another version or dependency set.

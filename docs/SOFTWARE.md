@@ -993,6 +993,42 @@ prerequisites.
 Home Manager global user tool; projects select their own Python versions and
 dependencies.
 
+### Ventoy
+
+- **Purpose:** Prepare and update multiboot USB drives that boot copied ISO images.
+- **State:** Active.
+- **Owner:** [Ventoy module](../modules/programs/ventoy.nix).
+
+Plain Nixpkgs `ventoy` supplies the CLI and `ventoy-web`. The web interface is
+the selected graphical interface, avoiding a privileged GTK process and its
+display-session integration. Both interfaces use the same packaged Ventoy
+release; this is a simpler integration choice, not a separate stability track.
+USB installation and updates are explicit privileged operations; Home Manager
+only installs the tools.
+
+Start `ventoy-web`, authenticate through the host's sudo prompt, then open
+<http://127.0.0.1:24680> in the ordinary browser. The server listens on loopback
+by default; keep that default. Close the interface and press Ctrl+C in the
+terminal when finished. See the [upstream WebUI guide](https://www.ventoy.net/en/doc_linux_webui.html).
+
+The installed `ventoy` and `ventoy-web` launchers request root automatically
+through the host's sudo, using the exact Nix-store executable. Help and CLI
+version queries need no elevation, and running as root executes the underlying
+tool directly. The other upstream helper commands retain their original behavior.
+
+Use `ventoy ...` for the CLI.
+The [upstream guide](https://www.ventoy.net/en/doc_start.html) documents `-i`
+for installation and `-u` for updating an existing Ventoy drive. Installation
+formats the selected whole disk and erases its data; check the target first.
+After preparation, copying ISO files needs no Ventoy command. Updating the Nix
+package does not update an already prepared USB drive.
+
+Nixpkgs marks Ventoy unfree and insecure because it bundles binaries whose
+source and licensing cannot be fully verified; installing through Nix does
+not resolve that upstream trust concern. The [flake](../flake.nix) explicitly
+allows `ventoy` and only the insecure version `ventoy-1.1.12`; revisit that
+exception on a package update. See [Nixpkgs issue #404663](https://github.com/NixOS/nixpkgs/issues/404663).
+
 ### Vesktop
 
 - **Purpose:** Discord client, including voice.

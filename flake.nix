@@ -53,8 +53,13 @@
             "obsidian"
             "spotify"
             "sublimetext4"
+            "ventoy"
             "vscode"
           ];
+        # Ventoy bundles binaries whose provenance/licensing Nixpkgs cannot
+        # verify. Accept this for the selected USB tool, scoped to this version
+        # so a package update requires reconsideration. See docs/SOFTWARE.md.
+        config.permittedInsecurePackages = [ "ventoy-1.1.12" ];
       };
       # nixpkgs currently carries gitleaks 8.30.1, whose default rules do not
       # detect canonical tokens (upstream issue #2170). The issue is closed but

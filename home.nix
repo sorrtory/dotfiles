@@ -22,6 +22,7 @@
     ./modules/programs/tealdeer.nix
     ./modules/programs/tmux.nix
     ./modules/programs/vault.nix
+    ./modules/programs/ventoy.nix
     ./modules/programs/vpnized-apps
     ./modules/programs/vesktop.nix
     ./modules/programs/vscode.nix
